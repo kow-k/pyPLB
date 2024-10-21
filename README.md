@@ -49,9 +49,9 @@ where `<file>` is an input file in .csv format. Crucial options are:
 - -z [float] sets the lower limit of z-score to prune the unwanted nodes. This is truly useful when a Pattern Lattice grows a big and complex.
 - -L [str] selects graph layout. Default is 'Multi_partite', a (clumsy) NetworkX-based simulation of RubyPLB output, but other layouts like Graphviz, Spring, Kamada-Kawai, which are available layout options in NetworkX, are available.
 
-The following graph is a sample of Pattern Lattice of [XiY-wiper3-dual](sources/plb-XiY-wiper3-dual.csv) with pruning of nodes with z-scores less than 0.0.
+The following graph is a sample of Pattern Lattice generated from [XiY-wiper3-dual](sources/plb-XiY-wiper3-dual.csv) with pruning of nodes with z-scores less than 0.0.
 
-![XiY-wiper3-dual](graphs/pl-XiY-wiper3-dual.png){:width="50%"} generated from 
+![XiY-wiper3-dual](graphs/pl-XiY-wiper3-dual.png){width=100}
 
 ## gPLB-runner (Jupyter Notebook)
 
