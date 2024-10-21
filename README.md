@@ -37,7 +37,7 @@ gPLB will implement _content tracking_ in near future, which I believe is quite 
 
 
 ## gPLB (a package including a runnable script)
-gPLB is a package that can be run as a script. To run it, issue the following command in the terminal:
+[gPLB](gPLB) is a package that can be run as a script. To run it, issue the following command in the terminal:
 
 ```python gPLB <file>```
 
@@ -49,13 +49,14 @@ where `<file>` is an input file in .csv format. Crucial options are:
 - -z [float] sets the lower limit of z-score to prune the unwanted nodes. This is truly useful when a Pattern Lattice grows a big and complex.
 - -L [str] selects graph layout. Default is 'Multi_partite', a (clumsy) NetworkX-based simulation of RubyPLB output, but other layouts like Graphviz, Spring, Kamada-Kawai, which are available layout options in NetworkX, are available.
 
-The following graph is a sample of Pattern Lattice generated from [XiY-wiper3-dual](sources/plb-XiY-wiper3-dual.csv) with pruning of nodes with z-scores less than 0.0.
+## gPLB-runner (Jupyter Notebook)
+
+[gPLB-runner.ipynb](gPLB-runner.ipynb) is a Jupyter Notebook that runs gPLB interactively. This is a better way to experiment, I suppose, especially when you need to customize graph drawing.
+
+The following graph is a sample of Pattern Lattice generated from [XiY-wiper3-dual](sources/plb-XiY-wiper3-dual.csv) with pruning of nodes with z-scores less than 0.0 using gPLB-runner.ipynb. I would be quite difficult to produce graphs like this by running gPLB as a script. A lot of frustrating adjustments should be needed. 
 
 ![XiY-wiper3-dual](graphs/pl-XiY-wiper3-dual.png){width=100}
 
-## gPLB-runner (Jupyter Notebook)
-
-gPLB-runner.ipynb is a Jupyter Notebook that runs gPLB interactively. This is a better way to experiment, I suppose, especially when you need to customize graph drawing.
 
 ## Information
 
