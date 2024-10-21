@@ -28,10 +28,10 @@ This makes gPLB different from its predecessor [RubyPLB](https://github.com/yoha
 
 Additonally, gPLB, unlike RubyPLB, gives you a lot of analytical information in text format. For example, it gives you:
 
-- all the instantion links generated
-- all the nodes of a pattern lattice created with z-scores
+- all the instantiation (is-a) links generated
+- all the nodes created for a pattern lattice with z-scores
 
-gPLB also allows you specify parameters for graph drawing to interactively.
+gPLB also allows you specify parameters to draw graphs interactively.
 
 gPLB will implement _content tracking_ in near future, which I believe is quite useful to make more detailed analysis of data.
 
