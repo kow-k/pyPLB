@@ -299,7 +299,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, label_size: int 
 
     ## set figure size
     if fig_size is None:
-        figsize_local = (2*round(len(D), 0), round(0.15*max_node_count_on_layer, 0))
+        figsize_local = (2*round(len(D), 0), round(0.2*max_node_count_on_layer, 0))
         print(f"#figsize_local: {figsize_local}")
         plt.figure(figsize = figsize_local)
     else:
@@ -355,7 +355,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, label_size: int 
     sample_instance_n = 7
     labels = [ ]
     for i, item in enumerate(sorted(instances)):
-        label = as_label (item, sep = '')
+        label = as_label (item, sep = ' ')
         if i < sample_instance_n:
             labels.append(label)
         elif i == len(instances):
