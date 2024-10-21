@@ -21,6 +21,7 @@ modifications
 2024/10/17 fixed a bug in failing connected graph: check for content compatibility offensive; implemented curved edges
 2024/10/18 improved font size, node size manipulation; added Japanese font capability
 2024/10/20 added package capability
+2024/10/21 improved instantiation implementation
 """
 
 #
@@ -45,11 +46,13 @@ parser.add_argument('file', type= open, default= None)
 parser.add_argument('-P', '--phrasal', action= 'store_true', default= False)
 parser.add_argument('-v', '--verbose', action= 'store_true', default= False)
 parser.add_argument('-w', '--detailed', action= 'store_true', default= False)
+parser.add_argument('-s', '--input_field_sep', type= str, default= ',')
+parser.add_argument('-c', '--input_comment_escape', type= str, default= '#')
 parser.add_argument('-R', '--unreflexive', action= 'store_false', default= True)
 parser.add_argument('-G', '--generalized', action= 'store_false', default= True)
 parser.add_argument('-m', '--max_size', type= int, default= None)
 parser.add_argument('-n', '--sample_n', type= int, default= 3)
-parser.add_argument('-s', '--sample_id', type= int, default= 1)
+parser.add_argument('-S', '--sample_id', type= int, default= 1)
 parser.add_argument('-F', '--scaling_factor', type= float, default= 5)
 parser.add_argument('-z', '--zscore_lowerbound', type= float, default= None)
 parser.add_argument('-C', '--track_content', action= 'store_true', default = False)
@@ -57,34 +60,67 @@ parser.add_argument('-D', '--draw_diagrams', action= 'store_false', default = Tr
 parser.add_argument('-L', '--layout', type= str, default= 'Multi_partite')
 args = parser.parse_args()
 ##
-file               = args.file   # process a file when it exists
-phrasal            = args.phrasal
-verbose            = args.verbose
-detailed           = args.detailed
-max_size           = args.max_size
-sample_id          = args.sample_id
-sample_n           = args.sample_n
-generalized        = args.generalized
-reflexive          = args.unreflexive
-track_content      = args.track_content
-draw_diagrams      = args.draw_diagrams
-layout             = args.layout
+file                 = args.file   # process a file when it exists
+phrasal              = args.phrasal
+verbose              = args.verbose
+detailed             = args.detailed
+max_size             = args.max_size
+sample_id            = args.sample_id
+sample_n             = args.sample_n
+generalized          = args.generalized
+reflexive            = args.unreflexive
+track_content        = args.track_content
+draw_diagrams        = args.draw_diagrams
+layout               = args.layout
 if not layout is None:
-    draw_diagrams  = True
-zscore_lowerbound  = args.zscore_lowerbound
-scale_factor       = args.scaling_factor
+    draw_diagrams    = True
+zscore_lowerbound    = args.zscore_lowerbound
+scale_factor         = args.scaling_factor
+input_field_sep      = args.input_field_sep
+input_comment_escape = args.input_comment_escape
+
 
 ## show paramters
 print(f"##Parameters")
 print(f"#verbose: {verbose}")
 print(f"#detailed: {detailed}")
+print(f"#input_field_sep: {input_field_sep}")
+print(f"#input_comment_escape: {input_comment_escape}")
 print(f"#generalized: {generalized}")
 print(f"#reflexive: {reflexive}")
 print(f"#draw_diagrams: {draw_diagrams}")
 
+## Functions
+def parse_input (file, field_sep: str = ",", comment_escape: str = "#") -> None:
+    "reads a file, splits it into segments using a given separator, removes comments, and forward the result to main"
+    import csv
+    
+    ## reading data
+    data = list(csv.reader (file, delimiter = field_sep)) # Crucially list(..)
+    
+    ## discard comment lines that start with #
+    data = [ F for F in data if len(F) > 0 and not F[0][0] == comment_escape ]
+    
+    ## remove in-line comments
+    data_renewed = [ ]
+    for F in data:
+        G = []
+        for f in F:
+            pos = f.find (comment_escape)
+            if pos > 0:
+                G.append(f[:pos])
+                continue
+            else:
+                G.append(f)
+        ##
+        data_renewed.append(G)
+    ##
+    return data_renewed
+
+
 ## process
-if file:
-    S0 = parse_input(file)
+if not file is None:
+    S0 = parse_input(file, field_sep = input_field_sep, comment_escape = input_comment_escape)
 else:
     ## sources
     ## phrasal source
