@@ -1,3 +1,12 @@
+# Persona directories
+dots/
+figs/
+outdated/
+outputs/
+profiled/
+sources/
+!gPLB/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -77,6 +86,8 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+!gPLB-runner.ipynb
+!plb-tester.ipynb
 
 # IPython
 profile_default/

@@ -1,0 +1,573 @@
+## imports
+#from utils .import *
+
+from copy import deepcopy
+
+## Functions
+def encode_for_pattern (L: list) -> list:
+    """
+    take a list L of segments and returns a list R of (form, content) tuples
+    R needs to be a list because it needs to be expanded later at building generalized PatternLattice
+    """
+    return [ (str(x).strip(), [str(x).strip()]) for x in L if len(x) > 0 ] # Crucially, strip(..)
+
+def tuple_encode_for_pattern (L: list) -> tuple:
+    """
+    take a list L of segments and returns a list R of (form, content) tuples
+    R needs to be a list because it needs to be expanded later at building generalized PatternLattice
+    """
+    return tuple((str(x), [str(x)]) for x in L if len(x) > 0 )
+
+##
+def attr_is_None_free (p, attr: str) -> bool:
+    "tests if pattern p has no None in attribute"
+    if p is None:
+        return False
+    L = eval(f"p.{attr}")
+    return ( len([ x for x in L if x is None ]) == 0 )
+
+##
+def form_is_None_free (p: list) -> bool:
+    "tests if pattern p has no None in form"
+    return attr_is_None_free (p, "form")
+
+##
+def content_is_None_free (p: list) -> bool:
+    "tests if pattern p has no None in content"
+    return attr_is_None_free (p, "content")
+
+##
+def is_None_free (p: list) -> bool:
+    "tests if pattern p has no None in form and no None in content"
+    if not form_is_None_free (p):
+        return False
+    if not content_is_None_free (p):
+        return False
+    ## other cases
+    return True
+
+##
+def count_gaps (L: list, gap_mark: str = "_", check: bool = False):
+    "returns the number of gaps in the given list"
+    return len([x for x in L if x == gap_mark])
+
+
+##
+def wrapped_merger_main (args):
+    "utility function for Pool in merge_patterns"
+    return merger_main (*args)
+
+
+##
+def get_rank_of_list (L, gap_mark: str = "_"):
+    "takes a list and returns the count of its element which are not equal to gap_mark"
+    return len([ x for x in L if x != gap_mark ])
+
+##
+def compatible_contents (L, R: list, check: bool = False) -> bool:
+    "tests if a pair of Patterns has compatible contents"
+    if check:
+        print(f"#checking for content compatibility:\n{L}\n{R}")
+    ## when input is a Pattern pair
+    try:
+        L_content, R_content = L.content, R.content
+        if len(L_content) != len(R_content):
+            return False
+        for i, x in enumerate(L_content):
+            if set(x) == set(R_content[i]):
+                pass
+            else:
+                return False
+        #
+        return True
+    ## when input is a list pair
+    except AttributeError:
+        if len(L) != len(R):
+            return False
+        for i, x in enumerate(L):
+            if set(x) == set(R[i]):
+                pass
+            else:
+                return False
+        #
+        return True
+
+
+##
+def test_completion (P: list, gap_mark: str = "_", check: bool = False) -> bool:
+    "tests if P, a list of patterns, contains a fully gapped pattern"
+    for p in P:
+        if check:
+            print(f"#checking for completion: {p}")
+        if p.is_fully_gapped (): # Crucially, len(x) > 0
+            return True
+    return False
+
+##
+def check_instantiation (self, other, check: bool = False):
+    "tests the instantiation of a pair of pattern with the equal size"
+    R, L = self, other
+    try:
+        assert len(R) == len(L)
+    except AssertionError:
+        return False
+    ##
+    R_form    = self.form
+    L_form    = other.form
+    gap_mark  = self.gap_mark
+    ##
+    for i, r_seg in enumerate(R_form):
+        l_seg = L_form[i]
+        if l_seg == r_seg:
+            pass
+        else:
+            if l_seg != gap_mark:
+                if check:
+                    print(f"#instantiation False with {L_form}; {R_form}")
+                return False
+            else:
+                pass
+    ##
+    if check:
+        print(f"#{R_form} instantiates {L_form}")
+    return True
+
+##
+def merge_patterns_main (form_pairs, content_pairs, gap_mark, boundary_mark, track_content: bool, check: bool = False):
+    ## The following operation needs to be re-implemented for speed up
+    new_form    = [ ]
+    new_content = [ ]
+    for i, pair in enumerate (form_pairs):
+        f0, f1 = pair[0], pair[1]
+        c0, c1 = content_pairs[i]
+        #C = c0
+        C = c0.copy()
+        if track_content:
+            C.extend(c1) # This drastically slows down
+        if f0 is None or f1 is None:
+            return None
+        elif f0 == f1:
+            new_form.append (f0)
+            new_content.append (C)
+        else:
+            if f0 == gap_mark:
+                new_form.append (f1)
+                if c0 == c1:
+                    new_content.append (C)
+                else:
+                    ## handling bounary marking
+                    if c0 == boundary_mark:
+                        new_content.append (c0)
+                    else:
+                        new_content.append (None)
+            elif f1 == gap_mark:
+                new_form.append (f0)
+                if c0 == c1:
+                    new_content.append (C)
+                else:
+                    ## handling bounary marking
+                    if c1 == boundary_mark:
+                        new_content.append (c1)
+                    else:
+                        new_content.append (None)
+            else:
+                new_form.append (None)
+                new_content.append (C)
+                ## The followinig slows down
+                #return None
+    ## Cruially, list(...)
+    new_paired  = [ (F, C) for F, C in list(zip(new_form, new_content)) ]
+    return new_paired
+
+
+##
+class Pattern:
+    # The idea of using NamedTuple turned out inadequate
+    #def __init__ (L): # <= This is wrong.
+    def __init__ (self, L: (list, tuple), gap_mark: str = "_", boundary_mark: str = "#"):
+        "creates a Pattern object from a given L, a list of elements, or from a paired"
+        ##
+        self.gap_mark      = gap_mark
+        self.boundary_mark = boundary_mark
+        self.paired        = encode_for_pattern (L)
+        self.form          = [ x[0] for x in self.paired ]
+        self.content       = [ x[1] for x in self.paired ]
+        #self.form          = tuple( x[0] for x in self.paired ) # as tuple
+        #self.content       = tuple( x[1] for x in self.paired ) # as tuple
+        self.size          = len (self.form)
+        self.rank          = self.get_rank()
+        self.gap_count     = self.count_gaps()
+        self.content_count = self.count_content()
+        #return self
+
+    ## This is crucial
+    def __eq__ (self, other):
+        "defines response to '==' operator"
+        # Multi-step returns get the judgement significantly faster
+        try:
+            if len(self) != len(other):
+                return False
+            elif self.form != other.form:
+                return False
+            elif self.content != other.content:
+                return False
+            else:
+                return True
+        except TypeError:
+            return False
+
+    ##
+    def __len__ (self):
+        "defines response to len()"
+        try:
+            return len(self.paired)
+        except TypeError:
+            return None
+    ##
+    def __lt__ (self, other):
+        return self.form < other.form
+
+    ##
+    def __iter__ (self):
+        for x in self.paired:
+            yield x
+
+    ##
+    def __repr__ (self):
+        "defines response to print()"
+        #return f"Pattern ({self.paired!r})" # is bad
+        return f"{type(self).__name__} ({self.paired!r})"
+
+    ##
+    def __get__item (self, position):
+        return self.paired[position]
+
+    ##
+    def __set__item (self, position, value):
+        self.paired[position] = value
+        return self
+
+    ##
+    def get_form (self):
+        return [ x[0] for x in self.form ]
+
+    ##
+    def get_content (self):
+        return [ x[1] for x in self.content ]
+
+    ##
+    def get_rank (self):
+        return len([ x for x in self.form if x != self.gap_mark ])
+
+    ##
+    def update_with_paired (self, paired):
+        q = Pattern([])
+        q.gap_mark      = self.gap_mark
+        q.boundary_mark = self.boundary_mark
+        q.paired        = paired
+        q.form          = q.get_form ()
+        q.content       = q.get_content ()
+        return q
+
+    ##
+    def update_form (self):
+        "updates self.form value of a Pattern given"
+        try:
+            self.form = [ x[0] for x in self.paired ]
+            #self.form = tuple( x[0] for x in self.paired )
+            return self
+        except (AttributeError, TypeError):
+            return None
+
+    #
+    def update_content (self):
+        "updates self.content value of a Pattern given"
+        try:
+            self.content = [ x[1] for x in self.paired ]
+            #self.content = tuple( x[1] for x in self.paired )
+            return self
+        except TypeError:
+            return None
+
+    ##
+    def update_paired (self):
+        "updates self.paired value of a Pattern given"
+        self.paired = [ (x, y) for x, y in zip (self.form, self.content) ]
+        #self.paired = tuple( (x, y) for x, y in zip (self.form, self.content) )
+        return self
+
+    ##
+    def count_gaps(self):
+        "count the number of gap_marks in the form and returns it"
+        #return self.form.count(self.gap_mark)
+        return len([ x for x in self.form if x == self.gap_mark ])
+
+    ##
+    def count_content(self):
+        #return len([x for x in self.paired if x[0] != self.gap_mark and not self.boundary_mark in x[1] ])
+        return len([ x for x in self.content if not self.boundary_mark in x ])
+    ##
+    def create_gapped_versions (self: list, gap_mark: str = "_", check: bool = False) -> list:
+        "create a list of gapped patterns in which each non-gap is replaced by a gap"
+        if check:
+            print(f"#self: {self}")
+        paired = self.paired
+        # generate a lattice
+        R = [ ]
+        for i in range (len(paired)):
+            gapped = list(paired) # creates a copy of list form
+            #gapped = deepcopy(paired) # This makes a copy of tuple.
+            form    = [ x[0] for x in paired ]
+            content = [ x[1] for x in paired ]
+            f, c = form[i], content[i]
+            if f != gap_mark:
+                gapped[i] = (gap_mark, c)
+            ## conversion to tuple
+            #gapped = tuple((x, y) for x, y in zip(form, content))
+            if check:
+                print(f"#gapped: {gapped}")
+            ##
+            result        = Pattern([])
+            result.paired = gapped
+            result.update_form()
+            result.update_content()
+            ##
+            R.append(result)
+        #
+        return R
+
+    ##
+    def add_gap_at_edge (self, position: str, edge_value: str = "#", check: bool = False):
+        "add a gap at edge of a pattern given"
+        gap_mark     = self.gap_mark
+        paired_new   = self.paired.copy() # Crucially
+        gapped_edge  = (gap_mark, [edge_value])
+        if position in [ 'Right', 'R', 'right' ]:
+            paired_new.append (gapped_edge)
+            #paired_new = tuple(paired_new, gapped_edge)
+        else:
+            paired_new.insert(0, gapped_edge)
+            #paired_new = tuple(gapped_edge, paired_new)
+            if position in [ 'Left', 'L', 'left' ]:
+                pass
+            elif position in [ 'Both', 'B', 'both' ]:
+                paired_new.append (gapped_edge)
+                #paired_new = tuple(paired_new, gapped_edge)
+            else:
+                raise "Specified position is undefined"
+        ## return result
+        result = Pattern([])
+        result.paired = paired_new
+        result.update_form()
+        result.update_content() # Don't forget to add () at the end!
+        return result
+
+    ##
+    def drop_edge (self, side: str, check: bool = False):
+        if side in [ "left", "Left", "L" ]:
+            paired = self.paired[1:]
+        elif side in  [ "right", "Right", "R" ]:
+            paired = self.paired[:-1]
+        else:
+            raise "unrecognized side"
+        ##
+        p = Pattern([])
+        p.paired = paired
+        p.update_form()
+        p.update_content()
+        return p
+
+    ##
+    def create_random_gaps (self, n: int, check: bool = False):
+        "create n gaps in the form of a given pattern"
+        sites = range(len(self.form))
+        gapped_sites = random.sample(sites, n)
+        if check:
+            print(f"# gapped_sites: {gapped_sites}")
+        form = [ ]
+        for i, f in enumerate (self.form):
+            if i in gapped_sites:
+                form.append (self.gap_mark)
+            else:
+                form.append (f)
+        self.form = form
+        if check:
+            print(f"# self.form: {self.form}")
+        self.update_paired()
+        if check:
+            print(f"# self.paired: {self.paired}")
+        return self # Crucially
+
+    ##
+    def is_fully_gapped (self, gap_mark: str = "_"):
+        "tests if a given pattern has the fully gapped form"
+        form = self.form
+        if all([ x == gap_mark for x in form if len(x) > 0 ]):
+            return True
+        return False
+
+    ##
+    def build_lattice_nodes (p, generalized: bool = True, check: bool = False):
+        "takes a pattern and returns a list of lattice nodes"
+        if check:
+            print (f"#p: {p}")
+        #
+        size = len(p.paired)
+        R = [p]
+        ## main
+        form_register = [p.form]
+        completed = False
+        while not completed:
+            if check:
+                print(f"#completed: {completed}")
+            for r in R:
+                if check:
+                    print(f"#r: {r}")
+                G = r.create_gapped_versions (check = False)
+                if check:
+                    print(f"#G: {G}")
+                for i, g in enumerate (G):
+                    if check:
+                        print(f"#g{i}: {g}")
+                    if not g.form in form_register:
+                        R.append (g)
+                        form_register.append(g.form)
+            ## check termination
+            if test_completion (R, check = False):
+                completed = True
+
+        ## build generalized lattice
+        if generalized:
+            Q = R.copy()
+            positions = [ 'right', 'left', 'both' ]
+            for position in positions:
+                for r in R:
+                    q = r.add_gap_at_edge (position)
+                    if q not in Q:
+                        Q.append(q)
+            if check:
+                print(f"#Q: {Q}")
+            R = Q
+        ## return result
+        return sorted(R)
+
+    ##
+    def merge_patterns (self, other, track_content: bool = False, reduction: bool = True, check: bool = False):
+        "take a pair of Patterns, merges one Pattern with another"
+        ## prevents void operation
+        #if self.form == other.form:
+        if self == other:
+            return self
+        if check:
+            print(f"#=====================")
+            print(f"#self: {self}")
+            print(f"#other: {other}")
+        ## main
+        gap_mark      = self.gap_mark
+        boundary_mark = self.boundary_mark
+        ## The following two lines fail due to "TypeError: 'zip' object is not subscriptable"
+        form_pairs    = list(zip (self.form, other.form))
+        content_pairs = list(zip (self.content, other.content))
+        if check:
+            print(f"#form_pairs :{form_pairs}")
+            print(f"#content_pairs: {content_pairs}")#
+        ##
+        new_paired = merge_patterns_main (form_pairs, content_pairs, gap_mark, boundary_mark, track_content = track_content, check = check)
+        if check:
+            print(f"#new_paired: {new_paired}")
+        ##
+        new = Pattern([])
+        new.paired = new_paired
+        new.update_form()
+        new.update_content()
+        return new
+
+    ##
+    def instantiates_or_not (self, other, check: bool = False):
+        """
+        tests if pattern R instantiates another L, i.e., instance(R, L) == part_of(L, R)
+        """
+        gap_mark      = self.gap_mark
+        boundary_mark = self.boundary_mark
+        R, L = self, other
+        #R_form, L_form = R.form, L.form
+        R_form, L_form = self.form, other.form
+        #R_size, L_size = R.size, L.size ## fails
+        R_size, L_size = len(R.form), len(L.form)
+        #R_rank, L_rank = R.rank, L.rank # fails
+        R_rank, L_rank = R.get_rank(), L.get_rank()
+        R_gap_count     = self.count_gaps()
+        L_gap_count     = other.count_gaps()
+        L_nongap_count  = len([ x for x in L.form if x != gap_mark ])
+        R_nongap_count  = len([ x for x in R.form if x != gap_mark ])
+        R_content       = self.content
+        L_content       = other.content
+        R_content_count = self.count_content()
+        L_content_count = other.count_content()
+        if check:
+            print(f"===================")
+            print(f"#L: {L}; R: {R}")
+            print(f"#L_size: {L_size}; R_size: {R_size}")
+            print(f"#L_rank: {L_rank}; L_rank: {R_rank}")
+            print(f"#L_form: {L_form}; R_form: {R_form}")
+            print(f"#L_gap_count: {L_gap_count}; R_gap_count: {R_gap_count}")
+            print(f"#L_content: {L_content}; R_content: {R_content}")
+            print(f"#L_content_count: {L_content_count}; R_content_count: {R_content_count}")
+        ## L and R are at the same rank
+        if L_rank == R_rank:
+            ## when L is one-segment longer than R
+            if (L_size - R_size) != 1:
+                return False
+            else:
+                L_rdrop  = L.drop_edge('right')
+                L_ldrop  = L.drop_edge('left')
+                if R.form == L_rdrop.form or R.form == L_ldrop.form:
+                    return True
+                else:
+                    return False
+        ## L's rank is one-segment smaller than R's
+        elif L_size == R_size and L_rank + 1 == R_rank:
+            #print(f"#equal size: {L.form} : {R.form}")
+            return check_instantiation (R, L, check = check)
+        ## other cases
+        else:
+            return False
+
+    ##
+    def merge_patterns (self, other, track_content: bool = False, reduction: bool = True, check: bool = False):
+        "take a pair of Patterns, merges one Pattern with another"
+        ## prevents void operation
+        #if self.form == other.form:
+        if track_content:
+            if self == other:
+                return self
+        else:
+            if self.form == other.form:
+                return self
+        if check:
+            print(f"#=====================")
+            print(f"#self: {self}")
+            print(f"#other: {other}")
+        ## main
+        gap_mark      = self.gap_mark
+        boundary_mark = self.boundary_mark
+        ## The following two lines fail due to "TypeError: 'zip' object is not subscriptable"
+        #form_pairs    = zip (self.form, other.form)
+        #content_pairs = zip (self.content, other.content)
+        form_pairs    = list(zip (self.form, other.form))
+        content_pairs = list(zip (self.content, other.content))
+        if check:
+            print(f"#form_pairs :{form_pairs}")
+            print(f"#content_pairs: {content_pairs}")#
+        ##
+        new_paired = merge_patterns_main (form_pairs, content_pairs, gap_mark, boundary_mark, track_content = track_content, check = check)
+        if check:
+            print(f"#new_paired: {new_paired}")
+        ##
+        new = Pattern([])
+        new.paired = new_paired
+        new.update_form()
+        new.update_content()
+        return new
+
+### end of file
