@@ -1,4 +1,4 @@
-# Personal directories
+# Personal directories and files
 dots/
 figs/
 outdated/
@@ -6,8 +6,8 @@ outputs/
 profiled/
 !sources/
 !gPLB/
-
 *.html
+*.txt
 
 #
 .DS_Store
