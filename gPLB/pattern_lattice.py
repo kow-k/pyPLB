@@ -121,6 +121,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     import matplotlib.pyplot as plt
     import matplotlib.cm as cm
     import seaborn as sns
+
     ## define graph
     #G = nx.Graph() # does not accept connectionstyle specification
     G = nx.DiGraph()
@@ -159,7 +160,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
         G.add_edges_from (E)
     ##
     max_node_count_on_layer = max(node_counts_by_layers)
-    
+
     ## node color setting
     values_for_color = []
     for node in G:
@@ -274,10 +275,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
             layout_name = "Multi-partite"
             positions   = nx.multipartite_layout (G, subset_key = "rank")
 
-    ## draw
-    #plt.figure(figsize = (10, 20))
-    #ax1 = plt.subplot(111)
-    #ax1.margins(0.3)
+    ### draw
     ## set connection
     if layout_name == "Multi-partite":
         connectionstyle = "arc, angleA=0, angleB=180, armA=50, armB=50, rad=15"
@@ -286,12 +284,12 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
 
     ## set figure size
     if auto_fig_sizing:
-        if fig_size is None:
-            figsize_local = (round(1.75 * len(D), 0), round(0.15 * max_node_count_on_layer, 0))
-            print(f"#figsize_local: {figsize_local}")
-            plt.figure(figsize = figsize_local)
-    else:
-        pass
+        if not fig_size is None:
+            fig_size_local = fig_size
+        else:
+            fig_size_local = (round(2.0 * len(D), 0), round(0.2 * max_node_count_on_layer, 0))
+        print(f"#fig_size_local: {fig_size_local}")
+        plt.figure(figsize = fig_size_local)
 
     ## set font_size
     if auto_fig_sizing:
@@ -299,12 +297,12 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
             try:
                 font_size = round(label_size/1.5 * math.log (max_node_count_on_layer), 0)
             except (ZeroDivisionError, TypeError):
-                font_size = 9
+                font_size = 8
     else:
         if not label_size is None:
             font_size = label_size
         else:
-            font_size = 9
+            font_size = 8
     print(f"#font_size: {font_size}")
 
     ## set node_size
@@ -342,7 +340,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
         connectionstyle = connectionstyle,
     )
 
-    ## set title
+    ### set title
     ## set labels used in title
     sample_instance_n = 7
     labels = [ ]
