@@ -1,4 +1,4 @@
-# Persona directories
+# Personal directories
 dots/
 figs/
 outdated/
@@ -6,6 +6,9 @@ outputs/
 profiled/
 !sources/
 !gPLB/
+
+#
+.DS_Store
 
 # VS Code
 .vscode/
