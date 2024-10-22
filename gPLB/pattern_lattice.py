@@ -114,7 +114,7 @@ def normalize_score (x, min_val: float = -6, max_val: float = 6):
     return normalizer(x)
 
 ##
-def draw_network (D: dict, layout: str, fig_size: tuple = None, automatic_fig_sizing: bool = False, label_size: int = None, node_size: int = None, zscores: dict = None, zscore_lowerbound = None, scale_factor: float = 3, font_name: str = None, test: bool = False, use_pyGraphviz: bool = False, check: bool = False):
+def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing: bool = False, label_size: int = None, node_size: int = None, zscores: dict = None, zscore_lowerbound = None, scale_factor: float = 3, font_name: str = None, test: bool = False, use_pyGraphviz: bool = False, check: bool = False):
     "draw layered graph under multipartite setting"
     import networkx as nx
     import math
@@ -159,6 +159,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, automatic_fig_si
         G.add_edges_from (E)
     ##
     max_node_count_on_layer = max(node_counts_by_layers)
+    
     ## node color setting
     values_for_color = []
     for node in G:
@@ -284,22 +285,26 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, automatic_fig_si
         connectionstyle = "arc"
 
     ## set figure size
-    if automatic_fig_sizing:
+    if auto_fig_sizing:
         if fig_size is None:
-            figsize_local = (2 * round(len(D), 0), round(0.2*max_node_count_on_layer, 0))
+            figsize_local = (round(1.5 * len(D), 0), round(0.15 * max_node_count_on_layer, 0))
             print(f"#figsize_local: {figsize_local}")
             plt.figure(figsize = figsize_local)
     else:
-        plt.figure (figsize = fig_size)
+        pass
 
     ## set font_size
-    if label_size is None:
-        try:
-            font_size = round(label_size/1.5*math.log (max_node_count_on_layer), 0)
-        except (ZeroDivisionError, TypeError):
-            font_size = 10
+    if auto_fig_sizing:
+        if label_size is None:
+            try:
+                font_size = round(label_size/1.5 * math.log (max_node_count_on_layer), 0)
+            except (ZeroDivisionError, TypeError):
+                font_size = 9
     else:
-        font_size = label_size
+        if not label_size is None:
+            font_size = label_size
+        else:
+            font_size = 9
     print(f"#font_size: {font_size}")
 
     ## set node_size
@@ -307,7 +312,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, automatic_fig_si
         node_size = 12
     else:
         try:
-            node_size = round(1.2*node_size/math.log (max_node_count_on_layer), 0)
+            node_size = round(1.2 * node_size/math.log (max_node_count_on_layer), 0)
         except ZeroDivisionError:
             node_size = 12
     print(f"#node_size: {node_size}")
@@ -600,7 +605,7 @@ class PatternLattice:
         return self
 
     ##
-    def draw_diagrams (self, layout: str = None, zscore_lowerbound: float = None, scale_factor: float = 3, fig_size: tuple = None, label_size: int = None, node_size: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
+    def draw_diagrams (self, layout: str = None, auto_fig_sizing: bool = False, zscore_lowerbound: float = None, scale_factor: float = 3, fig_size: tuple = None, label_size: int = None, node_size: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
         """
         draw a lattice digrams from a given PatternLattice L by extracting L.links
         """
@@ -621,6 +626,6 @@ class PatternLattice:
                 i += 1
                 print(f"node {i} {k} has z-score {v:.6f}")
         ## draw PatternLattice
-        draw_network (ranked_links.items(), layout = layout, fig_size = fig_size, node_size = node_size, zscores = zscores, zscore_lowerbound = zscore_lowerbound, scale_factor = scale_factor, font_name = font_name, check = check)
+        draw_network (ranked_links.items(), layout = layout, auto_fig_sizing = auto_fig_sizing, node_size = node_size, zscores = zscores, zscore_lowerbound = zscore_lowerbound, scale_factor = scale_factor, font_name = font_name, check = check)
 
 ### end of file
