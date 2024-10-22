@@ -108,13 +108,13 @@ def check_instantiation (self, other, check: bool = False):
     "tests the instantiation of a pair of pattern with the equal size"
     R, L = self, other
     try:
-        assert len(R) == len(L)
+        assert len(L) >= len(R)
     except AssertionError:
         return False
     ##
+    gap_mark  = self.gap_mark
     R_form    = self.form
     L_form    = other.form
-    gap_mark  = self.gap_mark
     ##
     for i, r_seg in enumerate(R_form):
         l_seg = L_form[i]
@@ -127,9 +127,9 @@ def check_instantiation (self, other, check: bool = False):
                 return False
             else:
                 pass
-    ##
     if check:
         print(f"#{R_form} instantiates {L_form}")
+    ##
     return True
 
 ##
@@ -196,8 +196,8 @@ class Pattern:
         #self.content       = tuple( x[1] for x in self.paired ) # as tuple
         self.size          = len (self.form)
         self.rank          = self.get_rank()
-        self.gap_count     = self.count_gaps()
-        self.content_count = self.count_content()
+        self.gap_count     = self.get_gap_size()
+        self.content_count = self.get_substance_size()
         #return self
 
     ## This is crucial
@@ -244,21 +244,42 @@ class Pattern:
 
     ##
     def __set__item (self, position, value):
+        "defines the response to __setitem__, i.e., x[y] operator"
         self.paired[position] = value
         return self
 
     ##
     def get_form (self):
+        "takes a pattern and returns its form as list"
         return [ x[0] for x in self.form ]
 
     ##
+    def get_form_size(self):
+        return len(self.get_form())
+
+    ##
     def get_content (self):
+        "takes a pattern and returns its content as a list"
         return [ x[1] for x in self.content ]
+    
+    ##
+    def get_content_size(self):
+        return len(self.get_content())
+    
+    ##
+    def get_substance (self):
+        "takes a pattern and returns the list of non-gap elements in it"
+        return [ x for x in self.form if x != self.gap_mark]
 
     ##
     def get_rank (self):
-        return len([ x for x in self.form if x != self.gap_mark ])
-
+        "takes a pattern and returns its rank, i.e., the number of non-gap elements"
+        #return len([ x for x in self.form if x != self.gap_mark ])
+        return len(self.get_substance())
+    
+    ##
+    get_substance_size = get_rank
+    
     ##
     def update_with_paired (self, paired):
         q = Pattern([])
@@ -297,15 +318,15 @@ class Pattern:
         return self
 
     ##
-    def count_gaps(self):
-        "count the number of gap_marks in the form and returns it"
-        #return self.form.count(self.gap_mark)
-        return len([ x for x in self.form if x == self.gap_mark ])
+    def get_gaps(self):
+        "takes a pattern and returns the list of gaps"
+        return [ x for x in self.form if x == self.gap_mark ]
 
     ##
-    def count_content(self):
-        #return len([x for x in self.paired if x[0] != self.gap_mark and not self.boundary_mark in x[1] ])
-        return len([ x for x in self.content if not self.boundary_mark in x ])
+    def get_gap_size(self):
+        "takes a pattern and returns the number of gap_marks in it"
+        return len(self.get_gaps())
+
     ##
     def create_gapped_versions (self: list, gap_mark: str = "_", check: bool = False) -> list:
         "create a list of gapped patterns in which each non-gap is replaced by a gap"
@@ -336,46 +357,6 @@ class Pattern:
         #
         return R
 
-    ##
-    def add_gap_at_edge (self, position: str, edge_value: str = "#", check: bool = False):
-        "add a gap at edge of a pattern given"
-        gap_mark     = self.gap_mark
-        paired_new   = self.paired.copy() # Crucially
-        gapped_edge  = (gap_mark, [edge_value])
-        if position in [ 'Right', 'R', 'right' ]:
-            paired_new.append (gapped_edge)
-            #paired_new = tuple(paired_new, gapped_edge)
-        else:
-            paired_new.insert(0, gapped_edge)
-            #paired_new = tuple(gapped_edge, paired_new)
-            if position in [ 'Left', 'L', 'left' ]:
-                pass
-            elif position in [ 'Both', 'B', 'both' ]:
-                paired_new.append (gapped_edge)
-                #paired_new = tuple(paired_new, gapped_edge)
-            else:
-                raise "Specified position is undefined"
-        ## return result
-        result = Pattern([])
-        result.paired = paired_new
-        result.update_form()
-        result.update_content() # Don't forget to add () at the end!
-        return result
-
-    ##
-    def drop_edge (self, side: str, check: bool = False):
-        if side in [ "left", "Left", "L" ]:
-            paired = self.paired[1:]
-        elif side in  [ "right", "Right", "R" ]:
-            paired = self.paired[:-1]
-        else:
-            raise "unrecognized side"
-        ##
-        p = Pattern([])
-        p.paired = paired
-        p.update_form()
-        p.update_content()
-        return p
 
     ##
     def create_random_gaps (self, n: int, check: bool = False):
@@ -405,6 +386,32 @@ class Pattern:
         if all([ x == gap_mark for x in form if len(x) > 0 ]):
             return True
         return False
+
+    ##
+    def add_gap_at_edge (self, position: str, edge_value: str = "#", check: bool = False):
+        "add a gap at edge of a pattern given"
+        gap_mark     = self.gap_mark
+        paired_new   = self.paired.copy() # Crucially
+        gapped_edge  = (gap_mark, [edge_value])
+        if position in [ 'Right', 'R', 'right' ]:
+            paired_new.append (gapped_edge)
+            #paired_new = tuple(paired_new, gapped_edge)
+        else:
+            paired_new.insert(0, gapped_edge)
+            #paired_new = tuple(gapped_edge, paired_new)
+            if position in [ 'Left', 'L', 'left' ]:
+                pass
+            elif position in [ 'Both', 'B', 'both' ]:
+                paired_new.append (gapped_edge)
+                #paired_new = tuple(paired_new, gapped_edge)
+            else:
+                raise "Specified position is undefined"
+        ## return result
+        result = Pattern([])
+        result.paired = paired_new
+        result.update_form()
+        result.update_content() # Don't forget to add () at the end!
+        return result
 
     ##
     def build_lattice_nodes (p, generalized: bool = True, check: bool = False):
@@ -451,36 +458,6 @@ class Pattern:
         ## return result
         return sorted(R)
 
-    ##
-    def merge_patterns (self, other, track_content: bool = False, reduction: bool = True, check: bool = False):
-        "take a pair of Patterns, merges one Pattern with another"
-        ## prevents void operation
-        #if self.form == other.form:
-        if self == other:
-            return self
-        if check:
-            print(f"#=====================")
-            print(f"#self: {self}")
-            print(f"#other: {other}")
-        ## main
-        gap_mark      = self.gap_mark
-        boundary_mark = self.boundary_mark
-        ## The following two lines fail due to "TypeError: 'zip' object is not subscriptable"
-        form_pairs    = list(zip (self.form, other.form))
-        content_pairs = list(zip (self.content, other.content))
-        if check:
-            print(f"#form_pairs :{form_pairs}")
-            print(f"#content_pairs: {content_pairs}")#
-        ##
-        new_paired = merge_patterns_main (form_pairs, content_pairs, gap_mark, boundary_mark, track_content = track_content, check = check)
-        if check:
-            print(f"#new_paired: {new_paired}")
-        ##
-        new = Pattern([])
-        new.paired = new_paired
-        new.update_form()
-        new.update_content()
-        return new
 
     ##
     def instantiates_or_not (self, other, check: bool = False):
@@ -496,14 +473,14 @@ class Pattern:
         R_size, L_size = len(R.form), len(L.form)
         #R_rank, L_rank = R.rank, L.rank # fails
         R_rank, L_rank = R.get_rank(), L.get_rank()
-        R_gap_count     = self.count_gaps()
-        L_gap_count     = other.count_gaps()
-        L_nongap_count  = len([ x for x in L.form if x != gap_mark ])
-        R_nongap_count  = len([ x for x in R.form if x != gap_mark ])
+        R_gap_count     = self.get_gap_size()
+        L_gap_count     = other.get_gap_size()
+        R_substance     = R.get_substance()
+        L_substance     = L.get_substance()
         R_content       = self.content
         L_content       = other.content
-        R_content_count = self.count_content()
-        L_content_count = other.count_content()
+        R_content_count = len(R_content)
+        L_content_count = len(L_content)
         if check:
             print(f"===================")
             print(f"#L: {L}; R: {R}")
@@ -516,17 +493,17 @@ class Pattern:
         ## L and R are at the same rank
         if L_rank == R_rank:
             ## when L is one-segment longer than R
-            if (L_size - R_size) != 1:
+            if L_size != R_size + 1:
                 return False
             else:
-                L_rdrop  = L.drop_edge('right')
-                L_ldrop  = L.drop_edge('left')
-                if R.form == L_rdrop.form or R.form == L_ldrop.form:
+                if R_substance == L_substance:
+                    print(f"L_substance: {L_substance}")
+                    print(f"R_substance: {R_substance}")
                     return True
                 else:
                     return False
         ## L's rank is one-segment smaller than R's
-        elif L_size == R_size and L_rank + 1 == R_rank:
+        elif L_size == R_size and L_rank == R_rank - 1:
             #print(f"#equal size: {L.form} : {R.form}")
             return check_instantiation (R, L, check = check)
         ## other cases
