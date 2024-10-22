@@ -58,26 +58,28 @@ parser.add_argument('-z', '--zscore_lowerbound', type= float, default= None)
 parser.add_argument('-C', '--track_content', action= 'store_true', default = False)
 parser.add_argument('-D', '--draw_diagrams', action= 'store_false', default = True)
 parser.add_argument('-L', '--layout', type= str, default= 'Multi_partite')
+parser.add_argument('-A', '--auto_fig_sizing', action= 'store_true', default= False)
 args = parser.parse_args()
 ##
-file                 = args.file   # process a file when it exists
-phrasal              = args.phrasal
-verbose              = args.verbose
-detailed             = args.detailed
-max_size             = args.max_size
-sample_id            = args.sample_id
-sample_n             = args.sample_n
-generalized          = args.generalized
-reflexive            = args.unreflexive
-track_content        = args.track_content
-draw_diagrams        = args.draw_diagrams
-layout               = args.layout
+file                  = args.file   # process a file when it exists
+phrasal               = args.phrasal
+verbose               = args.verbose
+detailed              = args.detailed
+max_size              = args.max_size
+sample_id             = args.sample_id
+sample_n              = args.sample_n
+generalized           = args.generalized
+reflexive             = args.unreflexive
+track_content         = args.track_content
+draw_diagrams         = args.draw_diagrams
+layout                = args.layout
 if not layout is None:
-    draw_diagrams    = True
-zscore_lowerbound    = args.zscore_lowerbound
-scale_factor         = args.scaling_factor
-input_field_sep      = args.input_field_sep
-input_comment_escape = args.input_comment_escape
+    draw_diagrams     = True
+auto_fig_sizing       = args.auto_fig_sizing
+zscore_lowerbound     = args.zscore_lowerbound
+scale_factor          = args.scaling_factor
+input_field_sep       = args.input_field_sep
+input_comment_escape  = args.input_comment_escape
 
 
 ## show paramters
@@ -234,7 +236,7 @@ if draw_diagrams and verbose:
     print(f"##Drawing diagrams")
     for i, patlat in enumerate(L):
         print(f"#drawing diagram from: PatternLattice {i}")
-        patlat.draw_diagrams (layout = layout, scale_factor = scale_factor, check = False)
+        patlat.draw_diagrams (layout = layout, auto_fig_sizing = auto_fig_sizing, scale_factor = scale_factor, check = False)
 ##
 #exit()
 ##
@@ -313,7 +315,7 @@ if verbose:
 ## draw diagram
 if draw_diagrams:
     print(f"#Drawing a diagram from the merged lattice")
-    M.draw_diagrams (layout = layout, zscore_lowerbound = zscore_lowerbound,
+    M.draw_diagrams (layout = layout, auto_fig_sizing = auto_fig_sizing, zscore_lowerbound = zscore_lowerbound,
         scale_factor = scale_factor, check = False)
 
 ### end of file
