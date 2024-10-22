@@ -7,6 +7,8 @@ profiled/
 !sources/
 !gPLB/
 
+*.html
+
 #
 .DS_Store
 
