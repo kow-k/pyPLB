@@ -287,7 +287,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     ## set figure size
     if auto_fig_sizing:
         if fig_size is None:
-            figsize_local = (round(1.5 * len(D), 0), round(0.15 * max_node_count_on_layer, 0))
+            figsize_local = (round(1.75 * len(D), 0), round(0.15 * max_node_count_on_layer, 0))
             print(f"#figsize_local: {figsize_local}")
             plt.figure(figsize = figsize_local)
     else:
