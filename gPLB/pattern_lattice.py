@@ -114,7 +114,7 @@ def normalize_score (x, min_val: float = -6, max_val: float = 6):
     return normalizer(x)
 
 ##
-def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing: bool = False, label_size: int = None, node_size: int = None, zscores: dict = None, zscore_lowerbound = None, scale_factor: float = 3, font_name: str = None, test: bool = False, use_pyGraphviz: bool = False, check: bool = False):
+def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing: bool = False, label_size: int = None, label_sample_n: int = None, node_size: int = None, zscores: dict = None, zscore_lowerbound = None, scale_factor: float = 3, font_name: str = None, test: bool = False, use_pyGraphviz: bool = False, check: bool = False):
     "draw layered graph under multipartite setting"
     import networkx as nx
     import math
@@ -271,7 +271,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
             positions   = nx.kamada_kawai_layout (G, scale = scale_factor, dim = 2)
         ##
         else:
-            #raise "digram layout is not specified properly"
+            print(f"Unknown layout: Multi-partite (default) is used")
             layout_name = "Multi-partite"
             positions   = nx.multipartite_layout (G, subset_key = "rank")
 
@@ -283,13 +283,18 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
         connectionstyle = "arc"
 
     ## set figure size
-    if auto_fig_sizing:
-        if not fig_size is None:
-            fig_size_local = fig_size
+    if not fig_size is None:
+        fig_size_local = fig_size
+    else:
+        if auto_fig_sizing:
+            fig_size_local = (round(2.5 * len(D), 0), round(0.2 * max_node_count_on_layer, 0))
         else:
-            fig_size_local = (round(2.0 * len(D), 0), round(0.2 * max_node_count_on_layer, 0))
+            pass
+    try:
         print(f"#fig_size_local: {fig_size_local}")
         plt.figure(figsize = fig_size_local)
+    except NameError:
+        pass
 
     ## set font_size
     if auto_fig_sizing:
@@ -342,15 +347,9 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
 
     ### set title
     ## set labels used in title
-    sample_instance_n = 7
-    labels = [ ]
-    for i, item in enumerate(sorted(instances)):
-        label = as_label (item, sep = ' ')
-        if i < sample_instance_n:
-            labels.append(label)
-        elif i == len(instances):
-            labels.append("...")
-            labels.append(label)
+    labels = [ x for x in sorted(instances) ]
+    if not label_sample_n is None:
+        labels = labels[:label_sample_n - 1] + [("...")] + labels[-1]
     plt.title(f"PatternLattice (layout: {layout_name}) built from {labels}")
     ##
     plt.show()
@@ -517,8 +516,6 @@ class PatternLattice:
                         ##
                         if l_form == r_form:
                             continue
-                        ## The following turned out to be offensive
-                        #elif r.instantiates_or_not (l, check = check) and compatible_contents (l, r):
                         elif r.instantiates_or_not (l, check = check):
                             print(f"#linked: {l.form} by {r.form}")
                             link = PatternLink([l, r])
@@ -582,7 +579,6 @@ class PatternLattice:
                     ##
                     if link:
                         if check:
-                            #print(f"#instatiation: True; compatible content: True")
                             print(f"#instatiation: True")
                         rank = link.get_rank()
                         try:
@@ -603,7 +599,7 @@ class PatternLattice:
         return self
 
     ##
-    def draw_diagrams (self, layout: str = None, auto_fig_sizing: bool = False, zscore_lowerbound: float = None, scale_factor: float = 3, fig_size: tuple = None, label_size: int = None, node_size: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
+    def draw_diagrams (self, layout: str = None, auto_fig_sizing: bool = False, zscore_lowerbound: float = None, scale_factor: float = 3, fig_size: tuple = None, label_size: int = None, label_sample_n: int = None, node_size: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
         """
         draw a lattice digrams from a given PatternLattice L by extracting L.links
         """
@@ -622,8 +618,8 @@ class PatternLattice:
             i = 0
             for k, v in zscores.items():
                 i += 1
-                print(f"node {i} {k} has z-score {v:.6f}")
+                print(f"node {i} {k} has z-score {v:.5f}")
         ## draw PatternLattice
-        draw_network (ranked_links.items(), layout = layout, auto_fig_sizing = auto_fig_sizing, node_size = node_size, zscores = zscores, zscore_lowerbound = zscore_lowerbound, scale_factor = scale_factor, font_name = font_name, check = check)
+        draw_network (ranked_links.items(), layout = layout, fig_size = fig_size, auto_fig_sizing = auto_fig_sizing, node_size = node_size, zscores = zscores, zscore_lowerbound = zscore_lowerbound, scale_factor = scale_factor, font_name = font_name, check = check)
 
 ### end of file
