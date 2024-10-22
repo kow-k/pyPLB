@@ -1,5 +1,4 @@
 ## imports
-
 try:
     from .utils import *
 except ImportError:
@@ -9,6 +8,7 @@ try:
 except ImportError:
     from pattern import *
 
+## Functions
 ##
 def make_PatternLinks_ranked(L, check: bool = False):
     "takes a lis to PatternLinks and returns a dictionary of {rank: [link1, link2, ...]}"
@@ -23,6 +23,7 @@ def make_PatternLinks_ranked(L, check: bool = False):
     ##
     return ranked_links
 
+### Classes
 ##
 class PatternLink:
     "definition of PatternLink class"
@@ -54,7 +55,7 @@ class PatternLink:
             yield x
 
     ##
-    def get_rank (self):
+    def get_rank (self) -> int:
         "takes a PatternLink and returns the rank of it"
         left, right = self.left, self.right
         gap_mark    = self.gap_mark
@@ -64,7 +65,7 @@ class PatternLink:
         return len([ x for x in form if x != gap_mark ])
 
     ##
-    def print (self, indicator = None, link_type = None, condition = None , paired: bool = False, check: bool = False):
+    def print (self, indicator = None, link_type = None, condition = None , paired: bool = False, check: bool = False) -> None:
         """
         prints the content of PatternLink object.
         condition can be a lambda expression used to filter.

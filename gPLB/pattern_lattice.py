@@ -20,11 +20,6 @@ except ImportError:
     from pattern_link import *
 
 ### Functions
-##
-def as_tuple(L: list) -> tuple:
-    "convert a list into a tuple"
-    #return (*L,)
-    return tuple(L)
 
 ##
 def as_label (T: tuple, sep: str = "", add_sep_at_end: bool = False) -> str:
@@ -43,7 +38,7 @@ def as_label (T: tuple, sep: str = "", add_sep_at_end: bool = False) -> str:
     return result
 
 ##
-def make_ranked_dict (L: list):
+def make_ranked_dict (L: list) -> dict:
     "takes a list of lists and returns a dict whose keys are ranks of the lists"
     ranked_dict = {}
     for rank in set([ get_rank_of_list (x) for x in L ]):
@@ -52,23 +47,8 @@ def make_ranked_dict (L: list):
     return ranked_dict
 
 ##
-def make_simplest_list (A: list, B: list):
-    "takes a pair of list and returns a unification of them without reduplication"
-    C = [ ]
-    for a in A:
-        if len(a) > 0 and a not in C:
-            C.append(a)
-    for b in B:
-        if len(b) > 0 and not b in C:
-            C.append (b)
-    return C
-
-##
-def wrapped_make_simplest_list (*args):
-    return functools.reduce(make_simplest_list, args)
-
-##
-def merge_lattice_main (nodes, check: bool = False):
+def merge_lattice_main (nodes, check: bool = False) -> list:
+    "takes a pair of pattern lattices and returns their merger"
     merged_nodes = [ ]
     for A, B in itertools.combinations (nodes, 2):
         C = A.merge_patterns (B, check = check)
@@ -98,6 +78,7 @@ def calc_averages_by_rank (link_dict, check: bool = False):
 
 def calc_stdevs_by_rank (link_dict, check: bool = False):
     "calculate stdevs per rank"
+    import numpy as np
     ##
     ranked_links = make_ranked_dict (link_dict)
     if check:
@@ -114,21 +95,26 @@ def calc_stdevs_by_rank (link_dict, check: bool = False):
     return stdevs_by_rank
 
 ##
-def calc_zscore (value, average_val, stdev_val):
+def calc_zscore (value, average_val, stdev_val, robust: bool = True):
     "returns z-score given a triple of value, average and stdev"
     if stdev_val == 0:
         return 0
-    return (value - average_val) / stdev_val
+    else:
+        if robust:
+            return (value - average_val) / stdev_val
+        else:
+            return (value - average_val) / stdev_val
 
 ##
 def normalize_score (x, min_val: float = -6, max_val: float = 6):
     "takes a value in the range of min, max and returns its normalized value"
     import matplotlib.colors as colors
+    ##
     normalizer = colors.Normalize(vmin = min_val, vmax = max_val)
     return normalizer(x)
 
 ##
-def draw_network (D: dict, layout: str, fig_size: tuple = None, label_size: int = None, node_size: int = None, zscores: dict = None, zscore_lowerbound = None, scale_factor: float = 3, font_name: str = None, test: bool = False, use_pyGraphviz: bool = False, check: bool = False):
+def draw_network (D: dict, layout: str, fig_size: tuple = None, automatic_fig_sizing: bool = False, label_size: int = None, node_size: int = None, zscores: dict = None, zscore_lowerbound = None, scale_factor: float = 3, font_name: str = None, test: bool = False, use_pyGraphviz: bool = False, check: bool = False):
     "draw layered graph under multipartite setting"
     import networkx as nx
     import math
@@ -298,12 +284,13 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, label_size: int 
         connectionstyle = "arc"
 
     ## set figure size
-    if fig_size is None:
-        figsize_local = (2*round(len(D), 0), round(0.2*max_node_count_on_layer, 0))
-        print(f"#figsize_local: {figsize_local}")
-        plt.figure(figsize = figsize_local)
+    if automatic_fig_sizing:
+        if fig_size is None:
+            figsize_local = (2 * round(len(D), 0), round(0.2*max_node_count_on_layer, 0))
+            print(f"#figsize_local: {figsize_local}")
+            plt.figure(figsize = figsize_local)
     else:
-        plt.figure(figsize = fig_size)
+        plt.figure (figsize = fig_size)
 
     ## set font_size
     if label_size is None:
