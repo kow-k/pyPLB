@@ -497,8 +497,9 @@ class Pattern:
                 return False
             else:
                 if R_substance == L_substance:
-                    print(f"L_substance: {L_substance}")
-                    print(f"R_substance: {R_substance}")
+                    if check:
+                        print(f"L_substance: {L_substance}")
+                        print(f"R_substance: {R_substance}")
                     return True
                 else:
                     return False
