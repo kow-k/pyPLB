@@ -22,7 +22,7 @@ modifications
 2024/10/18 improved font size, node size manipulation; added Japanese font capability
 2024/10/20 added package capability
 2024/10/21 improved instantiation implementation
-2024/10/23 implemented robust z-score, experimented hash-based comparison
+2024/10/23 implemented robust z-score, experimented hash-based comparison, fixed wrong layering of some nodes
 """
 
 #
