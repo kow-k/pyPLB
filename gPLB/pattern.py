@@ -205,11 +205,11 @@ class Pattern:
         "defines response to '==' operator"
         # Multi-step returns get the judgement significantly faster
         try:
-            if self.form_hash != other.form_hash:
-                return False
+            #if self.form_hash != other.form_hash:
+            #    return False
             if len(self.form) != len(other.form):
                 return False
-            elif self.form != other.form:
+            if self.form != other.form:
                 return False
             #elif self.content != other.content:
             #    return False
@@ -263,11 +263,11 @@ class Pattern:
     def get_content (self):
         "takes a pattern and returns its content as a list"
         return [ x[1] for x in self.content ]
-    
+
     ##
     def get_content_size(self):
         return len(self.get_content())
-    
+
     ##
     def get_substance (self):
         "takes a pattern and returns the list of non-gap elements in it"
@@ -278,10 +278,10 @@ class Pattern:
         "takes a pattern and returns its rank, i.e., the number of non-gap elements"
         #return len([ x for x in self.form if x != self.gap_mark ])
         return len(self.get_substance())
-    
+
     ##
     get_substance_size = get_rank
-    
+
     ##
     def update_with_paired (self, paired):
         q = Pattern([])
@@ -521,8 +521,8 @@ class Pattern:
             if self.form == other.form and have_compatible_content(self, other):
                 return self
         else:
-            if self.form == other.form:
             #if self.form_hash == other.form_hash:
+            if self.form == other.form:
                 return self
         if check:
             print(f"#=====================")
