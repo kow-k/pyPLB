@@ -56,7 +56,7 @@ parser.add_argument('-n', '--sample_n', type= int, default= 3)
 parser.add_argument('-S', '--sample_id', type= int, default= 1)
 parser.add_argument('-F', '--scaling_factor', type= float, default= 5)
 parser.add_argument('-z', '--zscore_lowerbound', type= float, default= None)
-parser.add_argument('-Z', '--use_robust_zscore', action='store_true', default= False)
+parser.add_argument('-Z', '--use_robust_zscore', action='store_false', default= True)
 parser.add_argument('-C', '--track_content', action= 'store_true', default = False)
 parser.add_argument('-D', '--draw_diagrams', action= 'store_false', default = True)
 parser.add_argument('-L', '--layout', type= str, default= 'Multi_partite')
@@ -93,19 +93,20 @@ print(f"#input_field_sep: {input_field_sep}")
 print(f"#input_comment_escape: {input_comment_escape}")
 print(f"#generalized: {generalized}")
 print(f"#reflexive: {reflexive}")
+print(f"#use_robust_zscore: {use_robust_zscore}")
 print(f"#draw_diagrams: {draw_diagrams}")
 
 ## Functions
 def parse_input (file, field_sep: str = ",", comment_escape: str = "#") -> None:
     "reads a file, splits it into segments using a given separator, removes comments, and forward the result to main"
     import csv
-    
+
     ## reading data
     data = list(csv.reader (file, delimiter = field_sep)) # Crucially list(..)
-    
+
     ## discard comment lines that start with #
     data = [ F for F in data if len(F) > 0 and not F[0][0] == comment_escape ]
-    
+
     ## remove in-line comments
     data_renewed = [ ]
     for F in data:
@@ -295,8 +296,8 @@ for i, link_source in enumerate(Link_sources):
     else:
         zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = False)
     source_zscores[link_source] = zscore
-    if verbose:
-        print(f"#link_source {i:3d}: {link_source} has {value} offspring(s) [{source_zscores[link_source]:.5f} at rank {rank}]")
+    print(f"#link_source {i:3d}: {link_source} has {value} offspring(s) [{source_zscores[link_source]:.5f} at rank {rank}]")
+
 ## attach source_zscores to M
 #M.source_zscores = source_zscores
 M.source_zscores.update(source_zscores)
