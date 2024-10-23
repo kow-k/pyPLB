@@ -38,15 +38,6 @@ def as_label (T: tuple, sep: str = "", add_sep_at_end: bool = False) -> str:
     return result
 
 ##
-def make_ranked_dict (L: list) -> dict:
-    "takes a list of lists and returns a dict whose keys are ranks of the lists"
-    ranked_dict = {}
-    for rank in set([ get_rank_of_list (x) for x in L ]):
-        ranked_dict[rank] = [ x for x in L if Pattern(x).get_rank() == rank ]
-    ##
-    return ranked_dict
-
-##
 def merge_lattice_main (nodes, check: bool = False) -> list:
     "takes a pair of pattern lattices and returns their merger"
     merged_nodes = [ ]
@@ -57,6 +48,38 @@ def merge_lattice_main (nodes, check: bool = False) -> list:
         if is_None_free (C) and not C in merged_nodes:
             merged_nodes.append(C)
     return merged_nodes
+
+##
+def make_ranked_dict (L: list) -> dict:
+    "takes a list of lists and returns a dict whose keys are ranks of the lists"
+    ranked_dict = {}
+    for rank in set([ get_rank_of_list (x) for x in L ]):
+        ranked_dict[rank] = [ x for x in L if Pattern(x).get_rank() == rank ]
+    ##
+    return ranked_dict
+
+##
+def get_rank_dists (link_dict: dict, check: bool = False):
+    "calculate essential statistics of the rank distribution given"
+    ##
+    ranked_links = make_ranked_dict (link_dict)
+    if check:
+        print(f"#ranked_links: {ranked_links}")
+    ##
+    rank_dists = {}
+    for rank in ranked_links:
+        stats = {}
+        members = ranked_links[rank]
+        #print(f"#members: {members}")
+        stats['n_members'] = len(members)
+        #print(f"#n_members: {n_members}")
+        dist = [ link_dict[m] for m in members ]
+        #print(f"dist: {dist}")
+        stats['dist'] = dist
+        ##
+        rank_dists[rank] = stats
+    ##
+    return rank_dists
 
 ##
 def calc_averages_by_rank (link_dict, check: bool = False):
@@ -70,9 +93,9 @@ def calc_averages_by_rank (link_dict, check: bool = False):
     for rank in ranked_links:
         members = ranked_links[rank]
         #print(f"#members: {members}")
-        vals = [ link_dict[m] for m in members ]
-        #print(f"#vals: {vals}")
-        averages_by_rank[rank] = sum(vals)/len(vals)
+        dist = [ link_dict[m] for m in members ]
+        #print(f"#dist: {dist}")
+        averages_by_rank[rank] = sum(dist)/len(dist)
     ##
     return averages_by_rank
 
@@ -87,26 +110,74 @@ def calc_stdevs_by_rank (link_dict, check: bool = False):
     stdevs_by_rank = {}
     for rank in ranked_links:
         members = ranked_links[rank]
-        #print(f"#members: {members}")
-        vals = [ link_dict[m] for m in members ]
-        #print(f"vals: {vals}")
-        stdevs_by_rank[rank] = np.std(vals)
+        dist = [ link_dict[m] for m in members ]
+        #print(f"dist: {dist}")
+        stdevs_by_rank[rank] = np.std(dist)
     ##
     return stdevs_by_rank
 
 ##
-def calc_zscore (value, average_val, stdev_val, robust: bool = True):
+def calc_medians_by_rank (link_dict, check: bool = False):
+    "calculate stdevs per rank"
+    import numpy as np
+    ##
+    ranked_links = make_ranked_dict (link_dict)
+    if check:
+        print(f"#ranked_links: {ranked_links}")
+    ##
+    medians_by_rank = {}
+    for rank in ranked_links:
+        members = ranked_links[rank]
+        dist = [ link_dict[m] for m in members ]
+        #print(f"dist: {dist}")
+        medians_by_rank[rank] = np.median(dist)
+    ##
+    return medians_by_rank
+
+##
+def calc_MADs_by_rank (link_dict, check: bool = False):
+    "calculate stdevs per rank"
+    import numpy as np
+    import scipy.stats as stats
+    ##
+    ranked_links = make_ranked_dict (link_dict)
+    if check:
+        print(f"#ranked_links: {ranked_links}")
+    ##
+    MADs_by_rank = {}
+    for rank in ranked_links:
+        members = ranked_links[rank]
+        dist = [ link_dict[m] for m in members ]
+        #print(f"#dist: {dist}")
+        MADs_by_rank[rank] = np.median(stats.median_abs_deviation(dist))
+    ##
+    return MADs_by_rank
+
+##
+def calc_zscore (value, average, stdev, median, MAD, robust: bool = True):
+    "returns the z-scores of a value against average, stdev, median, and MAD given"
+    import numpy as np
+    import scipy.stats as stats
+    coeff     = 0.6745
+    ##
+    if stdev == 0 or MAD == 0:
+        return 0
+    else:
+        if robust:
+            return (coeff * (value - median)) / MAD
+        else:
+            return (value - average) / stdev
+
+##
+def calc_zscore_old (value, average_val, stdev_val):
     "returns z-score given a triple of value, average and stdev"
     if stdev_val == 0:
         return 0
     else:
-        if robust:
-            return (value - average_val) / stdev_val
-        else:
-            return (value - average_val) / stdev_val
+        return (value - average_val) / stdev_val
 
 ##
-def normalize_score (x, min_val: float = -6, max_val: float = 6):
+def normalize_score (x, min_val: float = -4, max_val: float = 7):
     "takes a value in the range of min, max and returns its normalized value"
     import matplotlib.colors as colors
     ##
