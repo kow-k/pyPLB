@@ -22,6 +22,7 @@ modifications
 2024/10/18 improved font size, node size manipulation; added Japanese font capability
 2024/10/20 added package capability
 2024/10/21 improved instantiation implementation
+2024/10/23 implemented robust z-score, experimented hash-based comparison
 """
 
 #
@@ -55,6 +56,7 @@ parser.add_argument('-n', '--sample_n', type= int, default= 3)
 parser.add_argument('-S', '--sample_id', type= int, default= 1)
 parser.add_argument('-F', '--scaling_factor', type= float, default= 5)
 parser.add_argument('-z', '--zscore_lowerbound', type= float, default= None)
+parser.add_argument('-Z', '--use_robust_zscore', action='store_true', default= False)
 parser.add_argument('-C', '--track_content', action= 'store_true', default = False)
 parser.add_argument('-D', '--draw_diagrams', action= 'store_false', default = True)
 parser.add_argument('-L', '--layout', type= str, default= 'Multi_partite')
@@ -77,6 +79,7 @@ if not layout is None:
     draw_diagrams     = True
 auto_fig_sizing       = args.auto_fig_sizing
 zscore_lowerbound     = args.zscore_lowerbound
+use_robust_zscore     = args.use_robust_zscore
 scale_factor          = args.scaling_factor
 input_field_sep       = args.input_field_sep
 input_comment_escape  = args.input_comment_escape
@@ -244,14 +247,14 @@ print(f"##Merging {len(L)} PatternLattices ...")
 
 simplified = False
 if simplified:
-    print(f"#binary merger")
+    #print(f"#binary merger")
     La, Lb = L[0], L[1]
     if verbose:
         print(f"#La: {La}")
         print(f"#Lb: {Lb}")
     M = La.merge_lattices (Lb, show_steps = True, check = False)
 else:
-    print(f"#recursive merger")
+    #print(f"#recursive merger")
     M = functools.reduce (lambda La, Lb: La.merge_lattices (Lb, gen_links = True, reflexive = reflexive, show_steps = True, check = False), L)
     # The following process was isolated for speeding up
     if len(M.links) == 0:
@@ -277,7 +280,7 @@ for i, link in enumerate(M.links):
 ## adding link source z-scores to M
 if verbose:
     print(f"##Link_sources")
-Link_sources = M.link_sources
+Link_sources     = M.link_sources
 averages_by_rank = calc_averages_by_rank (Link_sources) # returns dictionary
 stdevs_by_rank   = calc_stdevs_by_rank (Link_sources) # returns dictionary
 medians_by_rank  = calc_medians_by_rank (Link_sources) # returns dictionary
@@ -287,10 +290,13 @@ source_zscores = {}
 for i, link_source in enumerate(Link_sources):
     value  = Link_sources[link_source]
     rank   = get_rank_of_list (link_source)
-    zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = True)
+    if use_robust_zscore:
+        zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = True)
+    else:
+        zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = False)
     source_zscores[link_source] = zscore
     if verbose:
-        print(f"#link_source {i:3d}: {link_source} has {value} offspring(s) [{source_zscores[link_source]:.6f} at rank {rank}]")
+        print(f"#link_source {i:3d}: {link_source} has {value} offspring(s) [{source_zscores[link_source]:.5f} at rank {rank}]")
 ## attach source_zscores to M
 #M.source_zscores = source_zscores
 M.source_zscores.update(source_zscores)
@@ -301,7 +307,6 @@ if verbose:
 ## draw diagram
 if draw_diagrams:
     print(f"#Drawing a diagram from the merged lattice")
-    M.draw_diagrams (layout = layout, auto_fig_sizing = auto_fig_sizing, zscore_lowerbound = zscore_lowerbound,
-        scale_factor = scale_factor, check = False)
+    M.draw_diagrams (layout = layout, auto_fig_sizing = auto_fig_sizing, zscore_lowerbound = zscore_lowerbound, scale_factor = scale_factor, check = False)
 
 ### end of file
