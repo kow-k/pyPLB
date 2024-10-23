@@ -199,6 +199,8 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     instances = [ ] # register instances
     node_dict = { }
     node_counts_by_layers = [ ]
+    ## The reversed ordering requires link targets as sources
+    ## So, that's why "get_zscores_from_link_sources" needs to be True
     for rank, links in sorted(D, reverse = True):
         #print(f"#rank {rank}: {links}")
         L, R, E = [ ], [ ], [ ]
@@ -588,7 +590,7 @@ class PatternLattice:
                         if l_form == r_form:
                             continue
                         elif r.instantiates_or_not (l, check = check):
-                            print(f"#linked: {l.form} by {r.form}")
+                            print(f"#instantiated {l.form} by {r.form}")
                             link = PatternLink([l, r])
                             ##
                             if not link in links:
@@ -670,7 +672,7 @@ class PatternLattice:
         return self
 
     ##
-    def draw_diagrams (self, layout: str = None, auto_fig_sizing: bool = False, zscore_lowerbound: float = None, scale_factor: float = 3, fig_size: tuple = None, label_size: int = None, label_sample_n: int = None, node_size: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
+    def draw_diagrams (self, layout: str = None, get_zscores_from_link_sources: bool = False, auto_fig_sizing: bool = False, zscore_lowerbound: float = None, scale_factor: float = 3, fig_size: tuple = None, label_size: int = None, label_sample_n: int = None, node_size: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
         """
         draw a lattice digrams from a given PatternLattice L by extracting L.links
         """
@@ -683,13 +685,18 @@ class PatternLattice:
         if check:
             for rank, links in ranked_links.items():
                 print(f"#links at rank {rank}:\n{links}")
+
         ## handle z-scores
-        zscores = self.source_zscores
+        if get_zscores_from_link_sources:
+            zscores = self.source_zscores
+        else:
+            zscores = self.target_zscores
         if check:
             i = 0
             for k, v in zscores.items():
                 i += 1
                 print(f"node {i} {k} has z-score {v:.5f}")
+
         ## draw PatternLattice
         draw_network (ranked_links.items(), layout = layout, fig_size = fig_size, auto_fig_sizing = auto_fig_sizing, node_size = node_size, zscores = zscores, zscore_lowerbound = zscore_lowerbound, scale_factor = scale_factor, font_name = font_name, check = check)
 
