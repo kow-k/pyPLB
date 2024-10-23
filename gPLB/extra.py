@@ -20,7 +20,7 @@ def count_content(self):
     #return len([x for x in self.paired if x[0] != self.gap_mark and not self.boundary_mark in x[1] ])
     return len([ x for x in self.content if not self.boundary_mark in x ])
     
-        ##
+##
 def merge_patterns (self, other, track_content: bool = False, reduction: bool = True, check: bool = False):
     "take a pair of Patterns, merges one Pattern with another"
     ## prevents void operation
