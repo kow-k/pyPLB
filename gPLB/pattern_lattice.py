@@ -199,9 +199,8 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     instances = [ ] # register instances
     node_dict = { }
     node_counts_by_layers = [ ]
-    ## The reversed ordering requires link targets as sources
-    ## So, that's why "get_zscores_from_link_sources" needs to be True
-    for rank, links in sorted(D, reverse = True):
+    ##
+    for rank, links in sorted(D, reverse = False):
         #print(f"#rank {rank}: {links}")
         L, R, E = [ ], [ ], [ ]
         for link in links:
@@ -216,7 +215,8 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
             ## add nodes
             if not node1 in L:
                 L.append (node1)
-            if not node2 in R:
+            #if not node2 in R:
+            if not node2 in R and not node2 in L: # Crucially, "and not node2 in L"
                 R.append (node2)
             ## register for instances
             if count_gaps (node2, gap_mark) == 0 and node2 not in instances:
@@ -226,8 +226,8 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
             if not edge in E:
                 E.append(edge)
         ## populates nodes for G
-        G.add_nodes_from (L, rank = rank - 1)
-        G.add_nodes_from (R, rank = rank)
+        G.add_nodes_from (L, rank = rank)
+        G.add_nodes_from (R, rank = rank + 1)
         node_counts_by_layers.append (len(R))
         ## populates edges for G
         G.add_edges_from (E)
@@ -672,7 +672,7 @@ class PatternLattice:
         return self
 
     ##
-    def draw_diagrams (self, layout: str = None, get_zscores_from_link_sources: bool = False, auto_fig_sizing: bool = False, zscore_lowerbound: float = None, scale_factor: float = 3, fig_size: tuple = None, label_size: int = None, label_sample_n: int = None, node_size: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
+    def draw_diagrams (self, layout: str = None, get_zscores_from_link_sources: bool = True, auto_fig_sizing: bool = False, zscore_lowerbound: float = None, scale_factor: float = 3, fig_size: tuple = None, label_size: int = None, label_sample_n: int = None, node_size: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
         """
         draw a lattice digrams from a given PatternLattice L by extracting L.links
         """
