@@ -190,6 +190,7 @@ class Pattern:
         self.boundary_mark = boundary_mark
         self.paired        = encode_for_pattern (L)
         self.form          = [ x[0] for x in self.paired ]
+        self.form_hash     = hash(tuple(self.form))
         self.content       = [ x[1] for x in self.paired ]
         #self.form          = tuple( x[0] for x in self.paired ) # as tuple
         #self.content       = tuple( x[1] for x in self.paired ) # as tuple
@@ -204,12 +205,14 @@ class Pattern:
         "defines response to '==' operator"
         # Multi-step returns get the judgement significantly faster
         try:
-            if len(self) != len(other):
+            if self.form_hash != other.form_hash:
+                return False
+            if len(self.form) != len(other.form):
                 return False
             elif self.form != other.form:
                 return False
-            elif self.content != other.content:
-                return False
+            #elif self.content != other.content:
+            #    return False
             else:
                 return True
         except TypeError:
@@ -471,15 +474,15 @@ class Pattern:
         #R_size, L_size = R.size, L.size ## fails
         R_size, L_size = len(R.form), len(L.form)
         #R_rank, L_rank = R.rank, L.rank # fails
-        R_rank, L_rank = R.get_rank(), L.get_rank()
-        R_gap_count     = self.get_gap_size()
-        L_gap_count     = other.get_gap_size()
-        R_substance     = R.get_substance()
-        L_substance     = L.get_substance()
         R_content       = self.content
         L_content       = other.content
         R_content_count = len(R_content)
         L_content_count = len(L_content)
+        R_rank, L_rank  = R.get_rank(), L.get_rank()
+        R_substance     = R.get_substance()
+        L_substance     = L.get_substance()
+        R_gap_count     = self.get_gap_size()
+        L_gap_count     = other.get_gap_size()
         if check:
             print(f"===================")
             print(f"#L: {L}; R: {R}")
@@ -504,7 +507,6 @@ class Pattern:
                     return False
         ## L's rank is one-segment smaller than R's
         elif L_size == R_size and L_rank == R_rank - 1:
-            #print(f"#equal size: {L.form} : {R.form}")
             return check_instantiation (R, L, check = check)
         ## other cases
         else:
@@ -516,23 +518,24 @@ class Pattern:
         ## prevents void operation
         #if self.form == other.form:
         if track_content:
-            if self == other:
+            if self.form == other.form and have_compatible_content(self, other):
                 return self
         else:
             if self.form == other.form:
+            #if self.form_hash == other.form_hash:
                 return self
         if check:
             print(f"#=====================")
             print(f"#self: {self}")
             print(f"#other: {other}")
         ## main
-        gap_mark      = self.gap_mark
-        boundary_mark = self.boundary_mark
+        gap_mark       = self.gap_mark
+        boundary_mark  = self.boundary_mark
         ## The following two lines fail due to "TypeError: 'zip' object is not subscriptable"
         #form_pairs    = zip (self.form, other.form)
         #content_pairs = zip (self.content, other.content)
-        form_pairs    = list(zip (self.form, other.form))
-        content_pairs = list(zip (self.content, other.content))
+        form_pairs     = list(zip (self.form, other.form))
+        content_pairs  = list(zip (self.content, other.content))
         if check:
             print(f"#form_pairs :{form_pairs}")
             print(f"#content_pairs: {content_pairs}")#
