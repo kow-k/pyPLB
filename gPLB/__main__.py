@@ -296,13 +296,40 @@ for i, link_source in enumerate(Link_sources):
     else:
         zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = False)
     source_zscores[link_source] = zscore
-    print(f"#link_source {i:3d}: {link_source} has {value} offspring(s) [{source_zscores[link_source]:.5f} at rank {rank}]")
+    print(f"#source {i:3d}: {link_source} has {value} link(s) [{source_zscores[link_source]:.5f} at rank {rank}]")
 
 ## attach source_zscores to M
 #M.source_zscores = source_zscores
 M.source_zscores.update(source_zscores)
 if verbose:
     print(f"M.source_zscores: {M.source_zscores}")
+
+
+## adding link target z-scores to M
+if verbose:
+    print(f"##Link_targets")
+Link_targets     = M.link_targets
+averages_by_rank = calc_averages_by_rank (Link_targets) # returns dictionary
+stdevs_by_rank   = calc_stdevs_by_rank (Link_targets) # returns dictionary
+medians_by_rank  = calc_medians_by_rank (Link_targets) # returns dictionary
+MADs_by_rank     = calc_MADs_by_rank (Link_targets) # returns dictionary
+
+target_zscores = {}
+for i, link_target in enumerate(Link_targets):
+    value  = Link_targets[link_target]
+    rank   = get_rank_of_list (link_target)
+    if use_robust_zscore:
+        zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = True)
+    else:
+        zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = False)
+    target_zscores[link_target] = zscore
+    print(f"#target {i:3d}: {link_target} has {value} link(s) [{target_zscores[link_target]:.5f} at rank {rank}]")
+
+## attach source_zscores to M
+#M.source_zscores = source_zscores
+M.target_zscores.update(target_zscores)
+if verbose:
+    print(f"M.target_zscores: {M.target_zscores}")
 
 
 ## draw diagram
