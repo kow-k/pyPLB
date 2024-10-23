@@ -401,7 +401,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     my_cmap = sns.color_palette("coolwarm", 24, as_cmap = True) # Crucially, as_cmap
 
     ## revserses the arrows
-    G = G.reverse(copy = False) # ineffective??
+    #G = G.reverse(copy = False) # ineffective??
 
     ## finally draw
     nx.draw_networkx (G, positions,
