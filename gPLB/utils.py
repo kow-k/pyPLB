@@ -24,6 +24,7 @@ def make_simplest_list (A: list, B: list):
 
 ##
 def wrapped_make_simplest_list (*args):
+    import functools
     return functools.reduce(make_simplest_list, args)
 
 
