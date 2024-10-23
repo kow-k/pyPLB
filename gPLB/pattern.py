@@ -1,7 +1,6 @@
 ## imports
 #from utils .import *
-
-from copy import deepcopy
+#from copy import deepcopy
 
 ## Functions
 def encode_for_pattern (L: list) -> list:
