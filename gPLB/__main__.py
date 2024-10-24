@@ -13,7 +13,7 @@ developed by Kow Kuroda
 created on 2024/09/24
 modified on 2024/09/25, 28, 29, 30; 10/01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 12, 15, 16, 17
 
-modifications
+modification history
 2024/10/11 fixed a bug in instantiates(), added make_R_reflexive
 2024/10/12, 13 added z-score calculation
 2024/10/15 completed z-score based coloring of nodes
@@ -23,6 +23,7 @@ modifications
 2024/10/20 added package capability
 2024/10/21 improved instantiation implementation
 2024/10/23 implemented robust z-score, experimented hash-based comparison, fixed wrong layering of some nodes
+2024/10/24 fixed a bug in pattern sizing that result improper alignment of some patterns
 """
 
 #
@@ -49,6 +50,7 @@ parser.add_argument('-v', '--verbose', action= 'store_true', default= False)
 parser.add_argument('-w', '--detailed', action= 'store_true', default= False)
 parser.add_argument('-s', '--input_field_sep', type= str, default= ',')
 parser.add_argument('-c', '--input_comment_escape', type= str, default= '#')
+parser.add_argument('-g', '--gap_mark', type= str, default= '_')
 parser.add_argument('-R', '--unreflexive', action= 'store_false', default= True)
 parser.add_argument('-G', '--generalized', action= 'store_false', default= True)
 parser.add_argument('-m', '--max_size', type= int, default= None)
@@ -72,6 +74,7 @@ max_size                = args.max_size
 sample_id               = args.sample_id
 sample_n                = args.sample_n
 generalized             = args.generalized
+gap_mark                = args.gap_mark
 reflexive               = args.unreflexive
 track_content           = args.track_content
 draw_diagrams           = args.draw_diagrams
@@ -93,8 +96,9 @@ print(f"#verbose: {verbose}")
 print(f"#detailed: {detailed}")
 print(f"#input_field_sep: {input_field_sep}")
 print(f"#input_comment_escape: {input_comment_escape}")
-print(f"#generalized: {generalized}")
-print(f"#reflexive: {reflexive}")
+print(f"#gap_mark: {gap_mark}")
+print(f"#lattice is generalized: {generalized}")
+print(f"#instantiation is reflexive: {reflexive}")
 print(f"#use_robust_zscore: {use_robust_zscore}")
 print(f"#get_zscores_from_targets: {get_zscores_from_targets}")
 print(f"#draw_diagrams: {draw_diagrams}")
@@ -131,7 +135,6 @@ def parse_input (file, field_sep: str = ",", comment_escape: str = "#") -> None:
 if not file is None:
     S0 = parse_input(file, field_sep = input_field_sep, comment_escape = input_comment_escape)
 else:
-    ## sources
     ## phrasal source
     if phrasal:
         Text1 = [ 'a big boy', 'the big boy', 'a big girl', 'the big girl',
@@ -185,24 +188,25 @@ Patterns = [ ]
 for s in S:
     if verbose:
         print(f"#processing: {s}")
-    p = Pattern(s)
+    p = Pattern(s, gap_mark = gap_mark)
     if detailed:
         print(f"#p: {p}")
     Patterns.append(p)
-#
-for i, p in enumerate(Patterns):
+
+##
+for i, pat in enumerate(Patterns):
     if verbose:
-        print(f"#gapped patterns from pattern {i}: {p}")
-    for i, g in enumerate(p.create_gapped_versions (check = False)):
+        print(f"#gapped patterns from pattern {i}: {pat}")
+    for i, g_pat in enumerate(pat.create_gapped_versions (check = False)):
         if verbose:
-            print(f"# gapped {i}: {g}")
+            print(f"# gapped {i+1}: {g_pat}")
 ##
 #exit()
 ##
 print(f"##Generating PatternLattices ...")
 L = [ ]
 for i, p in enumerate(Patterns):
-    print(f"#generating PatternLattice {i} from {p}")
+    print(f"#generating PatternLattice {i+1} from {p}")
     ## main
     patlat = PatternLattice(p, reflexive = reflexive, generalized = generalized, check = False)
     if detailed:
@@ -242,7 +246,7 @@ if detailed:
 if draw_diagrams and verbose:
     print(f"##Drawing diagrams")
     for i, patlat in enumerate(L):
-        print(f"#drawing diagram from: PatternLattice {i}")
+        print(f"#drawing diagram from: PatternLattice {i+1}")
         patlat.draw_diagrams (layout = layout, auto_fig_sizing = auto_fig_sizing, scale_factor = scale_factor, check = False)
 ##
 #exit()
@@ -285,15 +289,15 @@ for i, link in enumerate(M.links):
 if verbose:
     print(f"##Link_sources")
 Link_sources     = M.link_sources
-averages_by_rank = calc_averages_by_rank (Link_sources) # returns dictionary
-stdevs_by_rank   = calc_stdevs_by_rank (Link_sources) # returns dictionary
-medians_by_rank  = calc_medians_by_rank (Link_sources) # returns dictionary
-MADs_by_rank     = calc_MADs_by_rank (Link_sources) # returns dictionary
+averages_by_rank = calc_averages_by_rank (Link_sources, gap_mark = gap_mark) # returns dictionary
+stdevs_by_rank   = calc_stdevs_by_rank (Link_sources, gap_mark = gap_mark) # returns dictionary
+medians_by_rank  = calc_medians_by_rank (Link_sources, gap_mark = gap_mark) # returns dictionary
+MADs_by_rank     = calc_MADs_by_rank (Link_sources, gap_mark = gap_mark) # returns dictionary
 
 source_zscores = {}
 for i, link_source in enumerate(Link_sources):
     value  = Link_sources[link_source]
-    rank   = get_rank_of_list (link_source)
+    rank   = get_rank_of_list (link_source, gap_mark = gap_mark)
     if use_robust_zscore:
         zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = True)
     else:
@@ -312,15 +316,15 @@ if verbose:
 if verbose:
     print(f"##Link_targets")
 Link_targets     = M.link_targets
-averages_by_rank = calc_averages_by_rank (Link_targets) # returns dictionary
-stdevs_by_rank   = calc_stdevs_by_rank (Link_targets) # returns dictionary
-medians_by_rank  = calc_medians_by_rank (Link_targets) # returns dictionary
-MADs_by_rank     = calc_MADs_by_rank (Link_targets) # returns dictionary
+averages_by_rank = calc_averages_by_rank (Link_targets, gap_mark = gap_mark) # returns dictionary
+stdevs_by_rank   = calc_stdevs_by_rank (Link_targets, gap_mark = gap_mark) # returns dictionary
+medians_by_rank  = calc_medians_by_rank (Link_targets, gap_mark = gap_mark) # returns dictionary
+MADs_by_rank     = calc_MADs_by_rank (Link_targets, gap_mark = gap_mark) # returns dictionary
 
 target_zscores = {}
 for i, link_target in enumerate(Link_targets):
     value  = Link_targets[link_target]
-    rank   = get_rank_of_list (link_target)
+    rank   = get_rank_of_list (link_target, gap_mark = gap_mark)
     if use_robust_zscore:
         zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = True)
     else:
