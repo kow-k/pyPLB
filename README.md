@@ -45,9 +45,13 @@ where `<file>` is an input file in .csv format. Crucial options are:
 
 - -n [int] sets the number of instances to handle using random sampling.
 - -m [int] sets the maximum number of segments in an instance.
-- -G [flag] runs the ungeneralized version instead of the generalized version (default)
+- -s [str] sets the field separator (defaults to ",") to the one you choose.
+- -g [str] sets the gap_mark (defaults to "\_") to the one you choose.
 - -z [float] sets the lower limit of z-score to prune the unwanted nodes. This is truly useful when a Pattern Lattice grows a big and complex.
+- -G [flag] runs the ungeneralized version instead of the generalized version (default)
+- -D [boolean] flag to draw diagrams.
 - -L [str] selects graph layout. Default is 'Multi_partite', a (clumsy) NetworkX-based simulation of RubyPLB output, but other layouts like Graphviz, Spring, Kamada-Kawai, which are available layout options in NetworkX, are available.
+- -J [boolean] set multibyte font to display. Setting up for a font path may be also needed.
 - -A [boolean] sets on automatic figure sizing to produce a better diagram. Useful at running on terminal rather than in Jupyter Notebook.
 
 ## gPLB-runner (Jupyter Notebook)
