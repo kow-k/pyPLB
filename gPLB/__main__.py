@@ -57,7 +57,7 @@ parser.add_argument('-n', '--sample_n', type= int, default= 3)
 parser.add_argument('-S', '--sample_id', type= int, default= 1)
 parser.add_argument('-F', '--scaling_factor', type= float, default= 5)
 parser.add_argument('-z', '--zscore_lowerbound', type= float, default= None)
-parser.add_argument('-Z', '--use_robust_zscore', action='store_false', default= True)
+parser.add_argument('-Z', '--use_robust_zscore', action='store_true', default= False)
 parser.add_argument('-T', '--zscores_from_targets', action='store_true', default= False)
 parser.add_argument('-D', '--draw_diagrams', action= 'store_false', default = True)
 parser.add_argument('-J', '--use_multibyte_chars', action= 'store_true', default = False)
@@ -189,8 +189,8 @@ for i, s in enumerate(S):
     print (f"#source {i}: {s}")
 
 ## set font for Japanese character display
+import matplotlib
 if use_multibyte_chars:
-    import matplotlib
     from matplotlib import font_manager as Font_manager
     ## select font
     multibyte_font_names = [    "IPAexGothic",  # 0 Multi-platform font
@@ -318,10 +318,11 @@ for i, link in enumerate(M.links):
 if verbose:
     print(f"##Link_sources")
 Link_sources     = M.link_sources
-averages_by_rank = calc_averages_by_rank (Link_sources, gap_mark = gap_mark) # returns dictionary
-stdevs_by_rank   = calc_stdevs_by_rank (Link_sources, gap_mark = gap_mark) # returns dictionary
-medians_by_rank  = calc_medians_by_rank (Link_sources, gap_mark = gap_mark) # returns dictionary
-MADs_by_rank     = calc_MADs_by_rank (Link_sources, gap_mark = gap_mark) # returns dictionary
+ranked_links     = make_ranked_dict (Link_sources, gap_mark = gap_mark)
+averages_by_rank = calc_averages_by_rank (Link_sources, ranked_links) # returns dict
+stdevs_by_rank   = calc_stdevs_by_rank (Link_sources, ranked_links) # returns dict
+medians_by_rank  = calc_medians_by_rank (Link_sources, ranked_links) # returns dict
+MADs_by_rank     = calc_MADs_by_rank (Link_sources, ranked_links) # returns dict
 
 source_zscores = {}
 for i, link_source in enumerate(Link_sources):
@@ -332,7 +333,7 @@ for i, link_source in enumerate(Link_sources):
     else:
         zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = False)
     source_zscores[link_source] = zscore
-    print(f"#source {i:3d}: {link_source} has {value} link(s) [{source_zscores[link_source]:.5f} at rank {rank}]")
+    print(f"#source {i:3d}: {link_source} has {value} link(s) [{source_zscores[link_source]: .5f} at rank {rank}]")
 
 ## attach source_zscores to M
 #M.source_zscores = source_zscores
@@ -345,10 +346,11 @@ if verbose:
 if verbose:
     print(f"##Link_targets")
 Link_targets     = M.link_targets
-averages_by_rank = calc_averages_by_rank (Link_targets, gap_mark = gap_mark) # returns dictionary
-stdevs_by_rank   = calc_stdevs_by_rank (Link_targets, gap_mark = gap_mark) # returns dictionary
-medians_by_rank  = calc_medians_by_rank (Link_targets, gap_mark = gap_mark) # returns dictionary
-MADs_by_rank     = calc_MADs_by_rank (Link_targets, gap_mark = gap_mark) # returns dictionary
+ranked_links     = make_ranked_dict (Link_targets, gap_mark = gap_mark)
+averages_by_rank = calc_averages_by_rank (Link_targets, ranked_links) # returns dict
+stdevs_by_rank   = calc_stdevs_by_rank (Link_targets, ranked_links) # returns dict
+medians_by_rank  = calc_medians_by_rank (Link_targets, ranked_links) # returns dict
+MADs_by_rank     = calc_MADs_by_rank (Link_targets, ranked_links) # returns dict
 
 target_zscores = {}
 for i, link_target in enumerate(Link_targets):
@@ -359,7 +361,7 @@ for i, link_target in enumerate(Link_targets):
     else:
         zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = False)
     target_zscores[link_target] = zscore
-    print(f"#target {i:3d}: {link_target} has {value} link(s) [{target_zscores[link_target]:.5f} at rank {rank}]")
+    print(f"#target {i:3d}: {link_target} has {value} link(s) [{target_zscores[link_target]: .5f} at rank {rank}]")
 
 ## attach source_zscores to M
 #M.source_zscores = source_zscores
