@@ -14,7 +14,7 @@ def make_PatternLinks_ranked(L, check: bool = False):
     "takes a lis to PatternLinks and returns a dictionary of {rank: [link1, link2, ...]}"
     ranked_links = {}
     for link in L:
-        rank = link.get_rank()
+        rank = link.get_link_rank()
         try:
             if not link in ranked_links[rank]:
                 ranked_links[rank].append(link)
@@ -55,13 +55,14 @@ class PatternLink:
             yield x
 
     ##
-    def get_rank (self) -> int:
+    def get_link_rank (self) -> int:
         "takes a PatternLink and returns the rank of it"
         left, right = self.left, self.right
         gap_mark    = self.gap_mark
         #assert len(left) == len(right)
         assert len(left) >= len(right)
-        form = left.form
+        #form = left.form
+        form = right.form
         return len([ x for x in form if x != gap_mark ])
 
     ##
