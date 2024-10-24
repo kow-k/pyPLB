@@ -11,6 +11,22 @@ def as_tuple(L: list) -> tuple:
     return tuple(L)
 
 ##
+def as_label (T: tuple, sep: str = "", add_sep_at_end: bool = False) -> str:
+    "convert a given tuple to a string by concatenating its elements"
+    result = ""
+    if add_sep_at_end:
+        for x in T:
+            result += f"{x}{sep}"
+    else:
+        for i, x in enumerate(T):
+            if i < len(T):
+                result += f"{x}{sep}"
+            else:
+                result += f"{x}"
+    #
+    return result
+
+##
 def make_simplest_list (A: list, B: list):
     "takes a pair of list and returns a unification of them without reduplication"
     C = [ ]
