@@ -1,4 +1,6 @@
-# Personal directories and files
+# Personal files and directories
+*.html
+*.txt
 dots/
 figs/
 outdated/
@@ -8,8 +10,7 @@ profiled/
 !gPLB/
 gPLB/__main__extra.py
 gPLB/utils_extra.py
-*.html
-*.txt
+gPLB/__pycache__/
 
 #
 .DS_Store
