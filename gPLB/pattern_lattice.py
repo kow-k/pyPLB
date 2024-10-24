@@ -31,6 +31,7 @@ def merge_lattice_main (nodes, check: bool = False) -> list:
 ##
 def make_ranked_dict (L: list, gap_mark: str) -> dict:
     "takes a list of lists and returns a dict whose keys are ranks of the lists"
+    ##
     ranked_dict = {}
     for rank in set([ get_rank_of_list (x, gap_mark) for x in L ]):
         ranked_dict[rank] = [ x for x in L if Pattern(x, gap_mark).get_rank() == rank ]
@@ -38,10 +39,9 @@ def make_ranked_dict (L: list, gap_mark: str) -> dict:
     return ranked_dict
 
 ##
-def get_rank_dists (link_dict: dict, check: bool = False) -> dict:
+def get_rank_dists (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
     "calculate essential statistics of the rank distribution given"
     ##
-    ranked_links = make_ranked_dict (link_dict)
     if check:
         print(f"#ranked_links: {ranked_links}")
     ##
@@ -61,65 +61,54 @@ def get_rank_dists (link_dict: dict, check: bool = False) -> dict:
     return rank_dists
 
 ##
-def calc_averages_by_rank (link_dict: dict, gap_mark: str, check: bool = False) -> dict:
+def calc_averages_by_rank (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
     "calculate averages per rank"
-    ##
-    ranked_links = make_ranked_dict (link_dict, gap_mark)
     if check:
         print(f"#ranked_links: {ranked_links}")
     ##
     averages_by_rank = {}
     for rank in ranked_links:
         members = ranked_links[rank]
-        #print(f"#members: {members}")
         dist = [ link_dict[m] for m in members ]
-        #print(f"#dist: {dist}")
         averages_by_rank[rank] = sum(dist)/len(dist)
     ##
     return averages_by_rank
 
-def calc_stdevs_by_rank (link_dict: dict, gap_mark: str, check: bool = False) -> dict:
+def calc_stdevs_by_rank (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
     "calculate stdevs per rank"
-    import numpy as np
-    ##
-    ranked_links = make_ranked_dict (link_dict, gap_mark)
     if check:
         print(f"#ranked_links: {ranked_links}")
+    import numpy as np
     ##
     stdevs_by_rank = {}
     for rank in ranked_links:
         members = ranked_links[rank]
         dist = [ link_dict[m] for m in members ]
-        #print(f"dist: {dist}")
         stdevs_by_rank[rank] = np.std(dist)
     ##
     return stdevs_by_rank
 
 ##
-def calc_medians_by_rank (link_dict: dict, gap_mark: str, check: bool = False) -> dict:
+def calc_medians_by_rank (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
     "calculate stdevs per rank"
-    import numpy as np
-    ##
-    ranked_links = make_ranked_dict (link_dict, gap_mark)
     if check:
         print(f"#ranked_links: {ranked_links}")
     ##
+    import numpy as np
     medians_by_rank = {}
     for rank in ranked_links:
         members = ranked_links[rank]
         dist = [ link_dict[m] for m in members ]
-        #print(f"dist: {dist}")
         medians_by_rank[rank] = np.median(dist)
     ##
     return medians_by_rank
 
 ##
-def calc_MADs_by_rank (link_dict: dict, gap_mark: str, check: bool = False) -> dict:
+def calc_MADs_by_rank (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
     "calculate stdevs per rank"
     import numpy as np
     import scipy.stats as stats
     ##
-    ranked_links = make_ranked_dict (link_dict, gap_mark)
     if check:
         print(f"#ranked_links: {ranked_links}")
     ##
@@ -127,8 +116,7 @@ def calc_MADs_by_rank (link_dict: dict, gap_mark: str, check: bool = False) -> d
     for rank in ranked_links:
         members = ranked_links[rank]
         dist = [ link_dict[m] for m in members ]
-        #print(f"#dist: {dist}")
-        MADs_by_rank[rank] = np.median(stats.median_abs_deviation(dist))
+        MADs_by_rank[rank] = np.median (stats.median_abs_deviation (dist))
     ##
     return MADs_by_rank
 
@@ -257,7 +245,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
 
         ## remove nodes
         G.remove_nodes_from ([ x for x in G if not x in nodes_to_keep ])
-        
+
         ## set node colors
         values_for_color_filtered = [ ]
         for i, value in enumerate(values_for_color):
@@ -521,7 +509,7 @@ class PatternLattice:
                 merged_nodes.append(C)
         if check:
             print(f"#merged_nodes: {merged_nodes}")
-        
+
         # generate merged PatternLattice
         empty_pat = Pattern([], gap_mark)
         merged   = PatternLattice (empty_pat, generalized = generalized, reflexive = reflexive)
