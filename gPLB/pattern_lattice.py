@@ -22,22 +22,6 @@ except ImportError:
 ### Functions
 
 ##
-def as_label (T: tuple, sep: str = "", add_sep_at_end: bool = False) -> str:
-    "convert a given tuple to a string by concatenating its elements"
-    result = ""
-    if add_sep_at_end:
-        for x in T:
-            result += f"{x}{sep}"
-    else:
-        for i, x in enumerate(T):
-            if i < len(T):
-                result += f"{x}{sep}"
-            else:
-                result += f"{x}"
-    #
-    return result
-
-##
 def merge_lattice_main (nodes, check: bool = False) -> list:
     "takes a pair of pattern lattices and returns their merger"
     merged_nodes = [ ]
@@ -672,7 +656,7 @@ class PatternLattice:
         return self
 
     ##
-    def draw_diagrams (self, layout: str = None, get_zscores_from_link_sources: bool = True, auto_fig_sizing: bool = False, zscore_lowerbound: float = None, scale_factor: float = 3, fig_size: tuple = None, label_size: int = None, label_sample_n: int = None, node_size: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
+    def draw_diagrams (self, layout: str = None, get_zscores_from_targets: bool = False, auto_fig_sizing: bool = False, zscore_lowerbound: float = None, scale_factor: float = 3, fig_size: tuple = None, label_size: int = None, label_sample_n: int = None, node_size: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
         """
         draw a lattice digrams from a given PatternLattice L by extracting L.links
         """
@@ -687,10 +671,10 @@ class PatternLattice:
                 print(f"#links at rank {rank}:\n{links}")
 
         ## handle z-scores
-        if get_zscores_from_link_sources:
-            zscores = self.source_zscores
-        else:
+        if get_zscores_from_targets:
             zscores = self.target_zscores
+        else:
+            zscores = self.source_zscores
         if check:
             i = 0
             for k, v in zscores.items():
