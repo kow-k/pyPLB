@@ -11,7 +11,7 @@ developed by Kow Kuroda
 "Generalized" means that a pattern lattice build from [a, b, c] includes [_, a, b, c], [a, b, c, _] and [_, a, b, c, _]. This makes gPLB different from RubyPLB (rubyplb) developed by Yoichoro Hasebe and Kow Kuroda, available at <https://github.com/yohasebe/rubyplb>.
 
 created on 2024/09/24
-modified on 2024/09/25, 28, 29, 30; 10/01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 12, 15, 16, 17
+modified on 2024/09/25, 28, 29, 30; 10/01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 12, 15, 16, 17, 18, 19, 20, 21, 23, 24
 
 modification history
 2024/10/11 fixed a bug in instantiates(), added make_R_reflexive
@@ -32,9 +32,8 @@ import re
 import functools
 import pprint as pp
 import random
+
 #import multiprocessing as mp
-#import statistics
-#import numpy as np
 ##
 from utils import *
 from pattern import *
@@ -43,7 +42,7 @@ from pattern_lattice import *
 
 ## settings
 import argparse
-parser = argparse.ArgumentParser(description = "")
+parser  = argparse.ArgumentParser(description = "")
 parser.add_argument('file', type= open, default= None)
 parser.add_argument('-P', '--phrasal', action= 'store_true', default= False)
 parser.add_argument('-v', '--verbose', action= 'store_true', default= False)
@@ -58,12 +57,14 @@ parser.add_argument('-n', '--sample_n', type= int, default= 3)
 parser.add_argument('-S', '--sample_id', type= int, default= 1)
 parser.add_argument('-F', '--scaling_factor', type= float, default= 5)
 parser.add_argument('-z', '--zscore_lowerbound', type= float, default= None)
-parser.add_argument('-T', '--get_zscores_from_link_targets', action='store_true', default= False)
 parser.add_argument('-Z', '--use_robust_zscore', action='store_false', default= True)
-parser.add_argument('-C', '--track_content', action= 'store_true', default = False)
+parser.add_argument('-T', '--zscores_from_targets', action='store_true', default= False)
 parser.add_argument('-D', '--draw_diagrams', action= 'store_false', default = True)
+parser.add_argument('-J', '--use_multibyte_chars', action= 'store_true', default = False)
+parser.add_argument('-C', '--track_content', action= 'store_true', default = False)
 parser.add_argument('-L', '--layout', type= str, default= 'Multi_partite')
 parser.add_argument('-A', '--auto_fig_sizing', action= 'store_true', default= False)
+##
 args = parser.parse_args()
 ##
 file                    = args.file   # process a file when it exists
@@ -75,19 +76,23 @@ sample_id               = args.sample_id
 sample_n                = args.sample_n
 generalized             = args.generalized
 gap_mark                = args.gap_mark
+input_field_sep         = args.input_field_sep
+input_comment_escape    = args.input_comment_escape
 reflexive               = args.unreflexive
 track_content           = args.track_content
 draw_diagrams           = args.draw_diagrams
 layout                  = args.layout
+auto_fig_sizing         = args.auto_fig_sizing
+zscore_lowerbound       = args.zscore_lowerbound
+use_robust_zscore       = args.use_robust_zscore
+zscores_from_targets    = args.zscores_from_targets
+scale_factor            = args.scaling_factor
+use_multibyte_chars     = args.use_multibyte_chars
+
+## implications
 if not layout is None:
-    draw_diagrams        = True
-auto_fig_sizing          = args.auto_fig_sizing
-zscore_lowerbound        = args.zscore_lowerbound
-use_robust_zscore        = args.use_robust_zscore
-get_zscores_from_targets = args.use_robust_zscore
-scale_factor             = args.scaling_factor
-input_field_sep          = args.input_field_sep
-input_comment_escape     = args.input_comment_escape
+    draw_diagrams       = True
+zscores_from_sources    = not zscores_from_targets
 
 
 ## show paramters
@@ -100,14 +105,15 @@ print(f"#gap_mark: {gap_mark}")
 print(f"#lattice is generalized: {generalized}")
 print(f"#instantiation is reflexive: {reflexive}")
 print(f"#use_robust_zscore: {use_robust_zscore}")
-print(f"#get_zscores_from_targets: {get_zscores_from_targets}")
+print(f"#zscores_from_targets: {zscores_from_targets}")
 print(f"#draw_diagrams: {draw_diagrams}")
 
-## Functions
+### Functions
+
+##
 def parse_input (file, field_sep: str = ",", comment_escape: str = "#") -> None:
     "reads a file, splits it into segments using a given separator, removes comments, and forward the result to main"
     import csv
-
     ## reading data
     data = list(csv.reader (file, delimiter = field_sep)) # Crucially list(..)
 
@@ -129,7 +135,6 @@ def parse_input (file, field_sep: str = ",", comment_escape: str = "#") -> None:
         data_renewed.append(G)
     ##
     return data_renewed
-
 
 ## process
 if not file is None:
@@ -183,6 +188,30 @@ print(f"##Source lists:")
 for i, s in enumerate(S):
     print (f"#source {i}: {s}")
 
+## set font for Japanese character display
+if use_multibyte_chars:
+    import matplotlib
+    from matplotlib import font_manager as Font_manager
+    ## select font
+    multibyte_font_names = [    "IPAexGothic",  # 0 Multi-platform font
+                                "Hiragino sans" # 1 Mac only
+                            ]
+    multibyte_font_name  = multibyte_font_names[0]
+    ## tell where target fonts are
+    system_font_dir = "/System/Library/Fonts/"
+    user_font_dir = "/Users/kowk/Library/Fonts/"
+    if multibyte_font_name == "IPAexGothic":
+        Font_manager.fontManager.addfont(f"{user_font_dir}ipaexg.ttf")
+    elif multibyte_font_name == "Hiragino sans":
+        Font_manager.fontManager.addfont(f"{system_font_dir}ヒラギノ角ゴシック W0.ttc")
+    ## check result
+    matplotlib.rc('font', family = multibyte_font_name)
+else:
+    multibyte_font_name = None
+    matplotlib.rcParams['font.family'] = "Sans-serif"
+##
+print(f"multibyte_font_name: {multibyte_font_name}")
+print(f"matplotlib.rcParams['font.family']: {matplotlib.rcParams['font.family']}")
 ## generating patterns
 Patterns = [ ]
 for s in S:
@@ -247,7 +276,7 @@ if draw_diagrams and verbose:
     print(f"##Drawing diagrams")
     for i, patlat in enumerate(L):
         print(f"#drawing diagram from: PatternLattice {i+1}")
-        patlat.draw_diagrams (layout = layout, auto_fig_sizing = auto_fig_sizing, scale_factor = scale_factor, check = False)
+        patlat.draw_diagrams (layout = layout, font_name = multibyte_font_name, auto_fig_sizing = auto_fig_sizing, scale_factor = scale_factor, check = False)
 ##
 #exit()
 ##
@@ -342,6 +371,6 @@ if verbose:
 ## draw diagram
 if draw_diagrams:
     print(f"#Drawing a diagram from the merged lattice")
-    M.draw_diagrams (layout = layout, auto_fig_sizing = auto_fig_sizing, zscore_lowerbound = zscore_lowerbound, get_zscores_from_targets = True, scale_factor = scale_factor, check = False)
+    M.draw_diagrams (layout = layout, auto_fig_sizing = auto_fig_sizing, zscore_lowerbound = zscore_lowerbound, font_name = multibyte_font_name, zscores_from_sources = zscores_from_sources, scale_factor = scale_factor, check = False)
 
 ### end of file
