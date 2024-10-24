@@ -1,6 +1,4 @@
 ## imports
-#from utils .import *
-#from copy import deepcopy
 
 ## Functions
 def encode_for_pattern (L: list) -> list:
@@ -46,19 +44,12 @@ def is_None_free (p: list) -> bool:
     return True
 
 ##
-def count_gaps (L: list, gap_mark: str = "_", check: bool = False):
+def count_gaps (L: list, gap_mark: str, check: bool = False) -> int:
     "returns the number of gaps in the given list"
     return len([x for x in L if x == gap_mark])
 
-
 ##
-def wrapped_merger_main (args):
-    "utility function for Pool in merge_patterns"
-    return merger_main (*args)
-
-
-##
-def get_rank_of_list (L, gap_mark: str = "_"):
+def get_rank_of_list (L, gap_mark: str):
     "takes a list and returns the count of its element which are not equal to gap_mark"
     return len([ x for x in L if x != gap_mark ])
 
@@ -93,12 +84,12 @@ def compatible_contents (L, R: list, check: bool = False) -> bool:
 
 
 ##
-def test_completion (P: list, gap_mark: str = "_", check: bool = False) -> bool:
+def test_completion (P: list, gap_mark: str, check: bool = False) -> bool:
     "tests if P, a list of patterns, contains a fully gapped pattern"
     for p in P:
         if check:
             print(f"#checking for completion: {p}")
-        if p.is_fully_gapped (): # Crucially, len(x) > 0
+        if p.is_fully_gapped (gap_mark = gap_mark): # Crucially, len(x) > 0
             return True
     return False
 
@@ -178,12 +169,17 @@ def merge_patterns_main (form_pairs, content_pairs, gap_mark, boundary_mark, tra
     new_paired  = [ (F, C) for F, C in list(zip(new_form, new_content)) ]
     return new_paired
 
+##
+def wrapped_merger_main (args):
+    "utility function for Pool in merge_patterns"
+    return merger_main (*args)
+
 
 ##
 class Pattern:
     # The idea of using NamedTuple turned out inadequate
     #def __init__ (L): # <= This is wrong.
-    def __init__ (self, L: (list, tuple), gap_mark: str = "_", boundary_mark: str = "#"):
+    def __init__ (self, L: (list, tuple), gap_mark: str, boundary_mark: str = "#"):
         "creates a Pattern object from a given L, a list of elements, or from a paired"
         ##
         self.gap_mark      = gap_mark
@@ -330,11 +326,13 @@ class Pattern:
         return len(self.get_gaps())
 
     ##
-    def create_gapped_versions (self: list, gap_mark: str = "_", check: bool = False) -> list:
+    def create_gapped_versions (self: list, check: bool = False) -> list:
         "create a list of gapped patterns in which each non-gap is replaced by a gap"
         if check:
             print(f"#self: {self}")
-        paired = self.paired
+        ##
+        gap_mark = self.gap_mark
+        paired   = self.paired
         # generate a lattice
         R = [ ]
         for i in range (len(paired)):
@@ -350,7 +348,7 @@ class Pattern:
             if check:
                 print(f"#gapped: {gapped}")
             ##
-            result        = Pattern([])
+            result        = Pattern([], gap_mark = gap_mark)
             result.paired = gapped
             result.update_form()
             result.update_content()
@@ -382,7 +380,7 @@ class Pattern:
         return self # Crucially
 
     ##
-    def is_fully_gapped (self, gap_mark: str = "_"):
+    def is_fully_gapped (self, gap_mark: str):
         "tests if a given pattern has the fully gapped form"
         form = self.form
         if all([ x == gap_mark for x in form if len(x) > 0 ]):
@@ -409,7 +407,7 @@ class Pattern:
             else:
                 raise "Specified position is undefined"
         ## return result
-        result = Pattern([])
+        result = Pattern([], gap_mark = gap_mark)
         result.paired = paired_new
         result.update_form()
         result.update_content() # Don't forget to add () at the end!
@@ -421,6 +419,7 @@ class Pattern:
         if check:
             print (f"#p: {p}")
         #
+        gap_mark = p.gap_mark
         size = len(p.paired)
         R = [p]
         ## main
@@ -442,7 +441,7 @@ class Pattern:
                         R.append (g)
                         form_register.append(g.form)
             ## check termination
-            if test_completion (R, check = False):
+            if test_completion (R, gap_mark = gap_mark, check = False):
                 completed = True
 
         ## build generalized lattice
@@ -466,8 +465,8 @@ class Pattern:
         """
         tests if pattern R instantiates another L, i.e., instance(R, L) == part_of(L, R)
         """
-        gap_mark      = self.gap_mark
-        boundary_mark = self.boundary_mark
+        gap_mark        = self.gap_mark
+        boundary_mark   = self.boundary_mark
         R, L = self, other
         #R_form, L_form = R.form, L.form
         R_form, L_form = self.form, other.form
@@ -492,8 +491,11 @@ class Pattern:
             print(f"#L_gap_count: {L_gap_count}; R_gap_count: {R_gap_count}")
             print(f"#L_content: {L_content}; R_content: {R_content}")
             print(f"#L_content_count: {L_content_count}; R_content_count: {R_content_count}")
+        ## L's rank is one-segment smaller than R's
+        if L_size == R_size and L_rank + 1 == R_rank:
+            return check_instantiation (R, L, check = check)
         ## L and R are at the same rank
-        if L_rank == R_rank:
+        elif L_rank == R_rank:
             ## when L is one-segment longer than R
             if L_size != R_size + 1:
                 return False
@@ -505,15 +507,12 @@ class Pattern:
                     return True
                 else:
                     return False
-        ## L's rank is one-segment smaller than R's
-        elif L_size == R_size and L_rank == R_rank - 1:
-            return check_instantiation (R, L, check = check)
         ## other cases
         else:
             return False
 
     ##
-    def merge_patterns (self, other, track_content: bool = False, reduction: bool = True, check: bool = False):
+    def merge_patterns (self, other, gap_mark: str, track_content: bool = False, reduction: bool = True, check: bool = False):
         "take a pair of Patterns, merges one Pattern with another"
         ## prevents void operation
         #if self.form == other.form:
@@ -544,7 +543,7 @@ class Pattern:
         if check:
             print(f"#new_paired: {new_paired}")
         ##
-        new = Pattern([])
+        new = Pattern([], gap_mark = gap_mark)
         new.paired = new_paired
         new.update_form()
         new.update_content()
