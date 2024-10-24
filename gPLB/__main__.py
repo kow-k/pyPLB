@@ -56,6 +56,7 @@ parser.add_argument('-n', '--sample_n', type= int, default= 3)
 parser.add_argument('-S', '--sample_id', type= int, default= 1)
 parser.add_argument('-F', '--scaling_factor', type= float, default= 5)
 parser.add_argument('-z', '--zscore_lowerbound', type= float, default= None)
+parser.add_argument('-T', '--get_zscores_from_link_targets', action='store_true', default= False)
 parser.add_argument('-Z', '--use_robust_zscore', action='store_false', default= True)
 parser.add_argument('-C', '--track_content', action= 'store_true', default = False)
 parser.add_argument('-D', '--draw_diagrams', action= 'store_false', default = True)
@@ -63,26 +64,27 @@ parser.add_argument('-L', '--layout', type= str, default= 'Multi_partite')
 parser.add_argument('-A', '--auto_fig_sizing', action= 'store_true', default= False)
 args = parser.parse_args()
 ##
-file                  = args.file   # process a file when it exists
-phrasal               = args.phrasal
-verbose               = args.verbose
-detailed              = args.detailed
-max_size              = args.max_size
-sample_id             = args.sample_id
-sample_n              = args.sample_n
-generalized           = args.generalized
-reflexive             = args.unreflexive
-track_content         = args.track_content
-draw_diagrams         = args.draw_diagrams
-layout                = args.layout
+file                    = args.file   # process a file when it exists
+phrasal                 = args.phrasal
+verbose                 = args.verbose
+detailed                = args.detailed
+max_size                = args.max_size
+sample_id               = args.sample_id
+sample_n                = args.sample_n
+generalized             = args.generalized
+reflexive               = args.unreflexive
+track_content           = args.track_content
+draw_diagrams           = args.draw_diagrams
+layout                  = args.layout
 if not layout is None:
-    draw_diagrams     = True
-auto_fig_sizing       = args.auto_fig_sizing
-zscore_lowerbound     = args.zscore_lowerbound
-use_robust_zscore     = args.use_robust_zscore
-scale_factor          = args.scaling_factor
-input_field_sep       = args.input_field_sep
-input_comment_escape  = args.input_comment_escape
+    draw_diagrams        = True
+auto_fig_sizing          = args.auto_fig_sizing
+zscore_lowerbound        = args.zscore_lowerbound
+use_robust_zscore        = args.use_robust_zscore
+get_zscores_from_targets = args.use_robust_zscore
+scale_factor             = args.scaling_factor
+input_field_sep          = args.input_field_sep
+input_comment_escape     = args.input_comment_escape
 
 
 ## show paramters
@@ -94,6 +96,7 @@ print(f"#input_comment_escape: {input_comment_escape}")
 print(f"#generalized: {generalized}")
 print(f"#reflexive: {reflexive}")
 print(f"#use_robust_zscore: {use_robust_zscore}")
+print(f"#get_zscores_from_targets: {get_zscores_from_targets}")
 print(f"#draw_diagrams: {draw_diagrams}")
 
 ## Functions
@@ -335,6 +338,6 @@ if verbose:
 ## draw diagram
 if draw_diagrams:
     print(f"#Drawing a diagram from the merged lattice")
-    M.draw_diagrams (layout = layout, auto_fig_sizing = auto_fig_sizing, zscore_lowerbound = zscore_lowerbound, scale_factor = scale_factor, check = False)
+    M.draw_diagrams (layout = layout, auto_fig_sizing = auto_fig_sizing, zscore_lowerbound = zscore_lowerbound, get_zscores_from_targets = True, scale_factor = scale_factor, check = False)
 
 ### end of file
