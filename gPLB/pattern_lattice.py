@@ -233,8 +233,8 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     prune_count = 0
     if not zscore_lowerbound is None:
         print(f"#pruning nodes with z-score less than {zscore_lowerbound}")
-        nodes_to_keep = []
-        nodes_to_keep_ids = []
+        nodes_to_keep     = [ ]
+        nodes_to_keep_ids = [ ]
         for i, node in enumerate(G):
             node_as_tuple = as_tuple(node)
             if check:
@@ -257,12 +257,12 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
 
         ## remove nodes
         G.remove_nodes_from ([ x for x in G if not x in nodes_to_keep ])
+        
         ## set node colors
         values_for_color_filtered = [ ]
         for i, value in enumerate(values_for_color):
             if i in nodes_to_keep_ids:
                 values_for_color_filtered.append (value)
-        ##
         values_for_color = values_for_color_filtered
 
     ## relabeling nodes: this needs to come after color setting
@@ -288,8 +288,9 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
             positions   = nx.arf_layout(G, scaling = scale_factor)
         ##
         elif layout in ['bfs', 'BFS' ] :
+            import random
             layout_name = "Bread-First Search"
-            positions   = nx.bfs_layout(G, start = random.choice(G), scale = scale_factor)
+            positions   = nx.bfs_layout(G, start = random.choice (G), scale = scale_factor)
         ##
         elif layout in ['Planar', 'planar', 'P'] :
             layout_name = "Planar"
@@ -383,11 +384,10 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     my_cmap = sns.color_palette("coolwarm", 24, as_cmap = True) # Crucially, as_cmap
 
     ## revserses the arrows
-    #G = G.reverse(copy = False) # ineffective??
+    #G = G.reverse(copy = False) # offensive
 
     ## finally draw
     nx.draw_networkx (G, positions,
-        #ax = ax1,
         font_family = font_family,
         font_color = 'darkblue', # label font color
         verticalalignment = "bottom", horizontalalignment = "right",
@@ -400,11 +400,10 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
 
     ### set title
     ## set labels used in title
-    labels = [ x for x in sorted(instances) ]
+    labels = [ as_label (x, sep = " ") for x in sorted (instances) ]
     if not label_sample_n is None:
-        labels = labels[:label_sample_n - 1] + [("...")] + labels[-1]
-    plt.title(f"PatternLattice (layout: {layout_name}) built from {labels}")
-    ##
+        labels = labels[:label_sample_n - 1] + ["…"] + labels[-1]
+    plt.title(f"PatternLattice (layout: {layout_name}) built from\n{labels}")
     plt.show()
 
 ##
@@ -474,10 +473,12 @@ class PatternLattice:
 
     ##
     def merge_lattices (self, other, gen_links: bool, reflexive: bool, generalized: bool = True, reductive: bool = True, remove_None_containers: bool = False, show_steps: bool = False, check: bool = False):
+        "takes a pair of PatternLattices and returns its merger"
+        ##
         import itertools
         ##
         sample_pattern = self.nodes[0]
-        gap_mark = sample_pattern.gap_mark
+        gap_mark       = sample_pattern.gap_mark
         ## creates .nodes
         pooled_nodes = self.nodes
         nodes_to_add = other.nodes
@@ -513,7 +514,7 @@ class PatternLattice:
         ## Is the following multiprocessible?
         merged_nodes = [ ]
         for A, B in itertools.combinations (pooled_nodes, 2):
-            C = A.merge_patterns (B, gap_mark = gap_mark, check = False)
+            C = A.merge_patterns (B, check = False)
             ## The following fails to work if Pattern.__eq__ is not redefined
             #if not C in merged_nodes: # This fails.
             if is_None_free (C) and not C in merged_nodes:
@@ -558,7 +559,7 @@ class PatternLattice:
                     print(f"#R: {list(R)}")
                 ## main
                 if reflexive:
-                    R = make_simplest_list(L, R)
+                    R = make_simplest_list (L, R)
                 ##
                 # put multiprocessing process here
                 for l in L:
@@ -661,7 +662,7 @@ class PatternLattice:
         return self
 
     ##
-    def draw_diagrams (self, layout: str = None, get_zscores_from_targets: bool = False, auto_fig_sizing: bool = False, zscore_lowerbound: float = None, scale_factor: float = 3, fig_size: tuple = None, label_size: int = None, label_sample_n: int = None, node_size: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
+    def draw_diagrams (self, layout: str = None, zscores_from_sources: bool = True, auto_fig_sizing: bool = False, zscore_lowerbound: float = None, scale_factor: float = 3, fig_size: tuple = None, label_size: int = None, label_sample_n: int = None, node_size: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
         """
         draw a lattice digrams from a given PatternLattice L by extracting L.links
         """
@@ -676,10 +677,10 @@ class PatternLattice:
                 print(f"#links at rank {rank}:\n{links}")
 
         ## handle z-scores
-        if get_zscores_from_targets:
-            zscores = self.target_zscores
-        else:
+        if zscores_from_sources:
             zscores = self.source_zscores
+        else:
+            zscores = self.target_zscores
         if check:
             i = 0
             for k, v in zscores.items():
