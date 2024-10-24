@@ -1,10 +1,3 @@
-## import standard libraries
-import collections
-import itertools
-import numpy as np
-import matplotlib
-import math
-
 ## import related modules
 try:
     from .utils import *
@@ -24,6 +17,8 @@ except ImportError:
 ##
 def merge_lattice_main (nodes, check: bool = False) -> list:
     "takes a pair of pattern lattices and returns their merger"
+    import itertools
+    #
     merged_nodes = [ ]
     for A, B in itertools.combinations (nodes, 2):
         C = A.merge_patterns (B, check = check)
@@ -34,16 +29,16 @@ def merge_lattice_main (nodes, check: bool = False) -> list:
     return merged_nodes
 
 ##
-def make_ranked_dict (L: list) -> dict:
+def make_ranked_dict (L: list, gap_mark: str) -> dict:
     "takes a list of lists and returns a dict whose keys are ranks of the lists"
     ranked_dict = {}
-    for rank in set([ get_rank_of_list (x) for x in L ]):
-        ranked_dict[rank] = [ x for x in L if Pattern(x).get_rank() == rank ]
+    for rank in set([ get_rank_of_list (x, gap_mark) for x in L ]):
+        ranked_dict[rank] = [ x for x in L if Pattern(x, gap_mark).get_rank() == rank ]
     ##
     return ranked_dict
 
 ##
-def get_rank_dists (link_dict: dict, check: bool = False):
+def get_rank_dists (link_dict: dict, check: bool = False) -> dict:
     "calculate essential statistics of the rank distribution given"
     ##
     ranked_links = make_ranked_dict (link_dict)
@@ -66,10 +61,10 @@ def get_rank_dists (link_dict: dict, check: bool = False):
     return rank_dists
 
 ##
-def calc_averages_by_rank (link_dict, check: bool = False):
+def calc_averages_by_rank (link_dict: dict, gap_mark: str, check: bool = False) -> dict:
     "calculate averages per rank"
     ##
-    ranked_links = make_ranked_dict (link_dict)
+    ranked_links = make_ranked_dict (link_dict, gap_mark)
     if check:
         print(f"#ranked_links: {ranked_links}")
     ##
@@ -83,11 +78,11 @@ def calc_averages_by_rank (link_dict, check: bool = False):
     ##
     return averages_by_rank
 
-def calc_stdevs_by_rank (link_dict, check: bool = False):
+def calc_stdevs_by_rank (link_dict: dict, gap_mark: str, check: bool = False) -> dict:
     "calculate stdevs per rank"
     import numpy as np
     ##
-    ranked_links = make_ranked_dict (link_dict)
+    ranked_links = make_ranked_dict (link_dict, gap_mark)
     if check:
         print(f"#ranked_links: {ranked_links}")
     ##
@@ -101,11 +96,11 @@ def calc_stdevs_by_rank (link_dict, check: bool = False):
     return stdevs_by_rank
 
 ##
-def calc_medians_by_rank (link_dict, check: bool = False):
+def calc_medians_by_rank (link_dict: dict, gap_mark: str, check: bool = False) -> dict:
     "calculate stdevs per rank"
     import numpy as np
     ##
-    ranked_links = make_ranked_dict (link_dict)
+    ranked_links = make_ranked_dict (link_dict, gap_mark)
     if check:
         print(f"#ranked_links: {ranked_links}")
     ##
@@ -119,12 +114,12 @@ def calc_medians_by_rank (link_dict, check: bool = False):
     return medians_by_rank
 
 ##
-def calc_MADs_by_rank (link_dict, check: bool = False):
+def calc_MADs_by_rank (link_dict: dict, gap_mark: str, check: bool = False) -> dict:
     "calculate stdevs per rank"
     import numpy as np
     import scipy.stats as stats
     ##
-    ranked_links = make_ranked_dict (link_dict)
+    ranked_links = make_ranked_dict (link_dict, gap_mark)
     if check:
         print(f"#ranked_links: {ranked_links}")
     ##
@@ -138,7 +133,7 @@ def calc_MADs_by_rank (link_dict, check: bool = False):
     return MADs_by_rank
 
 ##
-def calc_zscore (value, average, stdev, median, MAD, robust: bool = True):
+def calc_zscore (value: float, average: float, stdev: float, median: float, MAD: float, robust: bool = True) -> float:
     "returns the z-scores of a value against average, stdev, median, and MAD given"
     import numpy as np
     import scipy.stats as stats
@@ -153,7 +148,7 @@ def calc_zscore (value, average, stdev, median, MAD, robust: bool = True):
             return (value - average) / stdev
 
 ##
-def calc_zscore_old (value, average_val, stdev_val):
+def calc_zscore_old (value: float, average_val: float, stdev_val: float) -> float:
     "returns z-score given a triple of value, average and stdev"
     if stdev_val == 0:
         return 0
@@ -161,7 +156,7 @@ def calc_zscore_old (value, average_val, stdev_val):
         return (value - average_val) / stdev_val
 
 ##
-def normalize_score (x, min_val: float = -4, max_val: float = 7):
+def normalize_score (x: float, min_val: float = -4, max_val: float = 7) -> float:
     "takes a value in the range of min, max and returns its normalized value"
     import matplotlib.colors as colors
     ##
@@ -169,7 +164,7 @@ def normalize_score (x, min_val: float = -4, max_val: float = 7):
     return normalizer(x)
 
 ##
-def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing: bool = False, label_size: int = None, label_sample_n: int = None, node_size: int = None, zscores: dict = None, zscore_lowerbound = None, scale_factor: float = 3, font_name: str = None, test: bool = False, use_pyGraphviz: bool = False, check: bool = False):
+def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing: bool = False, label_size: int = None, label_sample_n: int = None, node_size: int = None, zscores: dict = None, zscore_lowerbound = None, scale_factor: float = 3, font_name: str = None, test: bool = False, use_pyGraphviz: bool = False, check: bool = False) -> None:
     "draw layered graph under multipartite setting"
     import networkx as nx
     import math
@@ -185,7 +180,8 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     node_counts_by_layers = [ ]
     ##
     for rank, links in sorted(D, reverse = False):
-        #print(f"#rank {rank}: {links}")
+        if check:
+            print(f"#rank {rank}: {links}")
         L, R, E = [ ], [ ], [ ]
         for link in links:
             if check:
@@ -415,13 +411,16 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
 class PatternLattice:
     "definition of PatternLattice class"
     ##
-    def __init__ (self, pattern, reflexive: bool, track_content: bool = False, generalized: bool = True, check: bool = False):
+    def __init__ (self, pattern, reflexive: bool = True, track_content: bool = False, generalized: bool = True, check: bool = False):
         "initialization of a PatternLattice"
         if check:
             print(f"pattern.paired: {pattern.paired}")
         ##
         self.origin       = pattern
-        self.gap_mark     = pattern.gap_mark
+        if not pattern.gap_mark is None or not pattern.gap_mark == "":
+            self.gap_mark = pattern.gap_mark
+        else:
+            raise "Error: gap_mark is missing"
         self.nodes        = pattern.build_lattice_nodes (generalized = generalized, check = check)
         self.ranked_nodes = self.group_by_rank (check = check)
         self.links, self.link_sources, self.link_targets = \
@@ -450,8 +449,9 @@ class PatternLattice:
             yield x
 
     ##
-    def group_by_rank (self, check: bool = False):
+    def group_by_rank (self, check: bool = False) -> dict:
         " takes a list of patterns, P, and generates a dictionary of patterns grouped by their ranks"
+        import collections
         ##
         gap_mark = self.gap_mark
         N        = self.nodes
@@ -474,6 +474,10 @@ class PatternLattice:
 
     ##
     def merge_lattices (self, other, gen_links: bool, reflexive: bool, generalized: bool = True, reductive: bool = True, remove_None_containers: bool = False, show_steps: bool = False, check: bool = False):
+        import itertools
+        ##
+        sample_pattern = self.nodes[0]
+        gap_mark = sample_pattern.gap_mark
         ## creates .nodes
         pooled_nodes = self.nodes
         nodes_to_add = other.nodes
@@ -509,16 +513,17 @@ class PatternLattice:
         ## Is the following multiprocessible?
         merged_nodes = [ ]
         for A, B in itertools.combinations (pooled_nodes, 2):
-            C = A.merge_patterns (B, check = False)
+            C = A.merge_patterns (B, gap_mark = gap_mark, check = False)
             ## The following fails to work if Pattern.__eq__ is not redefined
             #if not C in merged_nodes: # This fails.
             if is_None_free (C) and not C in merged_nodes:
                 merged_nodes.append(C)
-        ##
         if check:
             print(f"#merged_nodes: {merged_nodes}")
+        
         # generate merged PatternLattice
-        merged   = PatternLattice (Pattern([]), generalized = generalized, reflexive = reflexive)
+        empty_pat = Pattern([], gap_mark)
+        merged   = PatternLattice (empty_pat, generalized = generalized, reflexive = reflexive)
         merged.nodes        = merged_nodes
         merged.ranked_nodes = merged.group_by_rank (check = check)
         ## conditionally generates links
