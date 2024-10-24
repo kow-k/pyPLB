@@ -6,6 +6,8 @@ outputs/
 profiled/
 !sources/
 !gPLB/
+gPLB/__main__extra.py
+gPLB/utils_extra.py
 *.html
 *.txt
 
