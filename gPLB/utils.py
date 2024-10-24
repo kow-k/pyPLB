@@ -1,11 +1,7 @@
-## imports
-#import numpy as np
-#import matplotlib
-
 ### Functions
 
 ##
-def as_tuple(L: list) -> tuple:
+def as_tuple (L: list) -> tuple:
     "convert a list into a tuple"
     #return (*L,)
     return tuple(L)
@@ -19,7 +15,7 @@ def as_label (T: tuple, sep: str = "", add_sep_at_end: bool = False) -> str:
             result += f"{x}{sep}"
     else:
         for i, x in enumerate(T):
-            if i < len(T):
+            if i < len(T) - 1:
                 result += f"{x}{sep}"
             else:
                 result += f"{x}"
