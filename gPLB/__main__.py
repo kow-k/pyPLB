@@ -199,7 +199,7 @@ if use_multibyte_chars:
     multibyte_font_name  = multibyte_font_names[0]
     ## tell where target fonts are
     system_font_dir = "/System/Library/Fonts/"
-    user_font_dir = "/Users/kowk/Library/Fonts/"
+    user_font_dir = "/Library/Fonts/"
     if multibyte_font_name == "IPAexGothic":
         Font_manager.fontManager.addfont(f"{user_font_dir}ipaexg.ttf")
     elif multibyte_font_name == "Hiragino sans":
