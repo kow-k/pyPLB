@@ -252,7 +252,8 @@ class Pattern:
         return [ x[0] for x in self.form ]
 
     ##
-    def get_form_size(self):
+    def get_form_size (self):
+        "takes a pattern and returns its form size"
         return len(self.get_form())
 
     ##
@@ -262,6 +263,7 @@ class Pattern:
 
     ##
     def get_content_size(self):
+        "takes a pattern and returns its content size"
         return len(self.get_content())
 
     ##
@@ -270,13 +272,13 @@ class Pattern:
         return [ x for x in self.form if x != self.gap_mark]
 
     ##
-    def get_rank (self):
+    def get_substance_size (self):
         "takes a pattern and returns its rank, i.e., the number of non-gap elements"
         #return len([ x for x in self.form if x != self.gap_mark ])
         return len(self.get_substance())
 
     ##
-    get_substance_size = get_rank
+    get_rank = get_substance_size
 
     ##
     def update_with_paired (self, paired):
@@ -356,7 +358,6 @@ class Pattern:
             R.append(result)
         #
         return R
-
 
     ##
     def create_random_gaps (self, n: int, check: bool = False):
@@ -512,7 +513,7 @@ class Pattern:
             return False
 
     ##
-    def merge_patterns (self, other, gap_mark: str, track_content: bool = False, reduction: bool = True, check: bool = False):
+    def merge_patterns (self, other, track_content: bool = False, reduction: bool = True, check: bool = False):
         "take a pair of Patterns, merges one Pattern with another"
         ## prevents void operation
         #if self.form == other.form:
@@ -531,8 +532,6 @@ class Pattern:
         gap_mark       = self.gap_mark
         boundary_mark  = self.boundary_mark
         ## The following two lines fail due to "TypeError: 'zip' object is not subscriptable"
-        #form_pairs    = zip (self.form, other.form)
-        #content_pairs = zip (self.content, other.content)
         form_pairs     = list(zip (self.form, other.form))
         content_pairs  = list(zip (self.content, other.content))
         if check:
