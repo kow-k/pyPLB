@@ -200,8 +200,13 @@ if use_multibyte_chars:
     ## tell where target fonts are
     system_font_dir = "/System/Library/Fonts/"
     user_font_dir = "/Library/Fonts/"
+    # use the version installed via TeXLive
+    user_font_dir2 = "/usr/local/texlive/2013/texmf-dist/fonts/truetype/public/ipaex/"
     if multibyte_font_name == "IPAexGothic":
-        Font_manager.fontManager.addfont(f"{user_font_dir}ipaexg.ttf")
+        try:
+            Font_manager.fontManager.addfont(f"{user_font_dir}ipaexg.ttf")
+        except FileNotFoundError:
+            Font_manager.fontManager.addfont(f"{user_font_dir2}ipaexg.ttf")
     elif multibyte_font_name == "Hiragino sans":
         Font_manager.fontManager.addfont(f"{system_font_dir}ヒラギノ角ゴシック W0.ttc")
     ## check result

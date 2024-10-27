@@ -262,7 +262,7 @@ class Pattern:
         return [ x[1] for x in self.content ]
 
     ##
-    def get_content_size(self):
+    def get_content_size (self):
         "takes a pattern and returns its content size"
         return len(self.get_content())
 

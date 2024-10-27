@@ -1,3 +1,11 @@
+## imports libraries
+
+#from numba import jit # incompatible with PatternLattice class
+#import itertools
+#import numpy as np
+#import scipy.stats as stats
+#import multiprocessing as mp
+
 ## import related modules
 try:
     from .utils import *
@@ -13,20 +21,6 @@ except ImportError:
     from pattern_link import *
 
 ### Functions
-
-##
-def merge_lattice_main (nodes, check: bool = False) -> list:
-    "takes a pair of pattern lattices and returns their merger"
-    import itertools
-    #
-    merged_nodes = [ ]
-    for A, B in itertools.combinations (nodes, 2):
-        C = A.merge_patterns (B, check = check)
-        ## The following fails to work if Pattern.__eq__ is not redefined
-        #if not C in merged_nodes: # This fails.
-        if is_None_free (C) and not C in merged_nodes:
-            merged_nodes.append(C)
-    return merged_nodes
 
 ##
 def make_ranked_dict (L: list, gap_mark: str) -> dict:
@@ -61,6 +55,44 @@ def get_rank_dists (link_dict: dict, ranked_links: dict, check: bool = False) ->
     return rank_dists
 
 ##
+def merge_patterns_and_filter (A, B, check = False):
+    C = A.merge_patterns (B, check = False)
+    if is_None_free (C):
+        return C
+
+##
+def mp_gen_links_main (links, link_souces, link_targets, x, check: bool = False):
+    "take arguments and updates"
+    #
+    r, l = x[0], x[1]
+    r_form, r_content = r.form, r.content
+    l_form, l_content = l.form, l.content
+    if check:
+        print(f"#linking r_form: {r_form}; r_content: {r_content}")
+    ## main
+    if len(r_form) == 0 or len(l_form):
+        pass
+    elif l_form == r_form:
+        pass
+    elif r.instantiates_or_not (l, check = check):
+        print(f"#instantiate {l.form} to {r.form}")
+        link = PatternLink([l, r])
+        ##
+        if not link in links:
+            ## register for links
+            links.append (link)
+            ## register for link_sources, link_targets
+            l_sig = as_tuple(l.form)
+            r_sig = as_tuple(r.form)
+            try:
+                link_sources[l_sig] += 1
+                link_targets[r_sig] += 1
+            except KeyError:
+                link_sources[l_sig] = 1
+                link_targets[r_sig] = 1
+    ## result is None
+
+##
 def calc_averages_by_rank (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
     "calculate averages per rank"
     if check:
@@ -78,8 +110,8 @@ def calc_stdevs_by_rank (link_dict: dict, ranked_links: dict, check: bool = Fals
     "calculate stdevs per rank"
     if check:
         print(f"#ranked_links: {ranked_links}")
-    import numpy as np
     ##
+    import numpy as np
     stdevs_by_rank = {}
     for rank in ranked_links:
         members = ranked_links[rank]
@@ -106,11 +138,11 @@ def calc_medians_by_rank (link_dict: dict, ranked_links: dict, check: bool = Fal
 ##
 def calc_MADs_by_rank (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
     "calculate stdevs per rank"
-    import numpy as np
-    import scipy.stats as stats
-    ##
     if check:
         print(f"#ranked_links: {ranked_links}")
+    ## JIT compiler demand function-internal imports to be externalized
+    import numpy as np
+    import scipy.stats as stats
     ##
     MADs_by_rank = {}
     for rank in ranked_links:
@@ -123,6 +155,7 @@ def calc_MADs_by_rank (link_dict: dict, ranked_links: dict, check: bool = False)
 ##
 def calc_zscore (value: float, average: float, stdev: float, median: float, MAD: float, robust: bool = True) -> float:
     "returns the z-scores of a value against average, stdev, median, and MAD given"
+    ##
     import numpy as np
     import scipy.stats as stats
     coeff     = 0.6745
@@ -146,14 +179,15 @@ def calc_zscore_old (value: float, average_val: float, stdev_val: float) -> floa
 ##
 def normalize_score (x: float, min_val: float = -4, max_val: float = 7) -> float:
     "takes a value in the range of min, max and returns its normalized value"
-    import matplotlib.colors as colors
     ##
+    import matplotlib.colors as colors
     normalizer = colors.Normalize(vmin = min_val, vmax = max_val)
     return normalizer(x)
 
 ##
 def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing: bool = False, label_size: int = None, label_sample_n: int = None, node_size: int = None, zscores: dict = None, zscore_lowerbound = None, scale_factor: float = 3, font_name: str = None, test: bool = False, use_pyGraphviz: bool = False, check: bool = False) -> None:
     "draw layered graph under multipartite setting"
+    ##
     import networkx as nx
     import math
     import matplotlib.pyplot as plt
@@ -395,7 +429,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     plt.show()
 
 ##
-class PatternLattice:
+class PatternLattice():
     "definition of PatternLattice class"
     ##
     def __init__ (self, pattern, reflexive: bool = True, track_content: bool = False, generalized: bool = True, check: bool = False):
@@ -460,10 +494,12 @@ class PatternLattice:
         return rank_groups
 
     ##
-    def merge_lattices (self, other, gen_links: bool, reflexive: bool, generalized: bool = True, reductive: bool = True, remove_None_containers: bool = False, show_steps: bool = False, check: bool = False):
+    #@jit(nopython = True)
+    def merge_lattices (self, other, gen_links: bool, reflexive: bool, use_multiprocess: bool = True, generalized: bool = True, reductive: bool = True, remove_None_containers: bool = False, show_steps: bool = False, check: bool = False):
         "takes a pair of PatternLattices and returns its merger"
         ##
-        import itertools
+        import itertools # This code needs to be externalized under jit
+        import os
         ##
         sample_pattern = self.nodes[0]
         gap_mark       = sample_pattern.gap_mark
@@ -499,22 +535,37 @@ class PatternLattice:
         ##
         if check:
             print(f"#pooled_nodes [3]: {pooled_nodes}")
-        ## Is the following multiprocessible?
-        merged_nodes = [ ]
-        for A, B in itertools.combinations (pooled_nodes, 2):
-            C = A.merge_patterns (B, check = False)
-            ## The following fails to work if Pattern.__eq__ is not redefined
-            #if not C in merged_nodes: # This fails.
-            if is_None_free (C) and not C in merged_nodes:
-                merged_nodes.append(C)
+        ## multiprocess(ing) version
+        if use_multiprocess:
+            import os
+            import multiprocess as mp
+            cores = max(os.cpu_count(), 1)
+            with mp.Pool(cores) as pool:
+                merged_nodes = pool.starmap (merge_patterns_and_filter, itertools.combinations (pooled_nodes, 2))
+                ## The following fails unless Pattern.__eq__ is redefined
+                #merged_nodes = [ node for node in merged_nodes if not node is None ]
+                #booleans = pool.map (lambda x: not x is None, merged_nodes)
+                #merged_nodes = [ node for node, boolean in zip (merged_nodes, booleans) if boolean == True ]
+            merged_nodes = simplify_list (merged_nodes)
+        ## original slower version
+        else:
+            merged_nodes = [ ]
+            for A, B in itertools.combinations (pooled_nodes, 2):
+                C = A.merge_patterns (B, check = False)
+                ## The following fails unless Pattern.__eq__ is redefined
+                #if not C in merged_nodes: # This fails.
+                if is_None_free (C) and not C in merged_nodes:
+                    merged_nodes.append(C)
         if check:
             print(f"#merged_nodes: {merged_nodes}")
 
         # generate merged PatternLattice
-        empty_pat = Pattern([], gap_mark)
-        merged   = PatternLattice (empty_pat, generalized = generalized, reflexive = reflexive)
+        empty_pat           = Pattern([], gap_mark)
+        merged              = PatternLattice (empty_pat, generalized = generalized, reflexive = reflexive)
         merged.nodes        = merged_nodes
         merged.ranked_nodes = merged.group_by_rank (check = check)
+        if check:
+            print(f"#merged_ranked_nodes: {merged.ranked_nodes}")
         ## conditionally generates links
         if gen_links:
             merged.links, merged.link_sources, merged.link_targets  = \
@@ -568,7 +619,7 @@ class PatternLattice:
                         if l_form == r_form:
                             continue
                         elif r.instantiates_or_not (l, check = check):
-                            print(f"#instantiated {l.form} by {r.form}")
+                            print(f"#instantiate {l.form} to {r.form}")
                             link = PatternLink([l, r])
                             ##
                             if not link in links:
@@ -584,6 +635,37 @@ class PatternLattice:
                                     link_sources[l_sig] = 1
                                     link_targets[r_sig] = 1
             ##
+            except KeyError:
+                pass
+        ##
+        return links, link_sources, link_targets
+
+    ## not properly implemented yet
+    def X_gen_links (self, reflexive: bool, track_content: bool = False, reductive: bool = True, check: bool = False):
+        "takes a PatternLattice, extracts ranked_nodes, and generates a list of links among them"
+        ##
+        import multiprocess as mp
+        import os
+        core = max(os.cpu_count(), 1)
+        pool = mp.Pool(core)
+        ##
+        G = self.ranked_nodes
+        links = [ ]
+        link_sources, link_targets = {}, {}
+        for rank in sorted (G.keys()):
+            ## define L
+            L = G[rank]
+            ## define R
+            try:
+                R = G[rank + 1]
+                ## main
+                if reflexive:
+                    R = make_simplest_list (L, R)
+                # put multiprocessing process here
+                bases = [ [r, l] for r in R for l in L ]
+                #print(f"#bases: {bases}")
+                #pool.starmap(mp_gen_links_main, links, link_sources, link_targets, bases)
+                pool.apply_async (mp_gen_links_main, args = (links, link_sources, link_targets, bases, True))
             except KeyError:
                 pass
         ##
