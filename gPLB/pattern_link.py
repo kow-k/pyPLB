@@ -60,10 +60,11 @@ class PatternLink:
         left, right = self.left, self.right
         gap_mark    = self.gap_mark
         #assert len(left) == len(right)
-        assert len(left) >= len(right)
+        #assert len(left) >= len(right)
         #form = left.form
-        form = right.form
-        return len([ x for x in form if x != gap_mark ])
+        #form = right.form
+        #return len([ x for x in form if x != gap_mark ])
+        return min(count_items (left.form, gap_mark), count_items (right.form, gap_mark))
 
     ##
     def print (self, indicator = None, link_type = None, condition = None , paired: bool = False, check: bool = False) -> None:
