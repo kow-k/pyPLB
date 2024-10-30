@@ -202,8 +202,9 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     node_dict = { }
     node_counts_by_layers = [ ]
     ##
-    for rank, links in sorted (D, reverse = False):
-        L, R, E = [ ], [ ], [ ]
+    for rank, links in sorted (D, reverse = True):
+        L = [ ]
+        R, E = [ ], [ ]
         for link in links:
             if check:
                 print(f"#adding link at rank {rank}: {link}")
@@ -211,21 +212,18 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
             gap_mark      = link.gap_mark
             node1, node2  = link.form_paired
             ## convert lists to tuples to use them as hash keys
-            node1 = as_tuple(node1)
-            node2 = as_tuple(node2)
+            node1 = as_tuple (node1)
+            node2 = as_tuple (node2)
             ## add nodes
             ## node1
-            if get_rank_of_list (node1, gap_mark) == rank:
-                if not node1 in L:
-                    L.append (node1)
-            elif not node1 in R:
-                R.append (node1)
+            if not node1 in L:
+                L.append (node1)
             ## node2
-            if get_rank_of_list (node2, gap_mark) == rank + 1:
+            if get_rank_of_list (node2, gap_mark) == rank:
                 if not node2 in R:
                     R.append (node2)
             elif not node2 in L:
-                L.append (node2)
+                R.append (node2)
             ## register instance nodes
             if count_items (node2, gap_mark) == 0 and node2 not in instances:
                 instances.append (node2)
@@ -236,14 +234,16 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
                 E.append (edge)
         ## populates nodes for G
         ## forward rank scan
-        G.add_nodes_from (L, rank = rank)
-        G.add_nodes_from (R, rank = rank + 1)
+        #G.add_nodes_from (L, rank = rank)
+        #G.add_nodes_from (R, rank = rank + 1)
         ## backward rank scan
-        #G.add_nodes_from (L, rank = rank - 1)
-        #G.add_nodes_from (R, rank = rank)
+        G.add_nodes_from (L, rank = rank - 1)
+        G.add_nodes_from (R, rank = rank)
         node_counts_by_layers.append (len(R))
         ## populates edges for G
         G.add_edges_from (E)
+        #
+        L_prev = list(L)
     ##
     max_node_count_on_layer = max(node_counts_by_layers)
 
