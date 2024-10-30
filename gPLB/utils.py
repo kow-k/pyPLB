@@ -1,6 +1,11 @@
 ### Functions
 
 ##
+def count_items (L: list, item: str, check: bool = False) -> int:
+    "returns the number of items in the given list"
+    return len([ x for x in L if x == item ])
+
+##
 def as_tuple (L: list) -> tuple:
     "convert a list into a tuple"
     #return (*L,)
@@ -39,18 +44,20 @@ def make_simplest_list (A: list, B: list) -> list:
             C.append (b)
     return C
 
+## alias
 make_list_simplest = make_simplest_list
 
 ##
 def wrapped_make_simplest_list (*args):
     import functools
-    return functools.reduce(make_simplest_list, args)
+    return functools.reduce (make_simplest_list, args)
 
 ## parallel filter, or pfilter
-from multiprocessing import Pool
-import os
-cores = max(os.cpu_count(), 1)
 def pfilter (func, X, cores):
+    #from multiprocessing import Pool
+    from multiprocess import Pool
+    import os
+    cores = max(os.cpu_count(), 1)
     with Pool (cores) as p:
         booleans = p.map (func, X)
         return [ x for x, b in zip (X, booleans) if b ]
