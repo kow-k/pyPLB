@@ -196,18 +196,17 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
 
     ## define graph
     #G = nx.Graph() # does not accept connectionstyle specification
-    G = nx.DiGraph()
+    G = nx.DiGraph()    
+    ##
     instances = [ ] # register instances
     node_dict = { }
     node_counts_by_layers = [ ]
     ##
-    for rank, links in sorted(D, reverse = False):
-        if check:
-            print(f"#rank {rank}: {links}")
+    for rank, links in sorted (D, reverse = False):
         L, R, E = [ ], [ ], [ ]
         for link in links:
             if check:
-                print(f"#adding link: {link}")
+                print(f"#adding link at rank {rank}: {link}")
             ## process nodes
             gap_mark      = link.gap_mark
             node1, node2  = link.form_paired
@@ -215,21 +214,33 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
             node1 = as_tuple(node1)
             node2 = as_tuple(node2)
             ## add nodes
-            if not node1 in L:
-                L.append (node1)
-            #if not node2 in R:
-            if not node2 in R and not node2 in L: # Crucially, "and not node2 in L"
-                R.append (node2)
-            ## register for instances
-            if count_gaps (node2, gap_mark) == 0 and node2 not in instances:
+            ## node1
+            if get_rank_of_list (node1, gap_mark) == rank:
+                if not node1 in L:
+                    L.append (node1)
+            elif not node1 in R:
+                R.append (node1)
+            ## node2
+            if get_rank_of_list (node2, gap_mark) == rank + 1:
+                if not node2 in R:
+                    R.append (node2)
+            elif not node2 in L:
+                L.append (node2)
+            ## register instance nodes
+            if count_items (node2, gap_mark) == 0 and node2 not in instances:
                 instances.append (node2)
             ## process edges
             edge = (node1, node2)
+            #edge = (node2, node1)
             if not edge in E:
-                E.append(edge)
+                E.append (edge)
         ## populates nodes for G
+        ## forward rank scan
         G.add_nodes_from (L, rank = rank)
         G.add_nodes_from (R, rank = rank + 1)
+        ## backward rank scan
+        #G.add_nodes_from (L, rank = rank - 1)
+        #G.add_nodes_from (R, rank = rank)
         node_counts_by_layers.append (len(R))
         ## populates edges for G
         G.add_edges_from (E)
@@ -243,10 +254,10 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
         try:
             z_value = zscores[node_as_tuple]
             if check:
-                print(f"#z_value: {z_value}")
+                print(f"#z_value: {z_value: 0.4f}")
             z_normalized = normalize_score(z_value)
             if check:
-                print(f"#z_normalized: {z_normalized}")
+                print(f"#z_normalized: {z_normalized: 0.4f}")
             values_for_color.append (z_normalized)
         except KeyError:
             values_for_color.append (0.5) # normalized value falls between 0 and 1.0
@@ -273,7 +284,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
                 nodes_to_keep.append (node)
                 nodes_to_keep_ids.append (i)
             else:
-                print(f"#pruning {node} with z-score {z_value:.6f}")
+                print(f"#pruning {node} with z-score {z_value:.5f}")
                 prune_count += 1
         print(f"#pruned {prune_count} nodes")
 
@@ -298,7 +309,8 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
         ## select layout
         if layout in [ 'Multipartite', 'Multi_partite', 'multi_partite', 'M', 'MP', 'mp' ]:
             layout_name = "Multi-partite"
-            positions   = nx.multipartite_layout(G, subset_key = "rank")
+            ## scale parameter suddenly gets crucial on 2024/10/30
+            positions   = nx.multipartite_layout(G, subset_key = "rank", scale = -1)
         ##
         elif layout in [ 'Graphviz', 'graphviz', 'G' ] :
             layout_name = "Graphviz"
@@ -349,7 +361,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
         else:
             print(f"Unknown layout: Multi-partite (default) is used")
             layout_name = "Multi-partite"
-            positions   = nx.multipartite_layout (G, subset_key = "rank")
+            positions   = nx.multipartite_layout (G, subset_key = "rank", scale = -1)
 
     ### draw
     ## set connection
@@ -405,8 +417,11 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     ## set colormap
     my_cmap = sns.color_palette("coolwarm", 24, as_cmap = True) # Crucially, as_cmap
 
-    ## revserses the arrows
-    #G = G.reverse(copy = False) # offensive
+    ## revserse the arrows
+    #try: ## effective only when graph is DiGraph
+    #    G = G.reverse(copy = False) # offensive?
+    #except AttributeError:
+    #    pass
 
     ## finally draw
     nx.draw_networkx (G, positions,
@@ -417,7 +432,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
         font_size = font_size, node_size = node_size,
         node_color = values_for_color, cmap = my_cmap,
         edge_color = 'gray', width = 0.2, arrowsize = 7,
-        connectionstyle = connectionstyle,
+        arrows = True, connectionstyle = connectionstyle,
     )
 
     ### set title
@@ -471,12 +486,12 @@ class PatternLattice():
 
     ##
     def group_by_rank (self, check: bool = False) -> dict:
-        " takes a list of patterns, P, and generates a dictionary of patterns grouped by their ranks"
+        "takes a list of patterns, P, and generates a dictionary of patterns grouped by their ranks"
         import collections
         ##
         gap_mark = self.gap_mark
         N        = self.nodes
-        size = len(N)
+        size     = len(N)
         ## implementation using itertooks.groupby() failed
         rank_finder = lambda p: len([ x for x in p.form if x != gap_mark ])
         ## main
