@@ -6,14 +6,15 @@ def encode_for_pattern (L: list) -> list:
     take a list L of segments and returns a list R of (form, content) tuples
     R needs to be a list because it needs to be expanded later at building generalized PatternLattice
     """
-    return [ (str(x).strip(), [str(x).strip()]) for x in L if len(x) > 0 ] # Crucially, strip(..)
+    # Crucially, strip(..)
+    return [ (str(x).strip(), [str(x).strip()]) for x in L if len(x) > 0 ]
 
 def tuple_encode_for_pattern (L: list) -> tuple:
     """
     take a list L of segments and returns a list R of (form, content) tuples
     R needs to be a list because it needs to be expanded later at building generalized PatternLattice
     """
-    return tuple((str(x), [str(x)]) for x in L if len(x) > 0 )
+    return tuple((str(x), [str(x)]) for x in L if len(x) > 0 ) # Crucially, strip(..)
 
 ##
 def attr_is_None_free (p, attr: str) -> bool:
@@ -21,7 +22,7 @@ def attr_is_None_free (p, attr: str) -> bool:
     if p is None:
         return False
     L = eval(f"p.{attr}")
-    return ( len([ x for x in L if x is None ]) == 0 )
+    return len([ x for x in L if x is None ]) == 0
 
 ##
 def form_is_None_free (p: list) -> bool:
@@ -44,44 +45,9 @@ def is_None_free (p: list) -> bool:
     return True
 
 ##
-def count_gaps (L: list, gap_mark: str, check: bool = False) -> int:
-    "returns the number of gaps in the given list"
-    return len([x for x in L if x == gap_mark])
-
-##
 def get_rank_of_list (L, gap_mark: str):
     "takes a list and returns the count of its element which are not equal to gap_mark"
     return len([ x for x in L if x != gap_mark ])
-
-##
-def compatible_contents (L, R: list, check: bool = False) -> bool:
-    "tests if a pair of Patterns has compatible contents"
-    if check:
-        print(f"#checking for content compatibility:\n{L}\n{R}")
-    ## when input is a Pattern pair
-    try:
-        L_content, R_content = L.content, R.content
-        if len(L_content) != len(R_content):
-            return False
-        for i, x in enumerate(L_content):
-            if set(x) == set(R_content[i]):
-                pass
-            else:
-                return False
-        #
-        return True
-    ## when input is a list pair
-    except AttributeError:
-        if len(L) != len(R):
-            return False
-        for i, x in enumerate(L):
-            if set(x) == set(R[i]):
-                pass
-            else:
-                return False
-        #
-        return True
-
 
 ##
 def test_completion (P: list, gap_mark: str, check: bool = False) -> bool:
@@ -173,7 +139,6 @@ def merge_patterns_main (form_pairs, content_pairs, gap_mark, boundary_mark, tra
 def wrapped_merger_main (args):
     "utility function for Pool in merge_patterns"
     return merger_main (*args)
-
 
 ##
 class Pattern:
@@ -276,9 +241,37 @@ class Pattern:
         "takes a pattern and returns its rank, i.e., the number of non-gap elements"
         #return len([ x for x in self.form if x != self.gap_mark ])
         return len(self.get_substance())
-
     ##
     get_rank = get_substance_size
+
+    ##
+    def has_compatible_content (R, L: list, check: bool = False) -> bool:
+        "tests if a pair of Patterns has compatible contents"
+        if check:
+            print(f"#checking for content compatibility:\n{L}\n{R}")
+        ## when input is a Pattern pair
+        try:
+            L_content, R_content = L.content, R.content
+            if len(L_content) != len(R_content):
+                return False
+            for i, x in enumerate(L_content):
+                if set(x) == set(R_content[i]):
+                    pass
+                else:
+                    return False
+            #
+            return True
+        ## when input is a list pair
+        except AttributeError:
+            if len(L) != len(R):
+                return False
+            for i, x in enumerate(L):
+                if set(x) == set(R[i]):
+                    pass
+                else:
+                    return False
+            #
+            return True
 
     ##
     def update_with_paired (self, paired):
@@ -515,19 +508,18 @@ class Pattern:
     ##
     def merge_patterns (self, other, track_content: bool = False, reduction: bool = True, check: bool = False):
         "take a pair of Patterns, merges one Pattern with another"
+        if check:
+            print(f"#=====================")
+            print(f"#self: {self}")
+            print(f"#other: {other}")
         ## prevents void operation
-        #if self.form == other.form:
         if track_content:
-            if self.form == other.form and have_compatible_content(self, other):
+            if self.form == other.form and self.has_compatible_content (other):
                 return self
         else:
             #if self.form_hash == other.form_hash:
             if self.form == other.form:
                 return self
-        if check:
-            print(f"#=====================")
-            print(f"#self: {self}")
-            print(f"#other: {other}")
         ## main
         gap_mark       = self.gap_mark
         boundary_mark  = self.boundary_mark
