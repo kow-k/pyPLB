@@ -94,6 +94,8 @@ if not layout is None:
     draw_diagrams       = True
 zscores_from_sources    = not zscores_from_targets
 
+## settings
+draw_inspection  = True
 
 ## show paramters
 print(f"##Parameters")
@@ -281,7 +283,7 @@ if draw_diagrams and verbose:
     print(f"##Drawing diagrams")
     for i, patlat in enumerate(L):
         print(f"#drawing diagram from: PatternLattice {i+1}")
-        patlat.draw_diagrams (layout = layout, font_name = multibyte_font_name, auto_fig_sizing = auto_fig_sizing, scale_factor = scale_factor, check = False)
+        patlat.draw_diagrams (layout = layout, font_name = multibyte_font_name, auto_fig_sizing = auto_fig_sizing, scale_factor = scale_factor, check = draw_inspection)
 ##
 #exit()
 ##
@@ -378,6 +380,6 @@ if verbose:
 ## draw diagram
 if draw_diagrams:
     print(f"#Drawing a diagram from the merged lattice")
-    M.draw_diagrams (layout = layout, auto_fig_sizing = auto_fig_sizing, zscore_lowerbound = zscore_lowerbound, font_name = multibyte_font_name, zscores_from_sources = zscores_from_sources, scale_factor = scale_factor, check = False)
+    M.draw_diagrams (layout = layout, auto_fig_sizing = auto_fig_sizing, zscore_lowerbound = zscore_lowerbound, font_name = multibyte_font_name, zscores_from_sources = zscores_from_sources, scale_factor = scale_factor, check = draw_inspection)
 
 ### end of file
