@@ -2,7 +2,6 @@
 A Python implementation of generalized Pattern Lattice Builder (gPLB).
 
 # Synopsis
-
 gPLB implements a _generalized_ Pattern Lattice. A normal, _non-generalized_ Pattern Lattice of [a, b, c] is the is-a network over the set
 {[\_, \_, \_],
 [a, \_, \_], [\_, b, \_], [\_, \_, c],
@@ -33,7 +32,7 @@ Additonally, gPLB, unlike RubyPLB, gives you a lot of analytical information in 
 
 gPLB also allows you specify parameters to draw graphs interactively.
 
-gPLB will implement _content tracking_ in near future, which I believe is quite useful to make more detailed analysis of data.
+gPLB implements _content tracking_, through which contents of variables, symbolized as "_" or "…" can be inspected. I believe this functionality is quite useful to make more detailed analysis of data.
 
 
 ## gPLB (a package including a runnable script)
