@@ -89,7 +89,7 @@ def check_instantiation (self, other, check: bool = False):
     return True
 
 ##
-def pattern_merger (form_pairs: list, content_pairs: list, gap_mark: str, boundary_mark: str, track_content: bool, check: bool = False):
+def pattern_merger (form_pairs: list, content_pairs: list, gap_mark: str, boundary_mark: str, check: bool = False):
     ## The following operation needs to be re-implemented for speed up
     import numpy as np
     new_form    = [ ]
@@ -502,20 +502,16 @@ class Pattern:
             return False
 
     ##
-    def merge_patterns (self, other, track_content: bool = False, reduction: bool = True, check: bool = False):
+    def merge_patterns (self, other, reduction: bool = True, check: bool = False):
         "take a pair of Patterns, merges one Pattern with another"
         if check:
             print(f"#=====================")
             print(f"#self: {self}")
             print(f"#other: {other}")
         ## prevents void operation
-        if track_content:
-            if self.form == other.form and self.content == other.content:
-                return self
-        else:
-            #if self.form_hash == other.form_hash:
-            if self.form == other.form:
-                return self
+        #if self.form_hash == other.form_hash:
+        if self.form == other.form:
+            return self
         
         ## main
         gap_mark       = self.gap_mark
@@ -527,7 +523,7 @@ class Pattern:
             print(f"#form_pairs :{form_pairs}")
             print(f"#content_pairs: {content_pairs}")#
         ##
-        new_paired = pattern_merger (form_pairs, content_pairs, gap_mark, boundary_mark, track_content = track_content, check = check)
+        new_paired = pattern_merger (form_pairs, content_pairs, gap_mark, boundary_mark, check = check)
         if check:
             print(f"#new_paired: {new_paired}")
         ##
