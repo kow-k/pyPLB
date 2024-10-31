@@ -23,7 +23,7 @@ except ImportError:
 ### Functions
 
 ##
-def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing: bool = False, label_size: int = None, label_sample_n: int = None, node_size: int = None, zscores: dict = None, zscore_lowerbound = None, scale_factor: float = 3, font_name: str = None, test: bool = False, use_pyGraphviz: bool = False, check: bool = False) -> None:
+def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing: bool = False, label_size: int = None, label_sample_n: int = None, node_size: int = None, zscores: dict = None, zscore_lowerbound = None, scale_factor: float = 3, font_name: str = None, test: bool = False, use_pyGraphviz: bool = False, use_directed_graph: bool = True, reverse_direction: bool = False, check: bool = False) -> None:
     "draw layered graph under multipartite setting"
     ##
     import networkx as nx
@@ -33,8 +33,10 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     import seaborn as sns
 
     ## define graph
-    #G = nx.Graph() # does not accept connectionstyle specification
-    G = nx.DiGraph()    
+    if use_directed_graph:
+        G = nx.DiGraph()
+    else:
+        G = nx.Graph() # does not accept connectionstyle specification
     ##
     node_dict = { }
     instances = [ ] # register instances
@@ -256,11 +258,9 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     my_cmap = sns.color_palette("coolwarm", 24, as_cmap = True) # Crucially, as_cmap
 
     ## revserse the arrows
-    #try: ## effective only when graph is DiGraph
-    #    G = G.reverse(copy = False) # offensive?
-    #except AttributeError:
-    #    pass
-
+    if use_directed_graph and reverse_direction:
+        G = G.reverse(copy = False) # offensive?
+        
     ## finally draw
     nx.draw_networkx (G, positions,
         font_family = font_family,
