@@ -8,9 +8,11 @@ outputs/
 profiled/
 !sources/
 !gPLB/
-gPLB/__main__extra.py
-gPLB/utils_extra.py
 gPLB/__pycache__/
+gPLB/__main__extra.py
+gPLB/pattern_lattice_extra.py
+gPLB/utils_extra.py
+
 
 #
 .DS_Store
