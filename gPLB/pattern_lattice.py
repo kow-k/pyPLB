@@ -23,168 +23,6 @@ except ImportError:
 ### Functions
 
 ##
-def make_ranked_dict (L: list, gap_mark: str) -> dict:
-    "takes a list of lists and returns a dict whose keys are ranks of the lists"
-    ##
-    ranked_dict = {}
-    for rank in set([ get_rank_of_list (x, gap_mark) for x in L ]):
-        ranked_dict[rank] = [ x for x in L if Pattern(x, gap_mark).get_rank() == rank ]
-    ##
-    return ranked_dict
-
-##
-def get_rank_dists (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
-    "calculate essential statistics of the rank distribution given"
-    ##
-    if check:
-        print(f"#ranked_links: {ranked_links}")
-    ##
-    rank_dists = {}
-    for rank in ranked_links:
-        stats = {}
-        members = ranked_links[rank]
-        #print(f"#members: {members}")
-        stats['n_members'] = len(members)
-        #print(f"#n_members: {n_members}")
-        dist = [ link_dict[m] for m in members ]
-        #print(f"dist: {dist}")
-        stats['dist'] = dist
-        ##
-        rank_dists[rank] = stats
-    ##
-    return rank_dists
-
-##
-def merge_patterns_and_filter (A, B, check = False):
-    C = A.merge_patterns (B, check = False)
-    if is_None_free (C):
-        return C
-
-##
-def mp_gen_links_main (links, link_souces, link_targets, x, check: bool = False):
-    "take arguments and updates"
-    #
-    r, l = x[0], x[1]
-    r_form, r_content = r.form, r.content
-    l_form, l_content = l.form, l.content
-    if check:
-        print(f"#linking r_form: {r_form}; r_content: {r_content}")
-    ## main
-    if len(r_form) == 0 or len(l_form):
-        pass
-    elif l_form == r_form:
-        pass
-    elif r.instantiates_or_not (l, check = check):
-        print(f"#instantiate {l.form} to {r.form}")
-        link = PatternLink([l, r])
-        ##
-        if not link in links:
-            ## register for links
-            links.append (link)
-            ## register for link_sources, link_targets
-            l_sig = as_tuple(l.form)
-            r_sig = as_tuple(r.form)
-            try:
-                link_sources[l_sig] += 1
-                link_targets[r_sig] += 1
-            except KeyError:
-                link_sources[l_sig] = 1
-                link_targets[r_sig] = 1
-    ## result is None
-
-##
-def calc_averages_by_rank (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
-    "calculate averages per rank"
-    if check:
-        print(f"#ranked_links: {ranked_links}")
-    ##
-    averages_by_rank = {}
-    for rank in ranked_links:
-        members = ranked_links[rank]
-        dist = [ link_dict[m] for m in members ]
-        averages_by_rank[rank] = sum(dist)/len(dist)
-    ##
-    return averages_by_rank
-
-def calc_stdevs_by_rank (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
-    "calculate stdevs per rank"
-    if check:
-        print(f"#ranked_links: {ranked_links}")
-    ##
-    import numpy as np
-    stdevs_by_rank = {}
-    for rank in ranked_links:
-        members = ranked_links[rank]
-        dist = [ link_dict[m] for m in members ]
-        stdevs_by_rank[rank] = np.std(dist)
-    ##
-    return stdevs_by_rank
-
-##
-def calc_medians_by_rank (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
-    "calculate stdevs per rank"
-    if check:
-        print(f"#ranked_links: {ranked_links}")
-    ##
-    import numpy as np
-    medians_by_rank = {}
-    for rank in ranked_links:
-        members = ranked_links[rank]
-        dist = [ link_dict[m] for m in members ]
-        medians_by_rank[rank] = np.median(dist)
-    ##
-    return medians_by_rank
-
-##
-def calc_MADs_by_rank (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
-    "calculate stdevs per rank"
-    if check:
-        print(f"#ranked_links: {ranked_links}")
-    ## JIT compiler demand function-internal imports to be externalized
-    import numpy as np
-    import scipy.stats as stats
-    ##
-    MADs_by_rank = {}
-    for rank in ranked_links:
-        members = ranked_links[rank]
-        dist = [ link_dict[m] for m in members ]
-        MADs_by_rank[rank] = np.median (stats.median_abs_deviation (dist))
-    ##
-    return MADs_by_rank
-
-##
-def calc_zscore (value: float, average: float, stdev: float, median: float, MAD: float, robust: bool = True) -> float:
-    "returns the z-scores of a value against average, stdev, median, and MAD given"
-    ##
-    import numpy as np
-    import scipy.stats as stats
-    coeff     = 0.6745
-    ##
-    if stdev == 0 or MAD == 0:
-        return 0
-    else:
-        if robust:
-            return (coeff * (value - median)) / MAD
-        else:
-            return (value - average) / stdev
-
-##
-def calc_zscore_old (value: float, average_val: float, stdev_val: float) -> float:
-    "returns z-score given a triple of value, average and stdev"
-    if stdev_val == 0:
-        return 0
-    else:
-        return (value - average_val) / stdev_val
-
-##
-def normalize_score (x: float, min_val: float = -4, max_val: float = 7) -> float:
-    "takes a value in the range of min, max and returns its normalized value"
-    ##
-    import matplotlib.colors as colors
-    normalizer = colors.Normalize(vmin = min_val, vmax = max_val)
-    return normalizer(x)
-
-##
 def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing: bool = False, label_size: int = None, label_sample_n: int = None, node_size: int = None, zscores: dict = None, zscore_lowerbound = None, scale_factor: float = 3, font_name: str = None, test: bool = False, use_pyGraphviz: bool = False, check: bool = False) -> None:
     "draw layered graph under multipartite setting"
     ##
@@ -198,11 +36,12 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     #G = nx.Graph() # does not accept connectionstyle specification
     G = nx.DiGraph()    
     ##
-    instances = [ ] # register instances
     node_dict = { }
+    instances = [ ] # register instances
     node_counts_by_layers = [ ]
     ##
-    for rank, links in sorted (D, reverse = True):
+    rank_max = max(int(x[0]) for x in list(D))
+    for rank, links in sorted (D, reverse = True): # be careful on list up direction
         L = [ ]
         R, E = [ ], [ ]
         for link in links:
@@ -233,17 +72,16 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
             if not edge in E:
                 E.append (edge)
         ## populates nodes for G
-        ## forward rank scan
+        ## forward rank scan = rank increments
         #G.add_nodes_from (L, rank = rank)
         #G.add_nodes_from (R, rank = rank + 1)
-        ## backward rank scan
-        G.add_nodes_from (L, rank = rank - 1)
-        G.add_nodes_from (R, rank = rank)
-        node_counts_by_layers.append (len(R))
+        ## backward rank scan = rank decrements
+        G.add_nodes_from (R, rank = (rank_max - rank - 1))
+        G.add_nodes_from (L, rank = (rank_max - rank))
         ## populates edges for G
         G.add_edges_from (E)
         #
-        L_prev = list(L)
+        node_counts_by_layers.append (len(R))
     ##
     max_node_count_on_layer = max(node_counts_by_layers)
 
@@ -310,7 +148,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
         if layout in [ 'Multipartite', 'Multi_partite', 'multi_partite', 'M', 'MP', 'mp' ]:
             layout_name = "Multi-partite"
             ## scale parameter suddenly gets crucial on 2024/10/30
-            positions   = nx.multipartite_layout(G, subset_key = "rank", scale = -1)
+            positions   = nx.multipartite_layout (G, subset_key = "rank", scale = -1)
         ##
         elif layout in [ 'Graphviz', 'graphviz', 'G' ] :
             layout_name = "Graphviz"
@@ -442,6 +280,168 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
         labels = labels[:label_sample_n - 1] + ["…"] + labels[-1]
     plt.title(f"PatternLattice (layout: {layout_name}) built from\n{labels}")
     plt.show()
+
+##
+def make_ranked_dict (L: list, gap_mark: str) -> dict:
+    "takes a list of lists and returns a dict whose keys are ranks of the lists"
+    ##
+    ranked_dict = {}
+    for rank in set([ get_rank_of_list (x, gap_mark) for x in L ]):
+        ranked_dict[rank] = [ x for x in L if Pattern(x, gap_mark).get_rank() == rank ]
+    ##
+    return ranked_dict
+
+##
+def merge_patterns_and_filter (A, B, check = False):
+    C = A.merge_patterns (B, check = False)
+    if is_None_free (C):
+        return C
+
+##
+def mp_gen_links_main (links, link_souces, link_targets, x, check: bool = False):
+    "take arguments and updates"
+    #
+    r, l = x[0], x[1]
+    r_form, r_content = r.form, r.content
+    l_form, l_content = l.form, l.content
+    if check:
+        print(f"#linking r_form: {r_form}; r_content: {r_content}")
+    ## main
+    if len(r_form) == 0 or len(l_form):
+        pass
+    elif l_form == r_form:
+        pass
+    elif r.instantiates_or_not (l, check = check):
+        print(f"#instantiate {l.form} to {r.form}")
+        link = PatternLink([l, r])
+        ##
+        if not link in links:
+            ## register for links
+            links.append (link)
+            ## register for link_sources, link_targets
+            l_sig = as_tuple(l.form)
+            r_sig = as_tuple(r.form)
+            try:
+                link_sources[l_sig] += 1
+                link_targets[r_sig] += 1
+            except KeyError:
+                link_sources[l_sig] = 1
+                link_targets[r_sig] = 1
+    ## result is None
+
+##
+def get_rank_dists (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
+    "calculate essential statistics of the rank distribution given"
+    ##
+    if check:
+        print(f"#ranked_links: {ranked_links}")
+    ##
+    rank_dists = {}
+    for rank in ranked_links:
+        stats = {}
+        members = ranked_links[rank]
+        #print(f"#members: {members}")
+        stats['n_members'] = len(members)
+        #print(f"#n_members: {n_members}")
+        dist = [ link_dict[m] for m in members ]
+        #print(f"dist: {dist}")
+        stats['dist'] = dist
+        ##
+        rank_dists[rank] = stats
+    ##
+    return rank_dists
+
+##
+def calc_averages_by_rank (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
+    "calculate averages per rank"
+    if check:
+        print(f"#ranked_links: {ranked_links}")
+    ##
+    averages_by_rank = {}
+    for rank in ranked_links:
+        members = ranked_links[rank]
+        dist = [ link_dict[m] for m in members ]
+        averages_by_rank[rank] = sum(dist)/len(dist)
+    ##
+    return averages_by_rank
+
+def calc_stdevs_by_rank (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
+    "calculate stdevs per rank"
+    if check:
+        print(f"#ranked_links: {ranked_links}")
+    ##
+    import numpy as np
+    stdevs_by_rank = {}
+    for rank in ranked_links:
+        members = ranked_links[rank]
+        dist = [ link_dict[m] for m in members ]
+        stdevs_by_rank[rank] = np.std(dist)
+    ##
+    return stdevs_by_rank
+
+##
+def calc_medians_by_rank (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
+    "calculate stdevs per rank"
+    if check:
+        print(f"#ranked_links: {ranked_links}")
+    ##
+    import numpy as np
+    medians_by_rank = {}
+    for rank in ranked_links:
+        members = ranked_links[rank]
+        dist = [ link_dict[m] for m in members ]
+        medians_by_rank[rank] = np.median(dist)
+    ##
+    return medians_by_rank
+
+##
+def calc_MADs_by_rank (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
+    "calculate stdevs per rank"
+    if check:
+        print(f"#ranked_links: {ranked_links}")
+    ## JIT compiler demand function-internal imports to be externalized
+    import numpy as np
+    import scipy.stats as stats
+    ##
+    MADs_by_rank = {}
+    for rank in ranked_links:
+        members = ranked_links[rank]
+        dist = [ link_dict[m] for m in members ]
+        MADs_by_rank[rank] = np.median (stats.median_abs_deviation (dist))
+    ##
+    return MADs_by_rank
+
+##
+def calc_zscore (value: float, average: float, stdev: float, median: float, MAD: float, robust: bool = True) -> float:
+    "returns the z-scores of a value against average, stdev, median, and MAD given"
+    ##
+    import numpy as np
+    import scipy.stats as stats
+    coeff     = 0.6745
+    ##
+    if stdev == 0 or MAD == 0:
+        return 0
+    else:
+        if robust:
+            return (coeff * (value - median)) / MAD
+        else:
+            return (value - average) / stdev
+
+##
+def calc_zscore_old (value: float, average_val: float, stdev_val: float) -> float:
+    "returns z-score given a triple of value, average and stdev"
+    if stdev_val == 0:
+        return 0
+    else:
+        return (value - average_val) / stdev_val
+
+##
+def normalize_score (x: float, min_val: float = -4, max_val: float = 7) -> float:
+    "takes a value in the range of min, max and returns its normalized value"
+    ##
+    import matplotlib.colors as colors
+    normalizer = colors.Normalize(vmin = min_val, vmax = max_val)
+    return normalizer(x)
 
 ##
 class PatternLattice():
