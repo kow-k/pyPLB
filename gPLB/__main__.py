@@ -11,7 +11,7 @@ developed by Kow Kuroda
 "Generalized" means that a pattern lattice build from [a, b, c] includes [_, a, b, c], [a, b, c, _] and [_, a, b, c, _]. This makes gPLB different from RubyPLB (rubyplb) developed by Yoichoro Hasebe and Kow Kuroda, available at <https://github.com/yohasebe/rubyplb>.
 
 created on 2024/09/24
-modified on 2024/09/25, 28, 29, 30; 10/01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 12, 15, 16, 17, 18, 19, 20, 21, 23, 24
+modified on 2024/09/25, 28, 29, 30; 10/01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 12, 15, 16, 17, 18, 19, 20, 21, 23, 24, 30, 31
 
 modification history
 2024/10/11 fixed a bug in instantiates(), added make_R_reflexive
@@ -95,7 +95,12 @@ if not layout is None:
 zscores_from_sources    = not zscores_from_targets
 
 ## inspection paramters
-draw_inspection         = False
+draw_inspection      = False
+mp_inspection        = False
+if mp_inspection:
+    use_mp = False
+else:
+    use_mp = True
 
 ## show paramters
 print(f"##Parameters")
@@ -109,6 +114,7 @@ print(f"#instantiation is reflexive: {reflexive}")
 print(f"#use_robust_zscore: {use_robust_zscore}")
 print(f"#zscores_from_targets: {zscores_from_targets}")
 print(f"#draw_diagrams: {draw_diagrams}")
+print(f"#mp_inspection: {mp_inspection}")
 
 ### Functions
 
@@ -298,11 +304,12 @@ if simplified:
         print(f"#Lb: {Lb}")
     M = La.merge_lattices (Lb, show_steps = True, check = False)
 else:
-    #print(f"#recursive merger")
-    M = functools.reduce (lambda La, Lb: La.merge_lattices (Lb, gen_links = True, reflexive = reflexive, show_steps = True, check = False), L)
+    gen_links_internally = False
+    M = functools.reduce (lambda La, Lb: La.merge_lattices (Lb, gen_links = gen_links_internally, use_multiprocess = use_mp, reflexive = reflexive, show_steps = True, track_content = False, check = False), L)
     # The following process was isolated for speeding up
-    if len(M.links) == 0:
-        M.update_links (reflexive = reflexive)
+    if len(M.links) == 0 and not gen_links_internally:
+        print(f"#Generating links independently")
+        M.update_links (reflexive = reflexive, track_content = False, check = False)
 
 ##
 print(f"##Results")
@@ -312,14 +319,13 @@ print(f"generated {len(M.nodes)} Patterns")
 if verbose:
     print(f"#Patterns")
     for i, p in enumerate(M.nodes):
-        print(f"#Pattern{i}: {p}")
+        print(f"#Pattern {i+1}: {p}")
 
 ## checking links in M
 print(f"##Links")
 print(f"#generated {len(M.links)} links")
 for i, link in enumerate(M.links):
-    #print(f"#link: {link}")
-    link.print (indicator = i, paired = True, link_type = "instantiates", check = False)
+    link.pprint (indicator = i, paired = True, link_type = "instantiates", check = False)
 
 ## adding link source z-scores to M
 if verbose:
@@ -376,8 +382,7 @@ M.target_zscores.update(target_zscores)
 if verbose:
     print(f"M.target_zscores: {M.target_zscores}")
 
-
-## draw diagram
+## draw diagram of M
 if draw_diagrams:
     print(f"#Drawing a diagram from the merged lattice")
     M.draw_diagrams (layout = layout, auto_fig_sizing = auto_fig_sizing, zscore_lowerbound = zscore_lowerbound, font_name = multibyte_font_name, zscores_from_sources = zscores_from_sources, scale_factor = scale_factor, check = draw_inspection)
