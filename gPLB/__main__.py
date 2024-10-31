@@ -24,6 +24,7 @@ modification history
 2024/10/21 improved instantiation implementation
 2024/10/23 implemented robust z-score, experimented hash-based comparison, fixed wrong layering of some nodes
 2024/10/24 fixed a bug in pattern sizing that result improper alignment of some patterns
+2024/10/31 fixed a bug in multiparite layout; implemented content tracking on variables in a pattern
 """
 
 #
@@ -61,7 +62,6 @@ parser.add_argument('-Z', '--use_robust_zscore', action='store_true', default= F
 parser.add_argument('-T', '--zscores_from_targets', action='store_true', default= False)
 parser.add_argument('-D', '--draw_diagrams', action= 'store_false', default = True)
 parser.add_argument('-J', '--use_multibyte_chars', action= 'store_true', default = False)
-parser.add_argument('-C', '--track_content', action= 'store_true', default = False)
 parser.add_argument('-L', '--layout', type= str, default= 'Multi_partite')
 parser.add_argument('-A', '--auto_fig_sizing', action= 'store_true', default= False)
 ##
@@ -79,7 +79,6 @@ gap_mark                = args.gap_mark
 input_field_sep         = args.input_field_sep
 input_comment_escape    = args.input_comment_escape
 reflexive               = args.unreflexive
-track_content           = args.track_content
 draw_diagrams           = args.draw_diagrams
 layout                  = args.layout
 auto_fig_sizing         = args.auto_fig_sizing
@@ -96,7 +95,7 @@ zscores_from_sources    = not zscores_from_targets
 
 ## inspection paramters
 draw_inspection      = False
-mp_inspection        = False
+mp_inspection        = False # This disables use of multiprocess
 if mp_inspection:
     use_mp = False
 else:
@@ -305,11 +304,11 @@ if simplified:
     M = La.merge_lattices (Lb, show_steps = True, check = False)
 else:
     gen_links_internally = False
-    M = functools.reduce (lambda La, Lb: La.merge_lattices (Lb, gen_links = gen_links_internally, use_multiprocess = use_mp, reflexive = reflexive, show_steps = True, track_content = False, check = False), L)
+    M = functools.reduce (lambda La, Lb: La.merge_lattices (Lb, gen_links = gen_links_internally, use_multiprocess = use_mp, reflexive = reflexive, show_steps = True, check = False), L)
     # The following process was isolated for speeding up
     if len(M.links) == 0 and not gen_links_internally:
         print(f"#Generating links independently")
-        M.update_links (reflexive = reflexive, track_content = False, check = False)
+        M.update_links (reflexive = reflexive, check = False)
 
 ##
 print(f"##Results")
