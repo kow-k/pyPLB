@@ -300,8 +300,8 @@ def make_ranked_dict (L: list, gap_mark: str) -> dict:
 
 ##
 def merge_patterns_and_filter (A, B, check = False):
-    C = A.merge_patterns (B, check = False)
-    if is_None_free (C):
+    C = A.merge_patterns (B, check = check)
+    if not C is None and is_None_free (C):
         return C
 
 ##
@@ -608,6 +608,37 @@ class PatternLattice():
                 print(f"#Merger into {len(merged_nodes)} nodes done")
         return merged
 
+    ## not properly implemented yet
+    def X_gen_links (self, reflexive: bool, track_content: bool = False, reductive: bool = True, check: bool = False):
+        "takes a PatternLattice, extracts ranked_nodes, and generates a list of links among them"
+        ##
+        import multiprocess as mp
+        import os
+        core = max(os.cpu_count(), 1)
+        pool = mp.Pool(core)
+        ##
+        G = self.ranked_nodes
+        links = [ ]
+        link_sources, link_targets = {}, {}
+        for rank in sorted (G.keys()):
+            ## define L
+            L = G[rank]
+            ## define R
+            try:
+                R = G[rank + 1]
+                ## main
+                if reflexive:
+                    R = make_simplest_list (L, R)
+                # put multiprocessing process here
+                bases = [ [r, l] for r in R for l in L ]
+                #print(f"#bases: {bases}")
+                #pool.starmap(mp_gen_links_main, links, link_sources, link_targets, bases)
+                pool.apply_async (mp_gen_links_main, args = (links, link_sources, link_targets, bases, True))
+            except KeyError:
+                pass
+        ##
+        return links, link_sources, link_targets
+
     ##
     def gen_links (self, reflexive: bool, track_content: bool = False, reductive: bool = True, check: bool = False):
         "takes a PatternLattice, extracts ranked_nodes, and generates a list of links among them"
@@ -670,39 +701,11 @@ class PatternLattice():
             ##
             except KeyError:
                 pass
+        ## filter out None-type tokens
+        #links = list(filter(None, links))
         ##
         return links, link_sources, link_targets
 
-    ## not properly implemented yet
-    def X_gen_links (self, reflexive: bool, track_content: bool = False, reductive: bool = True, check: bool = False):
-        "takes a PatternLattice, extracts ranked_nodes, and generates a list of links among them"
-        ##
-        import multiprocess as mp
-        import os
-        core = max(os.cpu_count(), 1)
-        pool = mp.Pool(core)
-        ##
-        G = self.ranked_nodes
-        links = [ ]
-        link_sources, link_targets = {}, {}
-        for rank in sorted (G.keys()):
-            ## define L
-            L = G[rank]
-            ## define R
-            try:
-                R = G[rank + 1]
-                ## main
-                if reflexive:
-                    R = make_simplest_list (L, R)
-                # put multiprocessing process here
-                bases = [ [r, l] for r in R for l in L ]
-                #print(f"#bases: {bases}")
-                #pool.starmap(mp_gen_links_main, links, link_sources, link_targets, bases)
-                pool.apply_async (mp_gen_links_main, args = (links, link_sources, link_targets, bases, True))
-            except KeyError:
-                pass
-        ##
-        return links, link_sources, link_targets
 
     ##
     def gen_ranked_links (self, reflexive: bool, reductive: bool = True, check: bool = False):

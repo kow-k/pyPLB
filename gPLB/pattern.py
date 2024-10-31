@@ -79,7 +79,7 @@ def check_instantiation (self, other, check: bool = False):
         else:
             if l_seg != gap_mark:
                 if check:
-                    print(f"#instantiation False with {L_form}; {R_form}")
+                    print(f"#no instantiation with {L_form}; {R_form}")
                 return False
             else:
                 pass
@@ -89,48 +89,44 @@ def check_instantiation (self, other, check: bool = False):
     return True
 
 ##
-def merge_patterns_main (form_pairs, content_pairs, gap_mark, boundary_mark, track_content: bool, check: bool = False):
+def pattern_merger (form_pairs: list, content_pairs: list, gap_mark: str, boundary_mark: str, track_content: bool, check: bool = False):
     ## The following operation needs to be re-implemented for speed up
+    import numpy as np
     new_form    = [ ]
-    new_content = [ ]
+    new_content = [ [ ] for _ in range(len(form_pairs)) ] # Crucially
     for i, pair in enumerate (form_pairs):
-        f0, f1 = pair[0], pair[1]
-        c0, c1 = content_pairs[i]
-        #C = c0
-        C = c0.copy()
-        if track_content:
-            C.extend(c1) # This drastically slows down
-        if f0 is None or f1 is None:
+        fa, fb = pair[0], pair[1]
+        ca, cb = content_pairs[i]
+        C = [ x[0] for x in content_pairs[i] ] # Crucially
+        ## handles form
+        if fa is None or fb is None:
             return None
-        elif f0 == f1:
-            new_form.append (f0)
-            new_content.append (C)
+        elif fa == fb:
+            new_form.append (fa)
+            new_content[i].extend (C)
         else:
-            if f0 == gap_mark:
-                new_form.append (f1)
-                if c0 == c1:
-                    new_content.append (C)
+            if fa == gap_mark:
+                new_form.append (fb)
+                if ca == cb:
+                    new_content[i].extend(C)
                 else:
-                    ## handling bounary marking
-                    if c0 == boundary_mark:
-                        new_content.append (c0)
+                    ## handling boundary marking
+                    if ca == boundary_mark:
+                        new_content[i].append (cb)
                     else:
-                        new_content.append (None)
-            elif f1 == gap_mark:
-                new_form.append (f0)
-                if c0 == c1:
-                    new_content.append (C)
+                        return None
+            elif fb == gap_mark:
+                new_form.append (fa)
+                if ca == cb:
+                    new_content[i].extend (C)
                 else:
-                    ## handling bounary marking
-                    if c1 == boundary_mark:
-                        new_content.append (c1)
+                    ## handling boundary marking
+                    if cb == boundary_mark:
+                        new_content[i].append (ca)
                     else:
-                        new_content.append (None)
+                        return None
             else:
-                new_form.append (None)
-                new_content.append (C)
-                ## The followinig slows down
-                #return None
+                return None
     ## Cruially, list(...)
     new_paired  = [ (F, C) for F, C in list(zip(new_form, new_content)) ]
     return new_paired
@@ -159,7 +155,7 @@ class Pattern:
         self.rank          = self.get_rank()
         self.gap_count     = self.get_gap_size()
         self.content_count = self.get_substance_size()
-        #return self
+        #return self # offensive
 
     ## This is crucial
     def __eq__ (self, other):
@@ -514,12 +510,13 @@ class Pattern:
             print(f"#other: {other}")
         ## prevents void operation
         if track_content:
-            if self.form == other.form and self.has_compatible_content (other):
+            if self.form == other.form and self.content == other.content:
                 return self
         else:
             #if self.form_hash == other.form_hash:
             if self.form == other.form:
                 return self
+        
         ## main
         gap_mark       = self.gap_mark
         boundary_mark  = self.boundary_mark
@@ -530,7 +527,7 @@ class Pattern:
             print(f"#form_pairs :{form_pairs}")
             print(f"#content_pairs: {content_pairs}")#
         ##
-        new_paired = merge_patterns_main (form_pairs, content_pairs, gap_mark, boundary_mark, track_content = track_content, check = check)
+        new_paired = pattern_merger (form_pairs, content_pairs, gap_mark, boundary_mark, track_content = track_content, check = check)
         if check:
             print(f"#new_paired: {new_paired}")
         ##

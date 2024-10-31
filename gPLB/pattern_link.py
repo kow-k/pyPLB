@@ -69,14 +69,14 @@ class PatternLink:
         #return min(count_items (left.form, gap_mark), count_items (right.form, gap_mark))
 
     ##
-    def pprint (self, indicator = None, link_type = None, condition = None , paired: bool = False, check: bool = False) -> None:
+    def pprint (self, indicator = None, link_type = None, condition = None , paired: bool = False, pair_mark: str = "::", check: bool = False) -> None:
         """
         prints the content of PatternLink object.
         condition can be a lambda expression used to filter.
         """
         ##
         if check:
-            print(f"# self: {self!r}")
+            print(f"#self: {self!r}")
         ##
         p, q = self.left, self.right
         ##
@@ -95,7 +95,7 @@ class PatternLink:
             arrow = "<-->"
         ##
         if paired:
-            out = (f"{p_index}{p.form} {arrow} {q.form} // {p.content} {arrow} {q.content}")
+            out = (f"{p_index}{p.form} {arrow} {q.form} {pair_mark} {p.content} {arrow} {q.content}")
         else:
             out = (f"{p_index}{p.form} {arrow} {q.form}")
         #

@@ -37,11 +37,18 @@ def make_simplest_list (A: list, B: list) -> list:
     "takes a list or a pair of lists and returns a unification of them without reduplication"
     C = [ ]
     for a in A:
-        if len(a) > 0 and a not in C:
-            C.append(a)
+        try:
+            if len(a) > 0 and a not in C:
+                C.append(a)
+        except TypeError:
+            pass
     for b in B:
-        if len(b) > 0 and not b in C:
-            C.append (b)
+        try:
+            if len(b) > 0 and not b in C:
+                C.append (b)
+        except TypeError:
+            pass
+    ##
     return C
 
 ## alias
