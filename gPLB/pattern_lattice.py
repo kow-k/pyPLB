@@ -454,7 +454,7 @@ def normalize_score (x: float, min_val: float = -4, max_val: float = 7) -> float
 class PatternLattice():
     "definition of PatternLattice class"
     ##
-    def __init__ (self, pattern, generalized: bool, reflexive: bool = True, track_content: bool = False, check: bool = False):
+    def __init__ (self, pattern, generalized: bool, reflexive: bool = True, check: bool = False):
         "initialization of a PatternLattice"
         if check:
             print(f"pattern.paired: {pattern.paired}")
@@ -468,7 +468,7 @@ class PatternLattice():
         self.nodes        = pattern.build_lattice_nodes (generalized = generalized, check = check)
         self.ranked_nodes = self.group_by_rank (check = check)
         self.links, self.link_sources, self.link_targets = \
-            self.gen_links (reflexive = reflexive, track_content = track_content, check = check)
+            self.gen_links (reflexive = reflexive, check = check)
         self.source_zscores = {}
         self.target_zscores = {}
         #return self # This may not be run
@@ -518,7 +518,7 @@ class PatternLattice():
 
     ##
     #@jit(nopython = True)
-    def merge_lattices (self, other, gen_links: bool, reflexive: bool, generalized: bool = True, reductive: bool = True, remove_None_containers: bool = False, show_steps: bool = False, track_content: bool = False, use_multiprocess: bool = True, check: bool = False):
+    def merge_lattices (self, other, gen_links: bool, reflexive: bool, generalized: bool = True, reductive: bool = True, remove_None_containers: bool = False, show_steps: bool = False, use_multiprocess: bool = True, check: bool = False):
         "takes a pair of PatternLattices and returns its merger"
         ##
         import itertools # This code needs to be externalized under jit
@@ -599,7 +599,7 @@ class PatternLattice():
         ## conditionally generates links
         if gen_links:
             merged.links, merged.link_sources, merged.link_targets  = \
-                merged.gen_links (reflexive = reflexive, track_content = track_content, check = check)
+                merged.gen_links (reflexive = reflexive, check = check)
         else:
             merged.links, merged.link_sources, merged.link_targets = [], [], []
         ## return result
@@ -609,7 +609,7 @@ class PatternLattice():
         return merged
 
     ## not properly implemented yet
-    def X_gen_links (self, reflexive: bool, track_content: bool = False, reductive: bool = True, check: bool = False):
+    def X_gen_links (self, reflexive: bool, reductive: bool = True, check: bool = False):
         "takes a PatternLattice, extracts ranked_nodes, and generates a list of links among them"
         ##
         import multiprocess as mp
@@ -640,7 +640,7 @@ class PatternLattice():
         return links, link_sources, link_targets
 
     ##
-    def gen_links (self, reflexive: bool, track_content: bool = False, reductive: bool = True, check: bool = False):
+    def gen_links (self, reflexive: bool, reductive: bool = True, check: bool = False):
         "takes a PatternLattice, extracts ranked_nodes, and generates a list of links among them"
         ##
         print(f"#generating links ...")
@@ -759,9 +759,9 @@ class PatternLattice():
         return ranked_links
 
     ##
-    def update_links (self, reflexive: bool = True, track_content: bool = False, reductive: bool = True, check: bool = False):
+    def update_links (self, reflexive: bool = True, reductive: bool = True, check: bool = False):
         "update links"
-        L, L_sources, L_targets = self.gen_links (reflexive = reflexive, track_content = track_content, reductive = reductive, check = check)
+        L, L_sources, L_targets = self.gen_links (reflexive = reflexive, reductive = reductive, check = check)
         if check:
             print(f"#L (in update): {L}")
         ##
