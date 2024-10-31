@@ -408,14 +408,14 @@ class Pattern:
         return result
 
     ##
-    def build_lattice_nodes (p, generalized: bool = True, check: bool = False):
+    def build_lattice_nodes (p, generalized: bool, check: bool = False):
         "takes a pattern and returns a list of lattice nodes"
         if check:
             print (f"#p: {p}")
         #
         gap_mark = p.gap_mark
-        size = len(p.paired)
-        R = [p]
+        size     = len(p.paired)
+        R        = [p]
         ## main
         form_register = [p.form]
         completed = False
