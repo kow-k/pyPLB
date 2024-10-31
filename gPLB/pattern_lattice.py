@@ -1,11 +1,5 @@
 ## imports libraries
 
-#from numba import jit # incompatible with PatternLattice class
-#import itertools
-#import numpy as np
-#import scipy.stats as stats
-#import multiprocessing as mp
-
 ## import related modules
 try:
     from .utils import *
@@ -20,11 +14,18 @@ try:
 except ImportError:
     from pattern_link import *
 
+## additional imports
+#from numba import jit # incompatible with PatternLattice class
+#import itertools
+#import numpy as np
+#import scipy.stats as stats
+#import multiprocessing as mp
+
 ### Functions
 
 ##
-def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing: bool = False, label_size: int = None, label_sample_n: int = None, node_size: int = None, zscores: dict = None, zscore_lowerbound = None, scale_factor: float = 3, font_name: str = None, test: bool = False, use_pyGraphviz: bool = False, use_directed_graph: bool = True, reverse_direction: bool = False, check: bool = False) -> None:
-    "draw layered graph under multipartite setting"
+def draw_network (D: dict, layout: str, generalized: bool, fig_size: tuple = None, auto_fig_sizing: bool = False, label_size: int = None, label_sample_n: int = None, node_size: int = None, zscores: dict = None, zscore_lowerbound = None, scale_factor: float = 3, font_name: str = None, test: bool = False, use_pyGraphviz: bool = False, use_directed_graph: bool = True, reverse_direction: bool = False, check: bool = False) -> None:
+    "draw layered graph under multi-partite setting"
     ##
     import networkx as nx
     import math
@@ -43,6 +44,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     node_counts_by_layers = [ ]
     ##
     rank_max = max(int(x[0]) for x in list(D))
+    pruned_node_count = 0
     for rank, links in sorted (D, reverse = True): # be careful on list up direction
         L = [ ]
         R, E = [ ], [ ]
@@ -52,27 +54,68 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
             ## process nodes
             gap_mark      = link.gap_mark
             node1, node2  = link.form_paired
+            
             ## convert lists to tuples to use them as hash keys
             node1 = as_tuple (node1)
             node2 = as_tuple (node2)
+            
+            ## assign z-scores
+            try:
+                node1_zscore = zscores[node1]
+            except KeyError:
+                node1_zscore = 0
+            try:
+                node2_zscore = zscores[node2]
+            except KeyError:
+                node2_zscore = 0
+            
             ## add nodes
-            ## node1
-            if not node1 in L:
-                L.append (node1)
-            ## node2
-            if get_rank_of_list (node2, gap_mark) == rank:
-                if not node2 in R:
+            if not zscore_lowerbound is None:
+                ## node1
+                if node1_zscore >= zscore_lowerbound and not node1 in L:
+                    L.append (node1)
+                else:
+                    print(f"pruned node {node1} with z-score {node1_zscore: 0.4f}")
+                    pruned_node_count += 1
+                ## node2
+                if node2_zscore >= zscore_lowerbound and get_rank_of_list (node2, gap_mark) == rank and not node2 in R:
                     R.append (node2)
-            elif not node2 in L:
-                R.append (node2)
-            ## register instance nodes
-            if count_items (node2, gap_mark) == 0 and node2 not in instances:
-                instances.append (node2)
-            ## process edges
-            edge = (node1, node2)
-            #edge = (node2, node1)
-            if not edge in E:
-                E.append (edge)
+                elif node2_zscore >= zscore_lowerbound and not node2 in L:
+                    R.append (node2)
+                else:
+                    print(f"pruned node {node2} with z-score {node2_zscore: 0.4f}")
+                    pruned_node_count += 1
+                ## register instance nodes
+                if count_items (node2, gap_mark) == 0 and node2 not in instances:
+                    instances.append (node2)
+                ## process edges
+                if node1_zscore >= zscore_lowerbound and node2_zscore >= zscore_lowerbound:
+                    edge = (node1, node2)
+                    #edge = (node2, node1)
+                try:
+                    if edge and not edge in E:
+                        E.append (edge)
+                except UnboundLocalError:
+                    pass
+            else:
+                ## node1
+                if not node1 in L:
+                    L.append (node1)
+                ## node2
+                if get_rank_of_list (node2, gap_mark) == rank:
+                    if not node2 in R:
+                        R.append (node2)
+                elif not node2 in L:
+                    R.append (node2)
+                ## register instance nodes
+                if count_items (node2, gap_mark) == 0 and node2 not in instances:
+                    instances.append (node2)
+                ## process edges
+                if node1 and node2:
+                    edge = (node1, node2)
+                    #edge = (node2, node1)
+                if edge and not edge in E:
+                    E.append (edge)
         ## populates nodes for G
         ## forward rank scan = rank increments
         #G.add_nodes_from (L, rank = rank)
@@ -84,6 +127,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
         G.add_edges_from (E)
         #
         node_counts_by_layers.append (len(R))
+    print(f"#pruned {pruned_node_count} nodes")
     ##
     max_node_count_on_layer = max(node_counts_by_layers)
 
@@ -101,42 +145,6 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
             values_for_color.append (z_normalized)
         except KeyError:
             values_for_color.append (0.5) # normalized value falls between 0 and 1.0
-
-    ## filter insignificant nodes
-    prune_count = 0
-    if not zscore_lowerbound is None:
-        print(f"#pruning nodes with z-score less than {zscore_lowerbound}")
-        nodes_to_keep     = [ ]
-        nodes_to_keep_ids = [ ]
-        for i, node in enumerate(G):
-            node_as_tuple = as_tuple(node)
-            if check:
-                print(f"#node_as_tuple: {node_as_tuple}")
-            ## assign z-score
-            try:
-                z_value = zscores[node_as_tuple]
-            except KeyError:
-                z_value = 0 # default value for z_score
-            if check:
-                print(f"#z_value: {z_value}")
-            ## filter nodes
-            if zscore_lowerbound <= z_value :
-                nodes_to_keep.append (node)
-                nodes_to_keep_ids.append (i)
-            else:
-                print(f"#pruning {node} with z-score {z_value:.5f}")
-                prune_count += 1
-        print(f"#pruned {prune_count} nodes")
-
-        ## remove nodes
-        G.remove_nodes_from ([ x for x in G if not x in nodes_to_keep ])
-
-        ## set node colors
-        values_for_color_filtered = [ ]
-        for i, value in enumerate(values_for_color):
-            if i in nodes_to_keep_ids:
-                values_for_color_filtered.append (value)
-        values_for_color = values_for_color_filtered
 
     ## relabeling nodes: this needs to come after color setting
     new_labels = { x: as_label(x, sep = " ", add_sep_at_end = True) for x in G }
@@ -158,25 +166,16 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
             #positions = nx.nx_agraph.graphviz_layout(G)
         ##
         elif layout in ['arf', 'ARF' ] :
-            layout_name = "Bread-First Search"
+            layout_name = "ARF"
             positions   = nx.arf_layout(G, scaling = scale_factor)
-        ##
-        elif layout in ['bfs', 'BFS' ] :
-            import random
-            layout_name = "Bread-First Search"
-            positions   = nx.bfs_layout(G, start = random.choice (G), scale = scale_factor)
-        ##
-        elif layout in ['Planar', 'planar', 'P'] :
-            layout_name = "Planar"
-            positions   = nx.planar_layout(G, scale = scale_factor, dim = 2)
         ##
         elif layout in [ 'Fruchterman-Reingold', 'Fruchterman_Reingold', 'fruchterman_reingold', 'FR']:
             layout_name = "Fruchterman-Reingold"
             positions   = nx.fruchterman_reingold_layout (G, scale = scale_factor, dim = 2)
         ##
-        elif layout in [ 'Circular', 'circular', 'C' ]:
-            layout_name = "Circular"
-            positions   = nx.circular_layout (G, scale = scale_factor, dim = 2)
+        elif layout in [ 'Kamada-Kawai', 'Kamada_Kawai', 'kamda_kawai', 'KK' ]:
+            layout_name = "Kamada-Kawai"
+            positions   = nx.kamada_kawai_layout (G, scale = scale_factor, dim = 2)
         ##
         elif layout in [ 'Spring', 'spring', 'Sp' ]:
             layout_name = "Spring"
@@ -194,9 +193,13 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
             layout_name = "Spectral"
             positions   = nx.spectral_layout (G, scale = scale_factor, dim = 2)
         ##
-        elif layout in [ 'Kamada-Kawai', 'Kamada_Kawai', 'kamda_kawai', 'KK' ]:
-            layout_name = "Kamada-Kawai"
-            positions   = nx.kamada_kawai_layout (G, scale = scale_factor, dim = 2)
+        elif layout in [ 'Circular', 'circular', 'C' ]:
+            layout_name = "Circular"
+            positions   = nx.circular_layout (G, scale = scale_factor, dim = 2)
+        ##
+        elif layout in ['Planar', 'planar', 'P'] :
+            layout_name = "Planar"
+            positions   = nx.planar_layout(G, scale = scale_factor, dim = 2)
         ##
         else:
             print(f"Unknown layout: Multi-partite (default) is used")
@@ -240,12 +243,12 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
 
     ## set node_size
     if node_size is None:
-        node_size = 12
+        node_size = 13
     else:
         try:
             node_size = round(1.2 * node_size/math.log (max_node_count_on_layer), 0)
         except ZeroDivisionError:
-            node_size = 12
+            node_size = 13
     print(f"#node_size: {node_size}")
 
     ## set font name
@@ -278,7 +281,11 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     labels = [ as_label (x, sep = " ") for x in sorted (instances) ]
     if not label_sample_n is None:
         labels = labels[:label_sample_n - 1] + ["…"] + labels[-1]
-    plt.title(f"PatternLattice (layout: {layout_name}) built from\n{labels}")
+    if generalized:
+        title_val = f"Generalized Pattern Lattice (layout: {layout_name}) built from\n{labels}"
+    else:
+        title_val = f"Pattern Lattice (layout: {layout_name}) built from\n{labels}"
+    plt.title(title_val)
     plt.show()
 
 ##
@@ -447,12 +454,13 @@ def normalize_score (x: float, min_val: float = -4, max_val: float = 7) -> float
 class PatternLattice():
     "definition of PatternLattice class"
     ##
-    def __init__ (self, pattern, reflexive: bool = True, track_content: bool = False, generalized: bool = True, check: bool = False):
+    def __init__ (self, pattern, generalized: bool, reflexive: bool = True, track_content: bool = False, check: bool = False):
         "initialization of a PatternLattice"
         if check:
             print(f"pattern.paired: {pattern.paired}")
         ##
         self.origin       = pattern
+        self.generalized  = generalized
         if not pattern.gap_mark is None or not pattern.gap_mark == "":
             self.gap_mark = pattern.gap_mark
         else:
@@ -510,14 +518,17 @@ class PatternLattice():
 
     ##
     #@jit(nopython = True)
-    def merge_lattices (self, other, gen_links: bool, reflexive: bool, use_multiprocess: bool = True, generalized: bool = True, reductive: bool = True, remove_None_containers: bool = False, show_steps: bool = False, check: bool = False):
+    def merge_lattices (self, other, gen_links: bool, reflexive: bool, generalized: bool = True, reductive: bool = True, remove_None_containers: bool = False, show_steps: bool = False, track_content: bool = False, use_multiprocess: bool = True, check: bool = False):
         "takes a pair of PatternLattices and returns its merger"
         ##
         import itertools # This code needs to be externalized under jit
         import os
         ##
+        print(f"#merging pattern lattices ...")
+        ##
         sample_pattern = self.nodes[0]
         gap_mark       = sample_pattern.gap_mark
+        
         ## creates .nodes
         pooled_nodes = self.nodes
         nodes_to_add = other.nodes
@@ -527,6 +538,7 @@ class PatternLattice():
             nodes_to_add = [ node for node in other.nodes if is_None_free (node) ]
         if check:
             print(f"#pooled_nodes [0]: {pooled_nodes}")
+        
         ## adding
         if reductive:
             for node in nodes_to_add:
@@ -537,6 +549,7 @@ class PatternLattice():
             pooled_nodes += nodes_to_add
         if check:
             print(f"#pooled_nodes [1]: {pooled_nodes}")
+        
         ## reduce source
         if reductive:
             R = [ ]
@@ -547,11 +560,12 @@ class PatternLattice():
             pooled_nodes = R
             if check:
                 print(f"#pooled_nodes [2]: {pooled_nodes}")
-        ##
         if check:
             print(f"#pooled_nodes [3]: {pooled_nodes}")
+        
         ## multiprocess(ing) version
         if use_multiprocess:
+            print(f"#merger running in multi-process mode")
             import os
             import multiprocess as mp
             cores = max(os.cpu_count(), 1)
@@ -581,24 +595,28 @@ class PatternLattice():
         merged.ranked_nodes = merged.group_by_rank (check = check)
         if check:
             print(f"#merged_ranked_nodes: {merged.ranked_nodes}")
+        
         ## conditionally generates links
         if gen_links:
             merged.links, merged.link_sources, merged.link_targets  = \
-                merged.gen_links (reflexive = reflexive, check = check)
+                merged.gen_links (reflexive = reflexive, track_content = track_content, check = check)
         else:
             merged.links, merged.link_sources, merged.link_targets = [], [], []
         ## return result
-        if show_steps:
-            print(f"#Merger into {len(merged_nodes)} nodes done")
+        if len(merged.links) > 0:
+            if show_steps:
+                print(f"#Merger into {len(merged_nodes)} nodes done")
         return merged
 
     ##
     def gen_links (self, reflexive: bool, track_content: bool = False, reductive: bool = True, check: bool = False):
         "takes a PatternLattice, extracts ranked_nodes, and generates a list of links among them"
         ##
-        G = self.ranked_nodes
+        print(f"#generating links ...")
+        ##
         links = [ ]
         link_sources, link_targets = {}, {}
+        G = self.ranked_nodes
         for rank in sorted (G.keys()):
             if check:
                 print(f"#rank: {rank}")
@@ -634,7 +652,7 @@ class PatternLattice():
                         if l_form == r_form:
                             continue
                         elif r.instantiates_or_not (l, check = check):
-                            print(f"#instantiate {l.form} to {r.form}")
+                            print(f"#instantiate: {l.form} to {r.form}")
                             link = PatternLink([l, r])
                             ##
                             if not link in links:
@@ -738,12 +756,15 @@ class PatternLattice():
         return ranked_links
 
     ##
-    def update_links (self, reflexive: bool, check: bool = False):
+    def update_links (self, reflexive: bool = True, track_content: bool = False, reductive: bool = True, check: bool = False):
         "update links"
-        L = self.gen_links (reflexive = reflexive, check = check)
+        L, L_sources, L_targets = self.gen_links (reflexive = reflexive, track_content = track_content, reductive = reductive, check = check)
         if check:
             print(f"#L (in update): {L}")
+        ##
         self.links = L
+        self.link_sources = L_sources
+        self.link_targets = L_targets
         return self
 
     ##
@@ -752,7 +773,8 @@ class PatternLattice():
         draw a lattice digrams from a given PatternLattice L by extracting L.links
         """
         ##
-        links = self.links
+        generalized = self.generalized
+        links       = self.links
         if check:
             print(f"#links: {links}")
         ##
@@ -768,11 +790,11 @@ class PatternLattice():
             zscores = self.target_zscores
         if check:
             i = 0
-            for k, v in zscores.items():
+            for node, v in zscores.items():
                 i += 1
-                print(f"node {i} {k} has z-score {v:.5f}")
+                print(f"node {i:4d} {node} has z-score {v:.5f}")
 
         ## draw PatternLattice
-        draw_network (ranked_links.items(), layout = layout, fig_size = fig_size, auto_fig_sizing = auto_fig_sizing, node_size = node_size, zscores = zscores, zscore_lowerbound = zscore_lowerbound, scale_factor = scale_factor, font_name = font_name, check = check)
+        draw_network (ranked_links.items(), generalized = generalized, layout = layout, fig_size = fig_size, auto_fig_sizing = auto_fig_sizing, node_size = node_size, zscores = zscores, zscore_lowerbound = zscore_lowerbound, scale_factor = scale_factor, font_name = font_name, check = check)
 
 ### end of file
