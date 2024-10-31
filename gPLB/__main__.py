@@ -94,8 +94,8 @@ if not layout is None:
     draw_diagrams       = True
 zscores_from_sources    = not zscores_from_targets
 
-## settings
-draw_inspection  = True
+## inspection paramters
+draw_inspection         = False
 
 ## show paramters
 print(f"##Parameters")
