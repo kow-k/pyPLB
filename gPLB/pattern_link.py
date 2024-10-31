@@ -10,7 +10,7 @@ except ImportError:
 
 ## Functions
 ##
-def make_PatternLinks_ranked(L, check: bool = False):
+def make_PatternLinks_ranked (L, check: bool = False):
     "takes a lis to PatternLinks and returns a dictionary of {rank: [link1, link2, ...]}"
     ranked_links = {}
     for link in L:
@@ -24,6 +24,7 @@ def make_PatternLinks_ranked(L, check: bool = False):
     return ranked_links
 
 ### Classes
+
 ##
 class PatternLink:
     "definition of PatternLink class"
@@ -40,7 +41,7 @@ class PatternLink:
         self.gap_mark        = left.gap_mark
 
     ##
-    def __len__(self):
+    def __len__ (self):
         #assert len(self.left) == len(self.right)
         assert len(self.left) >= len(self.right)
         return max(len(self.left), len(self.right))
@@ -57,17 +58,18 @@ class PatternLink:
     ##
     def get_link_rank (self) -> int:
         "takes a PatternLink and returns the rank of it"
-        left, right = self.left, self.right
-        gap_mark    = self.gap_mark
+        left, right  = self.left, self.right
+        gap_mark     = self.gap_mark
         #assert len(left) == len(right)
         assert len(left) >= len(right)
         form = left.form
         #form = right.form
         return len([ x for x in form if x != gap_mark ])
+        ## The following turned out to be offensive.
         #return min(count_items (left.form, gap_mark), count_items (right.form, gap_mark))
 
     ##
-    def print (self, indicator = None, link_type = None, condition = None , paired: bool = False, check: bool = False) -> None:
+    def pprint (self, indicator = None, link_type = None, condition = None , paired: bool = False, check: bool = False) -> None:
         """
         prints the content of PatternLink object.
         condition can be a lambda expression used to filter.
@@ -86,9 +88,9 @@ class PatternLink:
         if link_type is None:
             link_type = self.link_type
         if link_type in [ "instantiates", "instantiation", "is-a", "instance-of" ]:
-            arrow = "<--"
-        elif link_type in [ "schematizes", "schematization", "part-of", "has-a" ]:
             arrow = "-->"
+        elif link_type in [ "schematizes", "schematization", "part-of", "has-a" ]:
+            arrow = "<--"
         else:
             arrow = "<-->"
         ##
