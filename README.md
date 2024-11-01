@@ -63,6 +63,9 @@ The following graph is a sample of Pattern Lattice generated from [XiY-wiper3-du
 
 ![XiY-wiper3-dual](graphs/pl-XiY-wiper3-dual.png){width=100}
 
+## gPLB-runner-on-bare-items (Jupyter Notebook)
+
+[gPLB-runner-on-bare-items.ipynb](gPLB-runner-on-bare-items.ipynb) is a Jupyter Notebook that runs gPLB interactively. The difference from the Jupyter Notebook above is that this accepts bare, unsegmented words as input. You can select a subset of words in an input file using regex. Since this script builds a merged lattice gradually, it is able to accept more instances and even longer instances without falling into memory-runout error. If you change field separator to r"[,;:]?\s*", you can process raw sentences as input.
 
 ## Information
 
