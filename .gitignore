@@ -99,8 +99,10 @@ docs/_build/
 target/
 
 # Jupyter Notebook
+*.ipynb
 .ipynb_checkpoints
 !gPLB-runner.ipynb
+!gPLB-runner-on-bare-items.ipynb
 !plb-tester.ipynb
 
 # IPython
