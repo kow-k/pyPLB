@@ -1,6 +1,7 @@
 # Personal files and directories
 *.html
 *.txt
+*.zip
 dots/
 figs/
 outdated/
