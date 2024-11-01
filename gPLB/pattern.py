@@ -35,7 +35,7 @@ def content_is_None_free (p: list) -> bool:
     return attr_is_None_free (p, "content")
 
 ##
-def is_None_free (p: list) -> bool:
+def pattern_is_None_free (p: list) -> bool:
     "tests if pattern p has no None in form and no None in content"
     if not form_is_None_free (p):
         return False
@@ -43,6 +43,10 @@ def is_None_free (p: list) -> bool:
         return False
     ## other cases
     return True
+
+def pattern_is_None_free (p):
+    "exists for compatibility check"
+    pass
 
 ##
 def get_rank_of_list (L, gap_mark: str):
@@ -129,6 +133,7 @@ def pattern_merger (form_pairs: list, content_pairs: list, gap_mark: str, bounda
                 return None
     ## Cruially, list(...)
     new_paired  = [ (F, C) for F, C in list(zip(new_form, new_content)) ]
+    #yield new_paired # fails
     return new_paired
 
 ##
@@ -504,15 +509,17 @@ class Pattern:
     ##
     def merge_patterns (self, other, reduction: bool = True, check: bool = False):
         "take a pair of Patterns, merges one Pattern with another"
+
         if check:
             print(f"#=====================")
             print(f"#self: {self}")
             print(f"#other: {other}")
+
         ## prevents void operation
         #if self.form_hash == other.form_hash:
         if self.form == other.form:
             return self
-        
+
         ## main
         gap_mark       = self.gap_mark
         boundary_mark  = self.boundary_mark
@@ -531,6 +538,7 @@ class Pattern:
         new.paired = new_paired
         new.update_form()
         new.update_content()
+        #yield new # fails
         return new
 
 ### end of file

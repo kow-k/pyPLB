@@ -24,7 +24,7 @@ except ImportError:
 ### Functions
 
 ##
-def draw_network (D: dict, layout: str, generalized: bool, fig_size: tuple = None, auto_fig_sizing: bool = False, label_size: int = None, label_sample_n: int = None, node_size: int = None, zscores: dict = None, zscore_lowerbound = None, scale_factor: float = 3, font_name: str = None, test: bool = False, use_pyGraphviz: bool = False, use_directed_graph: bool = True, reverse_direction: bool = False, check: bool = False) -> None:
+def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing: bool = False, label_size: int = None, label_sample_n: int = None, node_size: int = None, zscores: dict = None, use_robust_zscore: bool = False, zscore_lowerbound = None, zscore_upperbound = None, scale_factor: float = 3, font_name: str = None, generalized: bool = True, test: bool = False, use_pyGraphviz: bool = False, use_directed_graph: bool = True, reverse_direction: bool = False, check: bool = False) -> None:
     "draw layered graph under multi-partite setting"
     ##
     import networkx as nx
@@ -54,11 +54,11 @@ def draw_network (D: dict, layout: str, generalized: bool, fig_size: tuple = Non
             ## process nodes
             gap_mark      = link.gap_mark
             node1, node2  = link.form_paired
-            
+
             ## convert lists to tuples to use them as hash keys
             node1 = as_tuple (node1)
             node2 = as_tuple (node2)
-            
+
             ## assign z-scores
             try:
                 node1_zscore = zscores[node1]
@@ -68,9 +68,66 @@ def draw_network (D: dict, layout: str, generalized: bool, fig_size: tuple = Non
                 node2_zscore = zscores[node2]
             except KeyError:
                 node2_zscore = 0
-            
+
             ## add nodes
-            if not zscore_lowerbound is None:
+            ## when lowerbound and upperbound z-score pruning is applied
+            if zscore_upperbound is not None and zscore_lowerbound is not None: # z-score pruning applied
+                ## node1
+                if node1_zscore >= zscore_lowerbound and node1_zscore <= zscore_upperbound and not node1 in L:
+                    L.append (node1)
+                else:
+                    print(f"pruned node {node1} with z-score {node1_zscore: 0.4f}")
+                    pruned_node_count += 1
+                ## node2
+                if node2_zscore >= zscore_lowerbound and node2_zscore <= zscore_upperbound and get_rank_of_list (node2, gap_mark) == rank and not node2 in R:
+                    R.append (node2)
+                elif node2_zscore >= zscore_lowerbound and node2_zscore <= zscore_upperbound and not node2 in L:
+                    R.append (node2)
+                else:
+                    print(f"pruned node {node2} with z-score {node2_zscore: 0.4f}")
+                    pruned_node_count += 1
+                ## register instance nodes
+                if count_items (node2, gap_mark) == 0 and node2 not in instances:
+                    instances.append (node2)
+                ## process edges
+                if node1_zscore >= zscore_lowerbound and node1_zscore <= zscore_upperbound and node2_zscore >= zscore_lowerbound and node2_zscore <= zscore_upperbound:
+                    edge = (node1, node2)
+                    #edge = (node2, node1)
+                try:
+                    if edge and not edge in E:
+                        E.append (edge)
+                except UnboundLocalError:
+                    pass
+            ## when upperbound z-score pruning is applied
+            elif not zscore_upperbound is None: # z-score pruning applied
+                ## node1
+                if node1_zscore <= zscore_upperbound and not node1 in L:
+                    L.append (node1)
+                else:
+                    print(f"pruned node {node1} with z-score {node1_zscore: 0.4f}")
+                    pruned_node_count += 1
+                ## node2
+                if node2_zscore <= zscore_upperbound and get_rank_of_list (node2, gap_mark) == rank and not node2 in R:
+                    R.append (node2)
+                elif node2_zscore <= zscore_upperbound and not node2 in L:
+                    R.append (node2)
+                else:
+                    print(f"pruned node {node2} with z-score {node2_zscore: 0.4f}")
+                    pruned_node_count += 1
+                ## register instance nodes
+                if count_items (node2, gap_mark) == 0 and node2 not in instances:
+                    instances.append (node2)
+                ## process edges
+                if node1_zscore <= zscore_upperbound and node2_zscore <= zscore_upperbound:
+                    edge = (node1, node2)
+                    #edge = (node2, node1)
+                try:
+                    if edge and not edge in E:
+                        E.append (edge)
+                except UnboundLocalError:
+                    pass
+            ## when lowerbound z-score pruning is applied
+            elif not zscore_lowerbound is None: # z-score pruning applied
                 ## node1
                 if node1_zscore >= zscore_lowerbound and not node1 in L:
                     L.append (node1)
@@ -97,6 +154,7 @@ def draw_network (D: dict, layout: str, generalized: bool, fig_size: tuple = Non
                         E.append (edge)
                 except UnboundLocalError:
                     pass
+            ## when z-score pruning not applied
             else:
                 ## node1
                 if not node1 in L:
@@ -116,6 +174,7 @@ def draw_network (D: dict, layout: str, generalized: bool, fig_size: tuple = Non
                     #edge = (node2, node1)
                 if edge and not edge in E:
                     E.append (edge)
+
         ## populates nodes for G
         ## forward rank scan = rank increments
         #G.add_nodes_from (L, rank = rank)
@@ -123,12 +182,17 @@ def draw_network (D: dict, layout: str, generalized: bool, fig_size: tuple = Non
         ## backward rank scan = rank decrements
         G.add_nodes_from (R, rank = (rank_max - rank - 1))
         G.add_nodes_from (L, rank = (rank_max - rank))
+
         ## populates edges for G
         G.add_edges_from (E)
-        #
+
+        ## update node_counts_by_layers
         node_counts_by_layers.append (len(R))
+
+    ## post-process for z-score pruning
     print(f"#pruned {pruned_node_count} nodes")
-    ##
+
+    ## post-process for max_node_count_by_layers
     max_node_count_on_layer = max(node_counts_by_layers)
 
     ## node color setting
@@ -139,7 +203,7 @@ def draw_network (D: dict, layout: str, generalized: bool, fig_size: tuple = Non
             z_value = zscores[node_as_tuple]
             if check:
                 print(f"#z_value: {z_value: 0.4f}")
-            z_normalized = normalize_score(z_value)
+            z_normalized = normalize_score(z_value, use_robust_zscore = use_robust_zscore)
             if check:
                 print(f"#z_normalized: {z_normalized: 0.4f}")
             values_for_color.append (z_normalized)
@@ -202,7 +266,7 @@ def draw_network (D: dict, layout: str, generalized: bool, fig_size: tuple = Non
             positions   = nx.planar_layout(G, scale = scale_factor, dim = 2)
         ##
         else:
-            print(f"Unknown layout: Multi-partite (default) is used")
+            print(f"Layout is unknown: Multi-partite (default) is used")
             layout_name = "Multi-partite"
             positions   = nx.multipartite_layout (G, subset_key = "rank", scale = -1)
 
@@ -218,7 +282,8 @@ def draw_network (D: dict, layout: str, generalized: bool, fig_size: tuple = Non
         fig_size_local = fig_size
     else:
         if auto_fig_sizing:
-            fig_size_local = (round(2.5 * len(D), 0), round(0.2 * max_node_count_on_layer, 0))
+            fig_size_local = \
+                (round(2.5 * len(D), 0), round(0.2 * max_node_count_on_layer, 0))
         else:
             pass
     try:
@@ -233,22 +298,22 @@ def draw_network (D: dict, layout: str, generalized: bool, fig_size: tuple = Non
             try:
                 font_size = round(label_size/1.5 * math.log (max_node_count_on_layer), 0)
             except (ZeroDivisionError, TypeError):
-                font_size = 8
+                font_size = 7
     else:
         if not label_size is None:
             font_size = label_size
         else:
-            font_size = 8
+            font_size = 7
     print(f"#font_size: {font_size}")
 
     ## set node_size
     if node_size is None:
-        node_size = 13
+        node_size = 12
     else:
         try:
-            node_size = round(1.2 * node_size/math.log (max_node_count_on_layer), 0)
+            node_size = round (1.2 * node_size/math.log (max_node_count_on_layer), 0)
         except ZeroDivisionError:
-            node_size = 13
+            node_size = 12
     print(f"#node_size: {node_size}")
 
     ## set font name
@@ -263,7 +328,7 @@ def draw_network (D: dict, layout: str, generalized: bool, fig_size: tuple = Non
     ## revserse the arrows
     if use_directed_graph and reverse_direction:
         G = G.reverse(copy = False) # offensive?
-        
+
     ## finally draw
     nx.draw_networkx (G, positions,
         font_family = font_family,
@@ -276,16 +341,24 @@ def draw_network (D: dict, layout: str, generalized: bool, fig_size: tuple = Non
         arrows = True, connectionstyle = connectionstyle,
     )
 
-    ### set title
     ## set labels used in title
     labels = [ as_label (x, sep = " ") for x in sorted (instances) ]
     if not label_sample_n is None:
         labels = labels[:label_sample_n - 1] + ["…"] + labels[-1]
+
+    ### set title
     if generalized:
-        title_val = f"Generalized Pattern Lattice (layout: {layout_name}) built from\n{labels}"
+        if use_robust_zscore:
+            title_val = f"Generalized Pattern Lattice (layout: {layout_name}; z-scores: robust) built from\n{labels}"
+        else:
+            title_val = f"Generalized Pattern Lattice (layout: {layout_name}; z-scores: normal) built from\n{labels}"
     else:
-        title_val = f"Pattern Lattice (layout: {layout_name}) built from\n{labels}"
+        if use_robust_zscore:
+            title_val = f"Pattern Lattice (layout: {layout_name}; z-scores: robust) built from\n{labels}"
+        else:
+            title_val = f"Pattern Lattice (layout: {layout_name}; z-scores: normal) built from\n{labels}"
     plt.title(title_val)
+    ##
     plt.show()
 
 ##
@@ -301,7 +374,7 @@ def make_ranked_dict (L: list, gap_mark: str) -> dict:
 ##
 def merge_patterns_and_filter (A, B, check = False):
     C = A.merge_patterns (B, check = check)
-    if not C is None and is_None_free (C):
+    if not C is None and form_is_None_free (C):
         return C
 
 ##
@@ -443,10 +516,12 @@ def calc_zscore_old (value: float, average_val: float, stdev_val: float) -> floa
         return (value - average_val) / stdev_val
 
 ##
-def normalize_score (x: float, min_val: float = -4, max_val: float = 7) -> float:
+def normalize_score (x: float, use_robust_zscore: bool = False, min_val: float = -3, max_val: float = 7) -> float:
     "takes a value in the range of min, max and returns its normalized value"
     ##
     import matplotlib.colors as colors
+    if use_robust_zscore:
+        max_val = round (1.5 * max_val, 0)
     normalizer = colors.Normalize(vmin = min_val, vmax = max_val)
     return normalizer(x)
 
@@ -528,17 +603,17 @@ class PatternLattice():
         ##
         sample_pattern = self.nodes[0]
         gap_mark       = sample_pattern.gap_mark
-        
+
         ## creates .nodes
         pooled_nodes = self.nodes
         nodes_to_add = other.nodes
         ## remove None-containers
         if remove_None_containers:
-            pooled_nodes = [ node for node in pooled_nodes if is_None_free (node) ]
-            nodes_to_add = [ node for node in other.nodes if is_None_free (node) ]
+            pooled_nodes = [ node for node in pooled_nodes if form_is_None_free (node) ]
+            nodes_to_add = [ node for node in other.nodes if form_is_None_free (node) ]
         if check:
             print(f"#pooled_nodes [0]: {pooled_nodes}")
-        
+
         ## adding
         if reductive:
             for node in nodes_to_add:
@@ -549,7 +624,7 @@ class PatternLattice():
             pooled_nodes += nodes_to_add
         if check:
             print(f"#pooled_nodes [1]: {pooled_nodes}")
-        
+
         ## reduce source
         if reductive:
             R = [ ]
@@ -562,7 +637,7 @@ class PatternLattice():
                 print(f"#pooled_nodes [2]: {pooled_nodes}")
         if check:
             print(f"#pooled_nodes [3]: {pooled_nodes}")
-        
+
         ## multiprocess(ing) version
         if use_multiprocess:
             print(f"#merger running in multi-process mode")
@@ -582,8 +657,8 @@ class PatternLattice():
             for A, B in itertools.combinations (pooled_nodes, 2):
                 C = A.merge_patterns (B, check = False)
                 ## The following fails unless Pattern.__eq__ is redefined
-                #if not C in merged_nodes: # This fails.
-                if is_None_free (C) and not C in merged_nodes:
+                #if form_is_None_free (C) and not C in merged_nodes:
+                if not C in merged_nodes: # This fails => worsk after supressing None
                     merged_nodes.append(C)
         if check:
             print(f"#merged_nodes: {merged_nodes}")
@@ -595,7 +670,7 @@ class PatternLattice():
         merged.ranked_nodes = merged.group_by_rank (check = check)
         if check:
             print(f"#merged_ranked_nodes: {merged.ranked_nodes}")
-        
+
         ## conditionally generates links
         if gen_links:
             merged.links, merged.link_sources, merged.link_targets  = \
@@ -771,12 +846,12 @@ class PatternLattice():
         return self
 
     ##
-    def draw_diagrams (self, layout: str = None, zscores_from_sources: bool = True, auto_fig_sizing: bool = False, zscore_lowerbound: float = None, scale_factor: float = 3, fig_size: tuple = None, label_size: int = None, label_sample_n: int = None, node_size: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
+    def draw_diagrams (self, generalized: bool, layout: str = None, zscores_from_sources: bool = True, auto_fig_sizing: bool = False, zscore_lowerbound: float = None, zscore_upperbound: float = None, use_robust_zscore: bool = False, scale_factor: float = 3, fig_size: tuple = None, label_size: int = None, label_sample_n: int = None, node_size: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
         """
         draw a lattice digrams from a given PatternLattice L by extracting L.links
         """
         ##
-        generalized = self.generalized
+        #generalized = self.generalized
         links       = self.links
         if check:
             print(f"#links: {links}")
@@ -798,6 +873,6 @@ class PatternLattice():
                 print(f"node {i:4d} {node} has z-score {v:.5f}")
 
         ## draw PatternLattice
-        draw_network (ranked_links.items(), generalized = generalized, layout = layout, fig_size = fig_size, auto_fig_sizing = auto_fig_sizing, node_size = node_size, zscores = zscores, zscore_lowerbound = zscore_lowerbound, scale_factor = scale_factor, font_name = font_name, check = check)
+        draw_network (ranked_links.items(), generalized = generalized, layout = layout, fig_size = fig_size, auto_fig_sizing = auto_fig_sizing, node_size = node_size, scale_factor = scale_factor, font_name = font_name, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lowerbound = zscore_lowerbound, zscore_upperbound = zscore_upperbound, check = check)
 
 ### end of file

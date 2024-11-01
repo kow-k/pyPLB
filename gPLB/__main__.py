@@ -11,7 +11,7 @@ developed by Kow Kuroda
 "Generalized" means that a pattern lattice build from [a, b, c] includes [_, a, b, c], [a, b, c, _] and [_, a, b, c, _]. This makes gPLB different from RubyPLB (rubyplb) developed by Yoichoro Hasebe and Kow Kuroda, available at <https://github.com/yohasebe/rubyplb>.
 
 created on 2024/09/24
-modified on 2024/09/25, 28, 29, 30; 10/01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 12, 15, 16, 17, 18, 19, 20, 21, 23, 24, 30, 31
+modified on 2024/09/25, 28, 29, 30; 10/01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 12, 15, 16, 17, 18, 19, 20, 21, 23, 24, 30, 31; 11/01
 
 modification history
 2024/10/11 fixed a bug in instantiates(), added make_R_reflexive
@@ -25,6 +25,7 @@ modification history
 2024/10/23 implemented robust z-score, experimented hash-based comparison, fixed wrong layering of some nodes
 2024/10/24 fixed a bug in pattern sizing that result improper alignment of some patterns
 2024/10/31 fixed a bug in multiparite layout; implemented content tracking on variables in a pattern
+2024/11/01 implemented upperbound of z-score pruning of lattice nodes
 """
 
 #
@@ -38,7 +39,7 @@ import random
 ##
 from utils import *
 from pattern import *
-from pattern import *
+from pattern_link import *
 from pattern_lattice import *
 
 ## settings
@@ -48,7 +49,7 @@ parser.add_argument('file', type= open, default= None)
 parser.add_argument('-P', '--phrasal', action= 'store_true', default= False)
 parser.add_argument('-v', '--verbose', action= 'store_true', default= False)
 parser.add_argument('-w', '--detailed', action= 'store_true', default= False)
-parser.add_argument('-s', '--input_field_sep', type= str, default= ',')
+parser.add_argument('-f', '--input_field_sep', type= str, default= ',')
 parser.add_argument('-c', '--input_comment_escape', type= str, default= '#')
 parser.add_argument('-g', '--gap_mark', type= str, default= '_')
 parser.add_argument('-R', '--unreflexive', action= 'store_false', default= True)
@@ -57,7 +58,8 @@ parser.add_argument('-m', '--max_size', type= int, default= None)
 parser.add_argument('-n', '--sample_n', type= int, default= 3)
 parser.add_argument('-S', '--sample_id', type= int, default= 1)
 parser.add_argument('-F', '--scaling_factor', type= float, default= 5)
-parser.add_argument('-z', '--zscore_lowerbound', type= float, default= None)
+parser.add_argument('-z', '-zl', '--zscore_lowerbound', type= float, default= None)
+parser.add_argument('-zu', '--zscore_upperbound', type= float, default= None)
 parser.add_argument('-Z', '--use_robust_zscore', action='store_true', default= False)
 parser.add_argument('-T', '--zscores_from_targets', action='store_true', default= False)
 parser.add_argument('-D', '--draw_diagrams', action= 'store_false', default = True)
@@ -71,26 +73,29 @@ file                    = args.file   # process a file when it exists
 phrasal                 = args.phrasal
 verbose                 = args.verbose
 detailed                = args.detailed
+input_field_sep         = args.input_field_sep
+input_comment_escape    = args.input_comment_escape
+gap_mark                = args.gap_mark
 max_size                = args.max_size
 sample_id               = args.sample_id
 sample_n                = args.sample_n
 generalized             = args.generalized
-gap_mark                = args.gap_mark
-input_field_sep         = args.input_field_sep
-input_comment_escape    = args.input_comment_escape
 reflexive               = args.unreflexive
 draw_diagrams           = args.draw_diagrams
 layout                  = args.layout
 auto_fig_sizing         = args.auto_fig_sizing
 zscore_lowerbound       = args.zscore_lowerbound
+zscore_upperbound       = args.zscore_upperbound
 use_robust_zscore       = args.use_robust_zscore
 zscores_from_targets    = args.zscores_from_targets
 scale_factor            = args.scaling_factor
 use_multibyte_chars     = args.use_multibyte_chars
 
-## implications
+### implications
+# diagram drawing
 if not layout is None:
     draw_diagrams       = True
+## z-scores handling
 zscores_from_sources    = not zscores_from_targets
 
 ## inspection paramters
@@ -107,12 +112,14 @@ print(f"#verbose: {verbose}")
 print(f"#detailed: {detailed}")
 print(f"#input_field_sep: {input_field_sep}")
 print(f"#input_comment_escape: {input_comment_escape}")
-print(f"#gap_mark: {gap_mark}")
 print(f"#lattice is generalized: {generalized}")
 print(f"#instantiation is reflexive: {reflexive}")
-print(f"#use_robust_zscore: {use_robust_zscore}")
-print(f"#zscores_from_targets: {zscores_from_targets}")
+print(f"#gap_mark: {gap_mark}")
 print(f"#draw_diagrams: {draw_diagrams}")
+print(f"#use_robust_zscore: {use_robust_zscore}")
+print(f"#zscore_lowerbound: {zscore_lowerbound}")
+print(f"#zscore_upperbound: {zscore_upperbound}")
+print(f"#zscores_from_targets: {zscores_from_targets}")
 print(f"#mp_inspection: {mp_inspection}")
 
 ### Functions
@@ -221,9 +228,10 @@ if use_multibyte_chars:
 else:
     multibyte_font_name = None
     matplotlib.rcParams['font.family'] = "Sans-serif"
-##
+## check font settings
 print(f"multibyte_font_name: {multibyte_font_name}")
 print(f"matplotlib.rcParams['font.family']: {matplotlib.rcParams['font.family']}")
+
 ## generating patterns
 Patterns = [ ]
 for s in S:
@@ -244,36 +252,36 @@ for i, pat in enumerate(Patterns):
 ##
 #exit()
 ##
-print(f"##Generating PatternLattices ...")
+print(f"##Generating (generalized) pattern lattices ...")
 L = [ ]
 for i, p in enumerate(Patterns):
     print(f"#generating PatternLattice {i+1} from {p}")
     ## main
-    patlat = PatternLattice(p, reflexive = reflexive, generalized = generalized, check = False)
+    patlat = PatternLattice (p, reflexive = reflexive, generalized = generalized, check = False)
     if detailed:
         pp.pprint(patlat)
     ##
     if verbose:
         print(f"#patlat.origin: {patlat.origin}")
         if detailed:
-            pp.pprint(patlat.origin)
+            pp.pprint (patlat.origin)
     ##
     if verbose:
         print(f"#patlat.nodes; count: {len(patlat.nodes)}")
         if detailed:
-            pp.pprint(patlat.nodes)
+            pp.pprint (patlat.nodes)
     ##
     if verbose:
         print(f"#patlat.ranked_nodes; count: {len(patlat.ranked_nodes)}")
         if detailed:
-            pp.pprint(patlat.ranked_nodes)
+            pp.pprint (patlat.ranked_nodes)
     ##
     if verbose:
         print(f"#patlat.links; count: {len(patlat.links)}")
         if detailed:
-            pp.pprint(patlat.links)
+            pp.pprint (patlat.links)
     ##
-    L.append(patlat)
+    L.append (patlat)
 ##
 #exit()
 ##
@@ -287,8 +295,8 @@ if detailed:
 if draw_diagrams and verbose:
     print(f"##Drawing diagrams")
     for i, patlat in enumerate(L):
-        print(f"#drawing diagram from: PatternLattice {i+1}")
-        patlat.draw_diagrams (layout = layout, font_name = multibyte_font_name, auto_fig_sizing = auto_fig_sizing, scale_factor = scale_factor, check = draw_inspection)
+        print(f"#drawing diagram from PatternLattice {i+1}")
+        patlat.draw_diagrams (layout = layout, generalized = generalized, auto_fig_sizing = auto_fig_sizing, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
 ##
 #exit()
 ##
@@ -384,6 +392,6 @@ if verbose:
 ## draw diagram of M
 if draw_diagrams:
     print(f"#Drawing a diagram from the merged lattice")
-    M.draw_diagrams (layout = layout, auto_fig_sizing = auto_fig_sizing, zscore_lowerbound = zscore_lowerbound, font_name = multibyte_font_name, zscores_from_sources = zscores_from_sources, scale_factor = scale_factor, check = draw_inspection)
+    M.draw_diagrams (layout = layout, generalized = generalized, auto_fig_sizing = auto_fig_sizing, use_robust_zscore = use_robust_zscore, zscore_lowerbound = zscore_lowerbound, zscore_upperbound = zscore_upperbound, font_name = multibyte_font_name, zscores_from_sources = zscores_from_sources, scale_factor = scale_factor, check = draw_inspection)
 
 ### end of file
