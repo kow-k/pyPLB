@@ -516,14 +516,16 @@ def calc_zscore_old (value: float, average_val: float, stdev_val: float) -> floa
         return (value - average_val) / stdev_val
 
 ##
-def normalize_score (x: float, use_robust_zscore: bool = False, min_val: float = -3, max_val: float = 7) -> float:
+def normalize_score (x: float, use_robust_zscore: bool = False, min_val: float = -3, max_val: float = 5) -> float:
     "takes a value in the range of min, max and returns its normalized value"
     ##
     import matplotlib.colors as colors
+    ## re-base when robust z-score is used
     if use_robust_zscore:
-        max_val = round (1.5 * max_val, 0)
-    normalizer = colors.Normalize(vmin = min_val, vmax = max_val)
-    return normalizer(x)
+        max_val = round (1.3 * max_val, 0)
+    ##
+    normalizer = colors.Normalize (vmin = min_val, vmax = max_val)
+    return normalizer (x)
 
 ##
 class PatternLattice():
