@@ -252,7 +252,7 @@ for i, pat in enumerate(Patterns):
 ##
 #exit()
 ##
-print(f"##Generating (generalized) pattern lattices ...")
+print(f"##Generating (generalized) PatternLattices ...")
 L = [ ]
 for i, p in enumerate(Patterns):
     print(f"#generating PatternLattice {i+1} from {p}")
@@ -312,7 +312,7 @@ if simplified:
     M = La.merge_lattices (Lb, show_steps = True, check = False)
 else:
     gen_links_internally = False
-    M = functools.reduce (lambda La, Lb: La.merge_lattices (Lb, gen_links = gen_links_internally, use_multiprocess = use_mp, reflexive = reflexive, show_steps = True, check = False), L)
+    M = functools.reduce (lambda La, Lb: La.merge_lattices (Lb, gen_links_internally = gen_links_internally, use_multiprocess = use_mp, reflexive = reflexive, show_steps = True, check = False), L)
     # The following process was isolated for speeding up
     if len(M.links) == 0 and not gen_links_internally:
         print(f"#Generating links independently")

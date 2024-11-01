@@ -337,26 +337,27 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
         min_source_margin = 6, min_target_margin = 6,
         font_size = font_size, node_size = node_size,
         node_color = values_for_color, cmap = my_cmap,
-        edge_color = 'gray', width = 0.2, arrowsize = 7,
+        edge_color = 'gray', width = 0.1, arrowsize = 6,
         arrows = True, connectionstyle = connectionstyle,
     )
 
     ## set labels used in title
     labels = [ as_label (x, sep = " ") for x in sorted (instances) ]
-    if not label_sample_n is None:
+    if label_sample_n is not None:
         labels = labels[:label_sample_n - 1] + ["…"] + labels[-1]
+    print(f"#labels: {labels}")
 
     ### set title
     if generalized:
         if use_robust_zscore:
-            title_val = f"Generalized Pattern Lattice (layout: {layout_name}; z-scores: robust) built from\n{labels}"
+            title_val = f"gPatternLattice (layout: {layout_name}; robust z-scores: {zscore_lowerbound} – {zscore_upperbound}) built from\n{labels}"
         else:
-            title_val = f"Generalized Pattern Lattice (layout: {layout_name}; z-scores: normal) built from\n{labels}"
+            title_val = f"gPatternLattice (layout: {layout_name}; normal z-scores: {zscore_lowerbound} – {zscore_upperbound}) built from\n{labels}"
     else:
         if use_robust_zscore:
-            title_val = f"Pattern Lattice (layout: {layout_name}; z-scores: robust) built from\n{labels}"
+            title_val = f"PatternLattice (layout: {layout_name}; robust z-scores: {zscore_lowerbound} – {zscore_upperbound}) built from\n{labels}"
         else:
-            title_val = f"Pattern Lattice (layout: {layout_name}; z-scores: normal) built from\n{labels}"
+            title_val = f"PatternLattice (layout: {layout_name}; normal z-scores: {zscore_lowerbound} – {zscore_upperbound}) built from\n{labels}"
     plt.title(title_val)
     ##
     plt.show()
@@ -373,9 +374,12 @@ def make_ranked_dict (L: list, gap_mark: str) -> dict:
 
 ##
 def merge_patterns_and_filter (A, B, check = False):
-    C = A.merge_patterns (B, check = check)
-    if not C is None and form_is_None_free (C):
-        return C
+    return A.merge_patterns (B, check = check)
+    #C = A.merge_patterns (B, check = check)
+    #return C
+    #if not C is None and form_is_None_free (C):
+    #    #yield C # fails
+    #    return C
 
 ##
 def mp_gen_links_main (links, link_souces, link_targets, x, check: bool = False):
@@ -595,7 +599,7 @@ class PatternLattice():
 
     ##
     #@jit(nopython = True)
-    def merge_lattices (self, other, gen_links: bool, reflexive: bool, generalized: bool = True, reductive: bool = True, remove_None_containers: bool = False, show_steps: bool = False, use_multiprocess: bool = True, check: bool = False):
+    def merge_lattices (self, other, gen_links_internally: bool, reflexive: bool, generalized: bool = True, reductive: bool = True, remove_None_containers: bool = False, show_steps: bool = False, use_multiprocess: bool = True, check: bool = False):
         "takes a pair of PatternLattices and returns its merger"
         ##
         import itertools # This code needs to be externalized under jit
@@ -642,7 +646,7 @@ class PatternLattice():
 
         ## multiprocess(ing) version
         if use_multiprocess:
-            print(f"#merger running in multi-process mode")
+            print(f"#running in multi-processing mode")
             import os
             import multiprocess as mp
             cores = max(os.cpu_count(), 1)
@@ -674,7 +678,7 @@ class PatternLattice():
             print(f"#merged_ranked_nodes: {merged.ranked_nodes}")
 
         ## conditionally generates links
-        if gen_links:
+        if gen_links_internally:
             merged.links, merged.link_sources, merged.link_targets  = \
                 merged.gen_links (reflexive = reflexive, check = check)
         else:
@@ -683,6 +687,8 @@ class PatternLattice():
         if len(merged.links) > 0:
             if show_steps:
                 print(f"#Merger into {len(merged_nodes)} nodes done")
+        ## return result
+        #yield merged # fails
         return merged
 
     ## not properly implemented yet
@@ -720,7 +726,8 @@ class PatternLattice():
     def gen_links (self, reflexive: bool, reductive: bool = True, check: bool = False):
         "takes a PatternLattice, extracts ranked_nodes, and generates a list of links among them"
         ##
-        print(f"#generating links ...")
+        if check:
+            print(f"#generating links ...")
         ##
         links = [ ]
         link_sources, link_targets = {}, {}
@@ -782,7 +789,7 @@ class PatternLattice():
         #links = list(filter(None, links))
         ##
         return links, link_sources, link_targets
-
+        #yield links, link_sources, link_targets
 
     ##
     def gen_ranked_links (self, reflexive: bool, reductive: bool = True, check: bool = False):
@@ -875,6 +882,6 @@ class PatternLattice():
                 print(f"node {i:4d} {node} has z-score {v:.5f}")
 
         ## draw PatternLattice
-        draw_network (ranked_links.items(), generalized = generalized, layout = layout, fig_size = fig_size, auto_fig_sizing = auto_fig_sizing, node_size = node_size, scale_factor = scale_factor, font_name = font_name, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lowerbound = zscore_lowerbound, zscore_upperbound = zscore_upperbound, check = check)
+        draw_network (ranked_links.items(), generalized = generalized, layout = layout, fig_size = fig_size, auto_fig_sizing = auto_fig_sizing, node_size = node_size, scale_factor = scale_factor, label_sample_n = label_sample_n, font_name = font_name, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lowerbound = zscore_lowerbound, zscore_upperbound = zscore_upperbound, check = check)
 
 ### end of file

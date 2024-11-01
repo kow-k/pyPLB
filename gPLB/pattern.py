@@ -90,7 +90,8 @@ def check_instantiation (self, other, check: bool = False):
     if check:
         print(f"#{R_form} instantiates {L_form}")
     ##
-    return True
+    #return True
+    yield True
 
 ##
 def pattern_merger (form_pairs: list, content_pairs: list, gap_mark: str, boundary_mark: str, check: bool = False):
