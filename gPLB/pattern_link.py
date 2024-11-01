@@ -46,6 +46,16 @@ class PatternLink:
         assert len(self.left) >= len(self.right)
         return max(len(self.left), len(self.right))
 
+    ## Unimplementation of this method seems the last cause for slow processing
+    def __eq__ (self, other):
+        if self.left != other.left:
+            return False
+        else:
+            if self.right != other.right:
+                return False
+            else:
+                return True
+
     ##
     def __repr__ (self):
         return f"{type(self).__name__} (\nL: {self.left};\nR: {self.right};\ntype: {self.link_type})"

@@ -313,9 +313,9 @@ if simplified:
 else:
     gen_links_internally = False
     M = functools.reduce (lambda La, Lb: La.merge_lattices (Lb, gen_links_internally = gen_links_internally, use_multiprocess = use_mp, reflexive = reflexive, show_steps = True, check = False), L)
-    # The following process was isolated for speeding up
+    # The following process was isolated for memory conservation
     if len(M.links) == 0 and not gen_links_internally:
-        print(f"#Generating links independently")
+        print(f"##Generating links independently")
         M.update_links (reflexive = reflexive, check = False)
 
 ##
@@ -353,7 +353,7 @@ for i, link_source in enumerate(Link_sources):
     else:
         zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = False)
     source_zscores[link_source] = zscore
-    print(f"#source {i:3d}: {link_source} has {value} link(s) [{source_zscores[link_source]: .5f} at rank {rank}]")
+    print(f"#source {i:3d}: {link_source} has {value} link(s) [{source_zscores[link_source]: .4f} at rank {rank}]")
 
 ## attach source_zscores to M
 #M.source_zscores = source_zscores
@@ -381,7 +381,7 @@ for i, link_target in enumerate(Link_targets):
     else:
         zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = False)
     target_zscores[link_target] = zscore
-    print(f"#target {i:3d}: {link_target} has {value} link(s) [{target_zscores[link_target]: .5f} at rank {rank}]")
+    print(f"#target {i:3d}: {link_target} has {value} link(s) [{target_zscores[link_target]: .4f} at rank {rank}]")
 
 ## attach source_zscores to M
 #M.source_zscores = source_zscores
@@ -392,6 +392,7 @@ if verbose:
 ## draw diagram of M
 if draw_diagrams:
     print(f"#Drawing a diagram from the merged lattice")
-    M.draw_diagrams (layout = layout, generalized = generalized, auto_fig_sizing = auto_fig_sizing, use_robust_zscore = use_robust_zscore, zscore_lowerbound = zscore_lowerbound, zscore_upperbound = zscore_upperbound, font_name = multibyte_font_name, zscores_from_sources = zscores_from_sources, scale_factor = scale_factor, check = draw_inspection)
+    label_sample_n = 5
+    M.draw_diagrams (layout = layout, generalized = generalized, auto_fig_sizing = auto_fig_sizing, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lowerbound = zscore_lowerbound, zscore_upperbound = zscore_upperbound, font_name = multibyte_font_name, zscores_from_sources = zscores_from_sources, scale_factor = scale_factor, check = draw_inspection)
 
 ### end of file

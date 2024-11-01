@@ -283,7 +283,8 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     else:
         if auto_fig_sizing:
             fig_size_local = \
-                (round(2.5 * len(D), 0), round(0.2 * max_node_count_on_layer, 0))
+                (round(2.5 * len(D), 0),
+                round(2 * math.log (max_node_count_on_layer), 0))
         else:
             pass
     try:
@@ -342,22 +343,26 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     )
 
     ## set labels used in title
-    labels = [ as_label (x, sep = " ") for x in sorted (instances) ]
-    if label_sample_n is not None:
-        labels = labels[:label_sample_n - 1] + ["…"] + labels[-1]
-    print(f"#labels: {labels}")
+    used_labels = [ as_label (x, sep = " ") for x in sorted (instances) ]
+    label_count = len (used_labels)
+    if label_sample_n is not None and label_count > label_sample_n + 1:
+        new_labels = used_labels[:label_sample_n - 1]
+        new_labels.append("…")
+        new_labels.append(used_labels[-1])
+        used_labels = new_labels
+    print(f"#used_labels: {used_labels}")
 
     ### set title
     if generalized:
         if use_robust_zscore:
-            title_val = f"gPatternLattice (layout: {layout_name}; robust z-scores: {zscore_lowerbound} – {zscore_upperbound}) built from\n{labels}"
+            title_val = f"gPatternLattice (layout: {layout_name}; robust z-scores: {zscore_lowerbound} – {zscore_upperbound}) built from\n{used_labels} ({label_count} in all)"
         else:
-            title_val = f"gPatternLattice (layout: {layout_name}; normal z-scores: {zscore_lowerbound} – {zscore_upperbound}) built from\n{labels}"
+            title_val = f"gPatternLattice (layout: {layout_name}; normal z-scores: {zscore_lowerbound} – {zscore_upperbound}) built from\n{used_labels} ({label_count} in all)"
     else:
         if use_robust_zscore:
-            title_val = f"PatternLattice (layout: {layout_name}; robust z-scores: {zscore_lowerbound} – {zscore_upperbound}) built from\n{labels}"
+            title_val = f"PatternLattice (layout: {layout_name}; robust z-scores: {zscore_lowerbound} – {zscore_upperbound}) built from\n{used_labels} ({label_count} in all)"
         else:
-            title_val = f"PatternLattice (layout: {layout_name}; normal z-scores: {zscore_lowerbound} – {zscore_upperbound}) built from\n{labels}"
+            title_val = f"PatternLattice (layout: {layout_name}; normal z-scores: {zscore_lowerbound} – {zscore_upperbound}) built from\n{used_labels} ({label_count} in all)"
     plt.title(title_val)
     ##
     plt.show()
@@ -879,7 +884,7 @@ class PatternLattice():
             i = 0
             for node, v in zscores.items():
                 i += 1
-                print(f"node {i:4d} {node} has z-score {v:.5f}")
+                print(f"node {i:4d} {node} has z-score {v:.4f}")
 
         ## draw PatternLattice
         draw_network (ranked_links.items(), generalized = generalized, layout = layout, fig_size = fig_size, auto_fig_sizing = auto_fig_sizing, node_size = node_size, scale_factor = scale_factor, label_sample_n = label_sample_n, font_name = font_name, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lowerbound = zscore_lowerbound, zscore_upperbound = zscore_upperbound, check = check)
