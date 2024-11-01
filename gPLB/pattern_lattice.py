@@ -402,7 +402,7 @@ def mp_gen_links_main (links, link_souces, link_targets, x, check: bool = False)
         pass
     elif r.instantiates_or_not (l, check = check):
         print(f"#instantiate {l.form} to {r.form}")
-        link = PatternLink([l, r])
+        link = PatternLink ([l, r])
         ##
         if not link in links:
             ## register for links
@@ -602,100 +602,6 @@ class PatternLattice():
         ##
         return rank_groups
 
-    ##
-    #@jit(nopython = True)
-    def merge_lattices (self, other, gen_links_internally: bool, reflexive: bool, generalized: bool = True, reductive: bool = True, remove_None_containers: bool = False, show_steps: bool = False, use_multiprocess: bool = True, check: bool = False):
-        "takes a pair of PatternLattices and returns its merger"
-        ##
-        import itertools # This code needs to be externalized under jit
-        import os
-        ##
-        print(f"#merging pattern lattices ...")
-        ##
-        sample_pattern = self.nodes[0]
-        gap_mark       = sample_pattern.gap_mark
-
-        ## creates .nodes
-        pooled_nodes = self.nodes
-        nodes_to_add = other.nodes
-        ## remove None-containers
-        if remove_None_containers:
-            pooled_nodes = [ node for node in pooled_nodes if form_is_None_free (node) ]
-            nodes_to_add = [ node for node in other.nodes if form_is_None_free (node) ]
-        if check:
-            print(f"#pooled_nodes [0]: {pooled_nodes}")
-
-        ## adding
-        if reductive:
-            for node in nodes_to_add:
-                ## The following fails to work if Pattern.__eq__ is not redefined
-                if not node in pooled_nodes:
-                    pooled_nodes.append(node)
-        else:
-            pooled_nodes += nodes_to_add
-        if check:
-            print(f"#pooled_nodes [1]: {pooled_nodes}")
-
-        ## reduce source
-        if reductive:
-            R = [ ]
-            ## The following fails to work if Pattern.__eq__ is not redefined
-            for node in pooled_nodes:
-                if node not in R:
-                    R.append(node)
-            pooled_nodes = R
-            if check:
-                print(f"#pooled_nodes [2]: {pooled_nodes}")
-        if check:
-            print(f"#pooled_nodes [3]: {pooled_nodes}")
-
-        ## multiprocess(ing) version
-        if use_multiprocess:
-            print(f"#running in multi-processing mode")
-            import os
-            import multiprocess as mp
-            cores = max(os.cpu_count(), 1)
-            with mp.Pool(cores) as pool:
-                merged_nodes = pool.starmap (merge_patterns_and_filter, itertools.combinations (pooled_nodes, 2))
-                ## The following fails unless Pattern.__eq__ is redefined
-                #merged_nodes = [ node for node in merged_nodes if not node is None ]
-                #booleans = pool.map (lambda x: not x is None, merged_nodes)
-                #merged_nodes = [ node for node, boolean in zip (merged_nodes, booleans) if boolean == True ]
-            merged_nodes = simplify_list (merged_nodes)
-        ## original slower version
-        else:
-            merged_nodes = [ ]
-            for A, B in itertools.combinations (pooled_nodes, 2):
-                C = A.merge_patterns (B, check = False)
-                ## The following fails unless Pattern.__eq__ is redefined
-                #if form_is_None_free (C) and not C in merged_nodes:
-                if not C in merged_nodes: # This fails => worsk after supressing None
-                    merged_nodes.append(C)
-        if check:
-            print(f"#merged_nodes: {merged_nodes}")
-
-        # generate merged PatternLattice
-        empty_pat           = Pattern([], gap_mark)
-        merged              = PatternLattice (empty_pat, generalized = generalized, reflexive = reflexive)
-        merged.nodes        = merged_nodes
-        merged.ranked_nodes = merged.group_by_rank (check = check)
-        if check:
-            print(f"#merged_ranked_nodes: {merged.ranked_nodes}")
-
-        ## conditionally generates links
-        if gen_links_internally:
-            merged.links, merged.link_sources, merged.link_targets  = \
-                merged.gen_links (reflexive = reflexive, check = check)
-        else:
-            merged.links, merged.link_sources, merged.link_targets = [], [], []
-        ## return result
-        if len(merged.links) > 0:
-            if show_steps:
-                print(f"#Merger into {len(merged_nodes)} nodes done")
-        ## return result
-        #yield merged # fails
-        return merged
-
     ## not properly implemented yet
     def X_gen_links (self, reflexive: bool, reductive: bool = True, check: bool = False):
         "takes a PatternLattice, extracts ranked_nodes, and generates a list of links among them"
@@ -858,6 +764,105 @@ class PatternLattice():
         self.link_sources = L_sources
         self.link_targets = L_targets
         return self
+
+
+    ##
+    #@jit(nopython = True)
+    def merge_lattices (self, other, gen_links_internally: bool, reflexive: bool, generalized: bool = True, reductive: bool = True, remove_None_containers: bool = False, show_steps: bool = False, use_multiprocess: bool = True, check: bool = False):
+        "takes a pair of PatternLattices and returns its merger"
+        ##
+        print(f"#merging pattern lattices ...")
+        if len(other.nodes) == 0:
+            return self
+        elif len(self.nodes) == 0:
+            return other
+        ##
+        import itertools # This code needs to be externalized under jit
+        import os
+        ##
+        sample_pattern = self.nodes[0]
+        gap_mark       = sample_pattern.gap_mark
+
+        ## creates .nodes
+        pooled_nodes = self.nodes
+        nodes_to_add = other.nodes
+        ## remove None-containers
+        if remove_None_containers:
+            pooled_nodes = [ node for node in pooled_nodes if form_is_None_free (node) ]
+            nodes_to_add = [ node for node in other.nodes if form_is_None_free (node) ]
+        if check:
+            print(f"#pooled_nodes [0]: {pooled_nodes}")
+
+        ## adding
+        if reductive:
+            for node in nodes_to_add:
+                ## The following fails to work if Pattern.__eq__ is not redefined
+                if not node in pooled_nodes:
+                    pooled_nodes.append(node)
+        else:
+            pooled_nodes += nodes_to_add
+        if check:
+            print(f"#pooled_nodes [1]: {pooled_nodes}")
+
+        ## reduce source
+        if reductive:
+            R = [ ]
+            ## The following fails to work if Pattern.__eq__ is not redefined
+            for node in pooled_nodes:
+                if node not in R:
+                    R.append(node)
+            pooled_nodes = R
+            if check:
+                print(f"#pooled_nodes [2]: {pooled_nodes}")
+        if check:
+            print(f"#pooled_nodes [3]: {pooled_nodes}")
+
+        ## multiprocess(ing) version
+        if use_multiprocess:
+            print(f"#running in multi-processing mode")
+            import os
+            import multiprocess as mp
+            cores = max(os.cpu_count(), 1)
+            with mp.Pool(cores) as pool:
+                merged_nodes = pool.starmap (merge_patterns_and_filter, itertools.combinations (pooled_nodes, 2))
+                ## The following fails unless Pattern.__eq__ is redefined
+                #merged_nodes = [ node for node in merged_nodes if not node is None ]
+                #booleans = pool.map (lambda x: not x is None, merged_nodes)
+                #merged_nodes = [ node for node, boolean in zip (merged_nodes, booleans) if boolean == True ]
+            merged_nodes = simplify_list (merged_nodes)
+        ## original slower version
+        else:
+            merged_nodes = [ ]
+            for A, B in itertools.combinations (pooled_nodes, 2):
+                C = A.merge_patterns (B, check = False)
+                ## The following fails unless Pattern.__eq__ is redefined
+                #if form_is_None_free (C) and not C in merged_nodes:
+                if not C in merged_nodes: # This fails => worsk after supressing None
+                    merged_nodes.append(C)
+        if check:
+            print(f"#merged_nodes: {merged_nodes}")
+
+        # generate merged PatternLattice
+        empty_pat           = Pattern([], gap_mark)
+        merged              = PatternLattice (empty_pat, generalized = generalized, reflexive = reflexive)
+        merged.nodes        = merged_nodes
+        merged.ranked_nodes = merged.group_by_rank (check = check)
+        if check:
+            print(f"#merged_ranked_nodes: {merged.ranked_nodes}")
+
+        ## conditionally generates links
+        if gen_links_internally:
+            merged.links, merged.link_sources, merged.link_targets  = \
+                merged.gen_links (reflexive = reflexive, check = check)
+        else:
+            merged.links, merged.link_sources, merged.link_targets = [], [], []
+        ## return result
+        if len(merged.links) > 0:
+            if show_steps:
+                print(f"#Merger into {len(merged_nodes)} nodes done")
+        ## return result
+        #yield merged # fails
+        return merged
 
     ##
     def draw_diagrams (self, generalized: bool, layout: str = None, zscores_from_sources: bool = True, auto_fig_sizing: bool = False, zscore_lowerbound: float = None, zscore_upperbound: float = None, use_robust_zscore: bool = False, scale_factor: float = 3, fig_size: tuple = None, label_size: int = None, label_sample_n: int = None, node_size: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
