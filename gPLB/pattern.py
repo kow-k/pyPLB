@@ -1,4 +1,6 @@
 ## imports
+#import array
+#import numpy as np
 
 ## Functions
 def encode_for_pattern (L: list) -> list:
@@ -149,14 +151,18 @@ class Pattern:
     def __init__ (self, L: (list, tuple), gap_mark: str, boundary_mark: str = "#"):
         "creates a Pattern object from a given L, a list of elements, or from a paired"
         ##
+        enc = encode_for_pattern (L)
         self.gap_mark      = gap_mark
         self.boundary_mark = boundary_mark
         self.paired        = encode_for_pattern (L)
+        #self.paired          = [ np.array([ x[0] for x in enc ]), np.array('u', [ x[1] for x in enc ]) ]
+        #self.form          = tuple( x[0] for x in self.paired ) # as tuple
+        #self.form          = np.array([ x[0] for x in self.paired ]) # not work
         self.form          = [ x[0] for x in self.paired ]
         self.form_hash     = hash(tuple(self.form))
-        self.content       = [ x[1] for x in self.paired ]
-        #self.form          = tuple( x[0] for x in self.paired ) # as tuple
         #self.content       = tuple( x[1] for x in self.paired ) # as tuple
+        #self.content       = np.array([ x[1] for x in self.paired ]) # not work
+        self.content       = [ x[1] for x in self.paired ]
         self.size          = len (self.form)
         self.rank          = self.get_rank()
         self.gap_count     = self.get_gap_size()
