@@ -1,0 +1,20 @@
+1. Required packages
+
+- matplotlib
+- multiprocess
+- scipy
+- networkx
+- searborn
+- pydot [only if you use Graphviz layout at drawing]
+
+2. Installation guide
+
+If you are an Anaconda user, try the following first to install package X1, X2, ...:
+
+    conda install X1 X2 ... -y
+
+and do the following only when Y fails to install:
+
+    pip install -U Y
+
+This is recommended not to destroying your Anaconda installation.
