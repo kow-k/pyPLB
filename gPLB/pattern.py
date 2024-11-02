@@ -1,6 +1,7 @@
 ## imports
 #import array
 #import numpy as np
+#import awkward
 
 ## Functions
 def encode_for_pattern (L: list) -> list:
