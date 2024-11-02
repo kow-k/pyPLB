@@ -1,7 +1,8 @@
 # Personal files and directories
 *.html
-*.txt
 *.zip
+*.txt
+!package-dependencies.txt
 dots/
 figs/
 outdated/
