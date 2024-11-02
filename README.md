@@ -1,5 +1,5 @@
 # Pattern-Lattice-Builder
-A Python implementation of generalized Pattern Lattice Builder (gPLB).
+A Python implementation of generalized Pattern Lattice Builder (gPLB). Confirmed to run on Python 3.6 and above (but not guaranteed to run on 3.12, 3.13)
 
 # Synopsis
 gPLB implements a _generalized_ Pattern Lattice. A normal, _non-generalized_ Pattern Lattice of [a, b, c] is the is-a network over the set
