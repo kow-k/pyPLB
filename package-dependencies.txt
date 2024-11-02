@@ -1,7 +1,7 @@
 1. Required packages
 
 - matplotlib
-- multiprocess
+- multiprocess [conda often fails to find this]
 - scipy
 - networkx
 - searborn
@@ -16,5 +16,9 @@ If you are an Anaconda user, try the following first to install package X1, X2, 
 and do the following only when Y fails to install:
 
     pip install -U Y
+
+and then do the following:
+
+    conda update conda -y
 
 This is recommended not to destroying your Anaconda installation.
