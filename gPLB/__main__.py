@@ -26,6 +26,7 @@ modification history
 2024/10/24 fixed a bug in pattern sizing that result improper alignment of some patterns
 2024/10/31 fixed a bug in multiparite layout; implemented content tracking on variables in a pattern
 2024/11/01 implemented upperbound of z-score pruning of lattice nodes
+2024/11/02 improved implementation of Pattern: .form and .content are tuples rather than lists. This change is intended to memory conservation.
 """
 
 #

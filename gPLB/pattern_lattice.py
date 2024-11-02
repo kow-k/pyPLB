@@ -51,13 +51,10 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
         for link in links:
             if check:
                 print(f"#adding link at rank {rank}: {link}")
+
             ## process nodes
             gap_mark      = link.gap_mark
             node1, node2  = link.form_paired
-
-            ## convert lists to tuples to use them as hash keys
-            node1 = as_tuple (node1)
-            node2 = as_tuple (node2)
 
             ## assign z-scores
             try:
@@ -198,9 +195,8 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     ## node color setting
     values_for_color = []
     for node in G:
-        node_as_tuple = tuple(node)
         try:
-            z_value = zscores[node_as_tuple]
+            z_value = zscores[node]
             if check:
                 print(f"#z_value: {z_value: 0.4f}")
             z_normalized = normalize_score(z_value, use_robust_zscore = use_robust_zscore)
@@ -408,14 +404,12 @@ def mp_gen_links_main (links, link_souces, link_targets, x, check: bool = False)
             ## register for links
             links.append (link)
             ## register for link_sources, link_targets
-            l_sig = as_tuple(l.form)
-            r_sig = as_tuple(r.form)
             try:
-                link_sources[l_sig] += 1
-                link_targets[r_sig] += 1
+                link_sources[l_form] += 1
+                link_targets[r_form] += 1
             except KeyError:
-                link_sources[l_sig] = 1
-                link_targets[r_sig] = 1
+                link_sources[l_form] = 1
+                link_targets[r_form] = 1
     ## result is None
 
 ##
@@ -525,13 +519,13 @@ def calc_zscore_old (value: float, average_val: float, stdev_val: float) -> floa
         return (value - average_val) / stdev_val
 
 ##
-def normalize_score (x: float, use_robust_zscore: bool = False, min_val: float = -3, max_val: float = 5) -> float:
+def normalize_score (x: float, use_robust_zscore: bool = False, min_val: float = -3, max_val: float = 6) -> float:
     "takes a value in the range of min, max and returns its normalized value"
     ##
     import matplotlib.colors as colors
     ## re-base when robust z-score is used
     if use_robust_zscore:
-        max_val = round (1.3 * max_val, 0)
+        max_val = round (1.5 * max_val, 0)
     ##
     normalizer = colors.Normalize (vmin = min_val, vmax = max_val)
     return normalizer (x)
@@ -583,9 +577,9 @@ class PatternLattice():
         "takes a list of patterns, P, and generates a dictionary of patterns grouped by their ranks"
         import collections
         ##
-        gap_mark = self.gap_mark
-        N        = self.nodes
-        size     = len(N)
+        gap_mark  = self.gap_mark
+        N         = self.nodes
+        size      = len(N)
         ## implementation using itertooks.groupby() failed
         rank_finder = lambda p: len([ x for x in p.form if x != gap_mark ])
         ## main
@@ -658,7 +652,7 @@ class PatternLattice():
                 ## main
                 if reflexive:
                     R = make_simplest_list (L, R)
-                ##
+
                 # put multiprocessing process here
                 for l in L:
                     ## l is a Pattern
@@ -685,20 +679,16 @@ class PatternLattice():
                                 ## register for links
                                 links.append (link)
                                 ## register for link_sources, link_targets
-                                l_sig = as_tuple(l.form)
-                                r_sig = as_tuple(r.form)
                                 try:
-                                    link_sources[l_sig] += 1
-                                    link_targets[r_sig] += 1
+                                    link_sources[l_form] += 1
+                                    link_targets[r_form] += 1
                                 except KeyError:
-                                    link_sources[l_sig] = 1
-                                    link_targets[r_sig] = 1
+                                    link_sources[l_form] = 1
+                                    link_targets[r_form] = 1
             ##
             except KeyError:
                 pass
         ## filter out None-type tokens
-        #links = list(filter(None, links))
-        ##
         return links, link_sources, link_targets
         #yield links, link_sources, link_targets
 

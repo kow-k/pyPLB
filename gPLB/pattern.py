@@ -1,10 +1,10 @@
 ## imports
-#import array
-#import numpy as np
-#import awkward
+#import array # turned out not to be suited
+#import numpy as np # turned out not to be suited
+#import awkward as ak # turned out not to be suited
 
 ## Functions
-def encode_for_pattern (L: list) -> list:
+def list_encode_for_pattern (L: list) -> list:
     """
     take a list L of segments and returns a list R of (form, content) tuples
     R needs to be a list because it needs to be expanded later at building generalized PatternLattice
@@ -12,12 +12,21 @@ def encode_for_pattern (L: list) -> list:
     # Crucially, strip(..)
     return [ (str(x).strip(), [str(x).strip()]) for x in L if len(x) > 0 ]
 
-def tuple_encode_for_pattern (L: list) -> tuple:
-    """
-    take a list L of segments and returns a list R of (form, content) tuples
-    R needs to be a list because it needs to be expanded later at building generalized PatternLattice
-    """
-    return tuple((str(x), [str(x)]) for x in L if len(x) > 0 ) # Crucially, strip(..)
+#def tuple_encode_for_pattern (L: list) -> tuple:
+#    """
+#    take a list L of segments and returns a list R of (form, content) tuples
+#    R needs to be a list because it needs to be expanded later at building generalized PatternLattice
+#    """
+#    # Crucially, strip(..)
+#    return tuple( (str(x).strip(), [str(x).strip()]) for x in L if len(x) > 0)
+
+#def array_encode_for_pattern (L: list) -> tuple:
+#    """
+#    take a list L of segments and returns a list R of (form, content) tuples
+#    R needs to be a list because it needs to be expanded later at building generalized PatternLattice
+#    """
+#    # Crucially, strip(..)
+#    return ak.Array((str(x).strip(), [str(x).strip()]) for x in L if len(x) > 0 )
 
 ##
 def attr_is_None_free (p, attr: str) -> bool:
@@ -152,18 +161,22 @@ class Pattern:
     def __init__ (self, L: (list, tuple), gap_mark: str, boundary_mark: str = "#"):
         "creates a Pattern object from a given L, a list of elements, or from a paired"
         ##
-        enc = encode_for_pattern (L)
         self.gap_mark      = gap_mark
         self.boundary_mark = boundary_mark
-        self.paired        = encode_for_pattern (L)
-        #self.paired          = [ np.array([ x[0] for x in enc ]), np.array('u', [ x[1] for x in enc ]) ]
-        #self.form          = tuple( x[0] for x in self.paired ) # as tuple
-        #self.form          = np.array([ x[0] for x in self.paired ]) # not work
-        self.form          = [ x[0] for x in self.paired ]
+        ## paired
+        self.paired        = list_encode_for_pattern (L)
+        #self.paired        = tuple_encode_for_pattern (L) # not work
+        ## form
+        #self.form          = [ x[0] for x in self.paired ]
+        #self.form          = ak.Array([ x[0] for x in self.paired ]) # not work
+        self.form          = tuple([ x[0] for x in self.paired ]) # works
+        ## form_hash
         self.form_hash     = hash(tuple(self.form))
-        #self.content       = tuple( x[1] for x in self.paired ) # as tuple
-        #self.content       = np.array([ x[1] for x in self.paired ]) # not work
-        self.content       = [ x[1] for x in self.paired ]
+        ## content
+        #self.content       = [ x[1] for x in self.paired ]
+        #self.content       = ak.Array([ x[1] for x in self.paired ]) # not work
+        self.content       = tuple([ x[1] for x in self.paired ]) # works
+        ## size and others
         self.size          = len (self.form)
         self.rank          = self.get_rank()
         self.gap_count     = self.get_gap_size()
@@ -192,12 +205,13 @@ class Pattern:
     def __len__ (self):
         "defines response to len()"
         try:
-            return len(self.paired)
+            return len (self.paired)
         except TypeError:
             return None
     ##
     def __lt__ (self, other):
-        return self.form < other.form
+        #return self.form < other.form
+        return len(self.form) < len(other.form)
 
     ##
     def __iter__ (self):
@@ -223,7 +237,8 @@ class Pattern:
     ##
     def get_form (self):
         "takes a pattern and returns its form as list"
-        return [ x[0] for x in self.form ]
+        #return [ x[0] for x in self.form ]
+        return tuple([ x[0] for x in self.form ])
 
     ##
     def get_form_size (self):
@@ -233,7 +248,8 @@ class Pattern:
     ##
     def get_content (self):
         "takes a pattern and returns its content as a list"
-        return [ x[1] for x in self.content ]
+        #return [ x[1] for x in self.content ]
+        return tuple([ x[1] for x in self.content ])
 
     ##
     def get_content_size (self):
@@ -243,13 +259,14 @@ class Pattern:
     ##
     def get_substance (self):
         "takes a pattern and returns the list of non-gap elements in it"
-        return [ x for x in self.form if x != self.gap_mark]
+        #return [ x for x in self.form if x != self.gap_mark]
+        return tuple ([ x for x in self.form if x != self.gap_mark])
 
     ##
     def get_substance_size (self):
         "takes a pattern and returns its rank, i.e., the number of non-gap elements"
         #return len([ x for x in self.form if x != self.gap_mark ])
-        return len(self.get_substance())
+        return len (self.get_substance())
     ##
     get_rank = get_substance_size
 
@@ -296,8 +313,8 @@ class Pattern:
     def update_form (self):
         "updates self.form value of a Pattern given"
         try:
-            self.form = [ x[0] for x in self.paired ]
-            #self.form = tuple( x[0] for x in self.paired )
+            #self.form = [ x[0] for x in self.paired ]
+            self.form = tuple( [ x[0] for x in self.paired ] )
             return self
         except (AttributeError, TypeError):
             return None
@@ -306,8 +323,8 @@ class Pattern:
     def update_content (self):
         "updates self.content value of a Pattern given"
         try:
-            self.content = [ x[1] for x in self.paired ]
-            #self.content = tuple( x[1] for x in self.paired )
+            #self.content = [ x[1] for x in self.paired ]
+            self.content = tuple( [ x[1] for x in self.paired ] )
             return self
         except TypeError:
             return None
@@ -315,8 +332,8 @@ class Pattern:
     ##
     def update_paired (self):
         "updates self.paired value of a Pattern given"
-        self.paired = [ (x, y) for x, y in zip (self.form, self.content) ]
-        #self.paired = tuple( (x, y) for x, y in zip (self.form, self.content) )
+        #self.paired = [ (x, y) for x, y in zip (self.form, self.content) ]
+        self.paired = tuple( [ (x, y) for x, y in zip (self.form, self.content) ] )
         return self
 
     ##
@@ -342,8 +359,10 @@ class Pattern:
         for i in range (len(paired)):
             gapped = list(paired) # creates a copy of list form
             #gapped = deepcopy(paired) # This makes a copy of tuple.
-            form    = [ x[0] for x in paired ]
-            content = [ x[1] for x in paired ]
+            #form    = [ x[0] for x in paired ]
+            #content = [ x[1] for x in paired ]
+            form    = tuple([ x[0] for x in paired ])
+            content = tuple([ x[1] for x in paired ])
             f, c = form[i], content[i]
             if f != gap_mark:
                 gapped[i] = (gap_mark, c)
@@ -395,6 +414,7 @@ class Pattern:
         "add a gap at edge of a pattern given"
         gap_mark     = self.gap_mark
         paired_new   = self.paired.copy() # Crucially
+        #paired_new   = self.paired # when tuple-encoding is applied
         gapped_edge  = (gap_mark, [edge_value])
         if position in [ 'Right', 'R', 'right' ]:
             paired_new.append (gapped_edge)
@@ -440,7 +460,7 @@ class Pattern:
                 for i, g in enumerate (G):
                     if check:
                         print(f"#g{i}: {g}")
-                    if not g.form in form_register:
+                    if g.form not in form_register:
                         R.append (g)
                         form_register.append(g.form)
             ## check termination
