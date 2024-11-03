@@ -84,9 +84,6 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
                 else:
                     print(f"pruned node {node2} with z-score {node2_zscore: 0.4f}")
                     pruned_node_count += 1
-                ## register instance nodes
-                if count_items (node2, gap_mark) == 0 and node2 not in instances:
-                    instances.append (node2)
                 ## process edges
                 if node1_zscore >= zscore_lowerbound and node1_zscore <= zscore_upperbound and node2_zscore >= zscore_lowerbound and node2_zscore <= zscore_upperbound:
                     edge = (node1, node2)
@@ -140,9 +137,6 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
                 else:
                     print(f"pruned node {node2} with z-score {node2_zscore: 0.4f}")
                     pruned_node_count += 1
-                ## register instance nodes
-                if count_items (node2, gap_mark) == 0 and node2 not in instances:
-                    instances.append (node2)
                 ## process edges
                 if node1_zscore >= zscore_lowerbound and node2_zscore >= zscore_lowerbound:
                     edge = (node1, node2)
@@ -163,15 +157,16 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
                         R.append (node2)
                 elif not node2 in L:
                     R.append (node2)
-                ## register instance nodes
-                if count_items (node2, gap_mark) == 0 and node2 not in instances:
-                    instances.append (node2)
                 ## process edges
                 if node1 and node2:
                     edge = (node1, node2)
                     #edge = (node2, node1)
                 if edge and not edge in E:
                     E.append (edge)
+            ## register instance nodes
+            if count_items (node2, gap_mark) == 0 and node2 not in instances:
+                instances.append (node2)
+                
 
         ## populates nodes for G
         ## forward rank scan = rank increments
@@ -340,7 +335,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     )
 
     ## set labels used in title
-    used_labels = [ as_label (x, sep = " ") for x in sorted (instances) ]
+    used_labels = [ as_label (x, sep = ",") for x in sorted (instances) ]
     label_count = len (used_labels)
     if label_sample_n is not None and label_count > label_sample_n:
         new_labels = used_labels[:label_sample_n - 1]
@@ -604,6 +599,82 @@ class PatternLattice():
         if check:
             print(f"#generating links ...")
         ##
+        links = [ ]; seen = [ ]
+        link_sources, link_targets = defaultdict(int), defaultdict(int)
+        G = self.ranked_nodes
+        ## main to be multiprocessed
+        for rank in sorted (G.keys()):
+            if check:
+                print(f"#rank: {rank}")
+            ##
+            L = G[rank]
+            if check:
+                print(f"#L: {list(L)}")
+            ## define R
+            try:
+                R = G[rank + 1]
+                if check:
+                    print(f"#R: {list(R)}")
+                if reflexive:
+                    R = make_simplest_list (L, R)
+            except KeyError:
+                pass
+            
+            ## main: L and R are given
+            sub_links = [ ]
+            #try:
+            #    sub_links = sub_links_pre1
+            #except NameError:
+            #    sub_links = [ ]
+            ## define L
+            try:
+                for l in L: # l is a Pattern
+                    l_form, l_content = l.form, l.content
+                    if len(l_form) == 0:
+                        continue
+                    for r in R: # r is a Pattern
+                        r_form, r_content = r.form, r.content
+                        if check:
+                            print(f"#linking r_form: {r_form}; r_content: {r_content}")
+                        ## main
+                        if len(r_form) == 0 or l_form == r_form:
+                            continue
+                        elif r.instantiates_or_not (l, check = check):
+                            print(f"#instantiate: {l.form} to {r.form}")
+                            link = PatternLink([l, r])
+                            ##
+                            #if not link in sub_links and not link in sub_links_pre1:
+                            #if not link in sub_links:
+                            if not link in seen:
+                                #links.append (link)
+                                sub_links.append (link)
+                                link_sources[l_form] += 1
+                                link_targets[r_form] += 1
+                            ##
+                            if link not in seen:
+                                seen.append(link)
+                ## update sub_links_prev
+                #sub_links_pre1 = sub_links
+                ##
+                links.extend (sub_links)
+                #links.extend ([ link for link in sub_links if not link in links ])
+                if check:
+                    print(f"#links.extend: {links}")
+            ##
+            except UnboundLocalError:
+                pass
+
+        ## return
+        return links, link_sources, link_targets
+        #yield links, link_sources, link_targets
+
+    ##
+    def gen_links_X (self, reflexive: bool, reductive: bool = True, check: bool = False):
+        "takes a PatternLattice, extracts ranked_nodes, and generates a list of links among them"
+        ##
+        if check:
+            print(f"#generating links ...")
+        ##
         links = [ ]
         link_sources, link_targets = defaultdict(int), defaultdict(int)
         G = self.ranked_nodes
@@ -613,9 +684,13 @@ class PatternLattice():
                 print(f"#rank: {rank}")
             ##
             try:
-                sub_links = sub_links_prev
+                sub_links = sub_links_pre1
             except NameError:
                 sub_links = [ ]
+            try:
+                sub_links_pre1 = sub_links_pre2
+            except NameError:
+                sub_links_pre1 = [ ]
             ## define L
             L = G[rank]
             if check:
@@ -647,20 +722,22 @@ class PatternLattice():
                             print(f"#instantiate: {l.form} to {r.form}")
                             link = PatternLink([l, r])
                             ##
-                            if not link in sub_links:
+                            if not link in sub_links and not link in sub_links_pre1:
                                 sub_links.append (link)
                                 if check:
                                     print(f"#sub_link has: {link}")
-                                link_sources[l.form] += 1
-                                link_targets[r.form] += 1
-                ## update sub_links_prev
-                sub_links_prev = sub_links
+                                link_sources[l_form] += 1
+                                link_targets[r_form] += 1
             ##
             except UnboundLocalError:
                 pass
+            ## update sub_links_prev
+            sub_links_pre2 = sub_links_pre1
+            sub_links_pre1 = sub_links
             
             ##
             links.extend (sub_links)
+            #links.extend ([ link for link in sub_links if not link in links ])
             if check:
                 print(f"#links.extend: {links}")
 
@@ -774,7 +851,7 @@ class PatternLattice():
         ## return result
         if len(merged.links) > 0:
             if show_steps:
-                print(f"#Merger into {len(merged_nodes)} nodes done")
+                print(f"#merger into {len(merged_nodes)} nodes done")
         ## return result
         #yield merged # fails
         return merged
