@@ -20,6 +20,7 @@ except ImportError:
 #import numpy as np
 #import scipy.stats as stats
 #import multiprocessing as mp
+from collections import defaultdict
 
 ### Functions
 
@@ -341,7 +342,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     ## set labels used in title
     used_labels = [ as_label (x, sep = " ") for x in sorted (instances) ]
     label_count = len (used_labels)
-    if label_sample_n is not None and label_count > label_sample_n + 1:
+    if label_sample_n is not None and label_count > label_sample_n:
         new_labels = used_labels[:label_sample_n - 1]
         new_labels.append("…")
         new_labels.append(used_labels[-1])
@@ -596,37 +597,6 @@ class PatternLattice():
         ##
         return rank_groups
 
-    ## not properly implemented yet
-    def X_gen_links (self, reflexive: bool, reductive: bool = True, check: bool = False):
-        "takes a PatternLattice, extracts ranked_nodes, and generates a list of links among them"
-        ##
-        import multiprocess as mp
-        import os
-        core = max(os.cpu_count(), 1)
-        pool = mp.Pool(core)
-        ##
-        G = self.ranked_nodes
-        links = [ ]
-        link_sources, link_targets = {}, {}
-        for rank in sorted (G.keys()):
-            ## define L
-            L = G[rank]
-            ## define R
-            try:
-                R = G[rank + 1]
-                ## main
-                if reflexive:
-                    R = make_simplest_list (L, R)
-                # put multiprocessing process here
-                bases = [ [r, l] for r in R for l in L ]
-                #print(f"#bases: {bases}")
-                #pool.starmap(mp_gen_links_main, links, link_sources, link_targets, bases)
-                pool.apply_async (mp_gen_links_main, args = (links, link_sources, link_targets, bases, True))
-            except KeyError:
-                pass
-        ##
-        return links, link_sources, link_targets
-
     ##
     def gen_links (self, reflexive: bool, reductive: bool = True, check: bool = False):
         "takes a PatternLattice, extracts ranked_nodes, and generates a list of links among them"
@@ -635,11 +605,17 @@ class PatternLattice():
             print(f"#generating links ...")
         ##
         links = [ ]
-        link_sources, link_targets = {}, {}
+        link_sources, link_targets = defaultdict(int), defaultdict(int)
         G = self.ranked_nodes
+        ## main to be multiprocessed
         for rank in sorted (G.keys()):
             if check:
                 print(f"#rank: {rank}")
+            ##
+            try:
+                sub_links = sub_links_prev
+            except NameError:
+                sub_links = [ ]
             ## define L
             L = G[rank]
             if check:
@@ -649,99 +625,49 @@ class PatternLattice():
                 R = G[rank + 1]
                 if check:
                     print(f"#R: {list(R)}")
-                ## main
                 if reflexive:
                     R = make_simplest_list (L, R)
-
-                # put multiprocessing process here
-                for l in L:
-                    ## l is a Pattern
+            except KeyError:
+                pass
+            
+            ## main: L and R are given
+            try:
+                for l in L: # l is a Pattern
                     l_form, l_content = l.form, l.content
-                    ## main
                     if len(l_form) == 0:
-                        pass
-                    for r in R:
-                        ## r is a Pattern
+                        continue
+                    for r in R: # r is a Pattern
                         r_form, r_content = r.form, r.content
                         if check:
                             print(f"#linking r_form: {r_form}; r_content: {r_content}")
                         ## main
-                        if len(r_form) == 0:
-                            continue
-                        ##
-                        if l_form == r_form:
+                        if len(r_form) == 0 or l_form == r_form:
                             continue
                         elif r.instantiates_or_not (l, check = check):
                             print(f"#instantiate: {l.form} to {r.form}")
                             link = PatternLink([l, r])
                             ##
-                            if not link in links:
-                                ## register for links
-                                links.append (link)
-                                ## register for link_sources, link_targets
-                                try:
-                                    link_sources[l_form] += 1
-                                    link_targets[r_form] += 1
-                                except KeyError:
-                                    link_sources[l_form] = 1
-                                    link_targets[r_form] = 1
+                            if not link in sub_links:
+                                sub_links.append (link)
+                                if check:
+                                    print(f"#sub_link has: {link}")
+                                link_sources[l.form] += 1
+                                link_targets[r.form] += 1
+                ## update sub_links_prev
+                sub_links_prev = sub_links
             ##
-            except KeyError:
+            except UnboundLocalError:
                 pass
-        ## filter out None-type tokens
+            
+            ##
+            links.extend (sub_links)
+            if check:
+                print(f"#links.extend: {links}")
+
+        ## return
         return links, link_sources, link_targets
         #yield links, link_sources, link_targets
 
-    ##
-    def gen_ranked_links (self, reflexive: bool, reductive: bool = True, check: bool = False):
-        "takes a PatternLattice, extracts ranked_nodes, and generates a dictionary of links {rank: [link1, link2, ...]}"
-        ##
-        G = self.ranked_nodes
-        ranked_links = {}
-        for rank in sorted (G.keys()):
-            if check:
-                print(f"#rank: {rank}")
-            ## define L
-            L = G[rank]
-            if check:
-                print(f"#L: {list(L)}")
-            ## define R
-            try:
-                R = G[rank + 1]
-                ## handles reflexivity
-                if reflexive:
-                    R = make_simplest_list (L, R)
-            except KeyError:
-                pass
-            ##
-            for l in L:
-                l_form, l_content = l.form, l.content
-                if check:
-                    print(f"#linking l_form: {l_form}; l_content: {l_content}")
-                for r in R:
-                    r_form, r_content = r.form, r.content
-                    if check:
-                        print(f"#linking l_form: {l_form}; l_content: {l_content}")
-                        print(f"#linking r_form: {r_form}; r_content: {r_content}")
-                    ## main
-                    if l_form == r_form:
-                        pass
-                    elif r.instantiates_or_not (l):
-                        link = PatternLink([l, r])
-                    else:
-                        pass
-                    ##
-                    if link:
-                        if check:
-                            print(f"#instatiation: True")
-                        rank = link.get_rank()
-                        try:
-                            if link and not link in ranked_links[rank]:
-                                ranked_links[rank].append(link)
-                        except KeyError:
-                            ranked_links[rank] = [link]
-        ##
-        return ranked_links
 
     ##
     def update_links (self, reflexive: bool = True, reductive: bool = True, check: bool = False):
