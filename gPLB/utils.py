@@ -16,14 +16,16 @@ def as_label (T: tuple, sep: str = "", add_sep_at_end: bool = False) -> str:
     "convert a given tuple to a string by concatenating its elements"
     result = ""
     if add_sep_at_end:
-        for x in T:
-            result += f"{x}{sep}"
+        #for x in T:
+        #    result += f"{x}{sep}"
+        result = sep.join(T) + sep
     else:
-        for i, x in enumerate(T):
-            if i < len(T) - 1:
-                result += f"{x}{sep}"
-            else:
-                result += f"{x}"
+        #for i, x in enumerate(T):
+        #    if i < len(T) - 1:
+        #        result += f"{x}{sep}"
+        #    else:
+        #        result += f"{x}"
+        result = sep.join(T)
     #
     return result
 
