@@ -92,18 +92,24 @@ def check_instantiation (self, other, check: bool = False):
         l_seg = L_form[i]
         if l_seg == r_seg:
             pass
-        else:
+        else: # l_seg != r_seg
             if l_seg != gap_mark:
                 if check:
                     print(f"#no instantiation with {L_form}; {R_form}")
                 return False
+            elif l_seg != r_seg:
+                if check:
+                    print(f"#no instantiation with {L_form}; {R_form}")
+                False
+            #elif l_seg == gap_mark and r_seg != gap_mark:
+            #    pass
             else:
                 pass
     if check:
         print(f"#{R_form} instantiates {L_form}")
     ##
-    #return True
-    yield True
+    #yield True # offensive??
+    return True
 
 ##
 def pattern_merger (form_pairs: list, content_pairs: list, gap_mark: str, boundary_mark: str, check: bool = False):
@@ -523,11 +529,14 @@ class Pattern:
             if L_size != R_size + 1:
                 return False
             else:
-                if R_substance == L_substance:
-                    if check:
-                        print(f"L_substance: {L_substance}")
-                        print(f"R_substance: {R_substance}")
-                    return True
+                if L_substance == R_substance:
+                    if L_form[:-1] == R_form[0] or L_form[1:] == R_form:
+                        if check:
+                            print(f"L_substance: {L_substance}")
+                            print(f"R_substance: {R_substance}")
+                        return True
+                    else:
+                        return False
                 else:
                     return False
         ## other cases
