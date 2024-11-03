@@ -40,12 +40,6 @@ class PatternLink:
         self.content_paired  = (left.content, right.content)
         self.gap_mark        = left.gap_mark
 
-    ##
-    def __len__ (self):
-        #assert len(self.left) == len(self.right)
-        assert len(self.left) >= len(self.right)
-        return max(len(self.left), len(self.right))
-
     ## Unimplementation of this method seems the last cause for slow processing
     def __eq__ (self, other):
         if self.left != other.left:
@@ -55,6 +49,12 @@ class PatternLink:
                 return False
             else:
                 return True
+
+    ##
+    def __len__ (self):
+        #assert len(self.left) == len(self.right)
+        assert len(self.left) >= len(self.right)
+        return max(len(self.left), len(self.right))
 
     ##
     def __repr__ (self):
@@ -79,7 +79,7 @@ class PatternLink:
         #return min(count_items (left.form, gap_mark), count_items (right.form, gap_mark))
 
     ##
-    def pprint (self, indicator = None, link_type = None, condition = None , paired: bool = False, pair_mark: str = "::", check: bool = False) -> None:
+    def pprint (self, indicator = None, link_type = None, condition = None , paired: bool = False, pair_mark: str = "//", check: bool = False) -> None:
         """
         prints the content of PatternLink object.
         condition can be a lambda expression used to filter.
@@ -91,9 +91,9 @@ class PatternLink:
         p, q = self.left, self.right
         ##
         if indicator:
-            p_index = f"link {indicator:3d}: "
+            p_index = f"#link {indicator:3d}: "
         else:
-            p_index = ""
+            p_index = "#"
         ##
         if link_type is None:
             link_type = self.link_type
