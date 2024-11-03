@@ -56,7 +56,7 @@ parser.add_argument('-g', '--gap_mark', type= str, default= '_')
 parser.add_argument('-R', '--unreflexive', action= 'store_false', default= True)
 parser.add_argument('-G', '--generalized', action= 'store_false', default= True)
 parser.add_argument('-m', '--max_size', type= int, default= None)
-parser.add_argument('-n', '--sample_n', type= int, default= 3)
+parser.add_argument('-n', '--sample_n', type= int, default= None)
 parser.add_argument('-S', '--sample_id', type= int, default= 1)
 parser.add_argument('-F', '--scaling_factor', type= float, default= 5)
 parser.add_argument('-z', '-zl', '--zscore_lowerbound', type= float, default= None)
@@ -194,7 +194,10 @@ if not max_size is None:
     S0 = [ x for x in S0 if len(x) <= max_size and len(x) > 0 ]
 
 ## take a sample
-S = random.sample (S0, sample_n)
+if sample_n is not None:
+    S = random.sample (S0, sample_n)
+else:
+    S = S0
 if verbose:
     print(f"# S: {S}")
 
@@ -315,7 +318,7 @@ else:
     gen_links_internally = False
     M = functools.reduce (lambda La, Lb: La.merge_lattices (Lb, gen_links_internally = gen_links_internally, use_multiprocess = use_mp, reflexive = reflexive, show_steps = True, check = False), L)
     # The following process was isolated for memory conservation
-    if len(M.links) == 0 and not gen_links_internally:
+    if not gen_links_internally and len(M.links) == 0:
         print(f"##Generating links independently")
         M.update_links (reflexive = reflexive, check = False)
 
@@ -393,7 +396,9 @@ if verbose:
 ## draw diagram of M
 if draw_diagrams:
     print(f"#Drawing a diagram from the merged lattice")
-    label_sample_n = 5
+    label_sample_n = 10
     M.draw_diagrams (layout = layout, generalized = generalized, auto_fig_sizing = auto_fig_sizing, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lowerbound = zscore_lowerbound, zscore_upperbound = zscore_upperbound, font_name = multibyte_font_name, zscores_from_sources = zscores_from_sources, scale_factor = scale_factor, check = draw_inspection)
+##
+print(f"##from {len(S)} sources: {[ as_label( x, sep = ',') for x in S ]}")
 
 ### end of file
