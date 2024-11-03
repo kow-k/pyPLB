@@ -668,7 +668,6 @@ class PatternLattice():
         return links, link_sources, link_targets
         #yield links, link_sources, link_targets
 
-
     ##
     def update_links (self, reflexive: bool = True, reductive: bool = True, check: bool = False):
         "update links"
