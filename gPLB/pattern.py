@@ -523,20 +523,17 @@ class Pattern:
         ## L's rank is one-segment smaller than R's
         if L_size == R_size and L_rank + 1 == R_rank:
             return check_instantiation (R, L, check = check)
-        ## L and R are at the same rank
+        ## L and R are of different sizes but at the same rank
         elif L_rank == R_rank:
-            ## when L is one-segment longer than R
-            if L_size != R_size + 1:
+            if L_size - 1 != R_size:
                 return False
-            else:
+            else: ## when L is one-segment longer than R
                 if L_substance == R_substance:
-                    if L_form[:-1] == R_form[0] or L_form[1:] == R_form:
-                        if check:
-                            print(f"L_substance: {L_substance}")
-                            print(f"R_substance: {R_substance}")
-                        return True
-                    else:
-                        return False
+                    ## allows overgeneration ...
+                    if check:
+                        print(f"L_substance: {L_substance}")
+                        print(f"R_substance: {R_substance}")
+                    return True
                 else:
                     return False
         ## other cases
