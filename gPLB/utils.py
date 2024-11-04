@@ -1,18 +1,13 @@
 ### Functions
 
 ##
-def count_items (L: list, item: str, check: bool = False) -> int:
-    "returns the number of items in the given list"
-    return len([ x for x in L if x == item ])
-
-##
 def as_tuple (L: list) -> tuple:
     "convert a list into a tuple"
     #return (*L,)
     return tuple(L)
 
 ##
-def as_label (T: tuple, sep: str = "", add_sep_at_end: bool = False) -> str:
+def as_label (T: (list, tuple), sep: str = "", add_sep_at_end: bool = False) -> str:
     "convert a given tuple to a string by concatenating its elements"
     result = ""
     if add_sep_at_end:
@@ -61,8 +56,26 @@ def wrapped_make_simplest_list (*args):
     import functools
     return functools.reduce (make_simplest_list, args)
 
+##
+def count_items (L: list, item: str, check: bool = False) -> int:
+    "returns the number of items in the given list"
+    return len([ x for x in L if x == item ])
+
+##
+def mp_test_for_membership (item, L: (list, tuple))-> bool:
+    "multiprocess-version of membership test: effective only with a large list"
+    import os
+    import multiprocess as mp
+    cores = max(os.cpu_count(), 1)
+    with mp.Pool(cores) as pool:
+        result = pool.map(lambda x: x == item, L)
+    if sum(filter(lambda x: x == True, result)) > 0:
+        return False
+    else:
+        return True
+
 ## parallel filter, or pfilter
-def pfilter (func, X, cores):
+def pfilter (func, X):
     #from multiprocessing import Pool
     from multiprocess import Pool
     import os

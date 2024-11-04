@@ -57,13 +57,15 @@ parser.add_argument('-R', '--unreflexive', action= 'store_false', default= True)
 parser.add_argument('-G', '--generalized', action= 'store_false', default= True)
 parser.add_argument('-m', '--max_size', type= int, default= None)
 parser.add_argument('-n', '--sample_n', type= int, default= None)
-parser.add_argument('-S', '--sample_id', type= int, default= 1)
+#parser.add_argument('-S', '--sample_id', type= int, default= 1)
+parser.add_argument('-S', '--build_lattice_stepwise', action= 'store_true', default= False)
 parser.add_argument('-F', '--scaling_factor', type= float, default= 5)
 parser.add_argument('-z', '-zl', '--zscore_lowerbound', type= float, default= None)
 parser.add_argument('-zu', '--zscore_upperbound', type= float, default= None)
 parser.add_argument('-Z', '--use_robust_zscore', action='store_true', default= False)
 parser.add_argument('-T', '--zscores_from_targets', action='store_true', default= False)
-parser.add_argument('-D', '--draw_diagrams', action= 'store_false', default = True)
+parser.add_argument('-t', '--print_link_targets', action='store_true', default= False)
+parser.add_argument('-D', '--draw_stepwise', action= 'store_false', default = True)
 parser.add_argument('-J', '--use_multibyte_chars', action= 'store_true', default = False)
 parser.add_argument('-L', '--layout', type= str, default= 'Multi_partite')
 parser.add_argument('-A', '--auto_fig_sizing', action= 'store_true', default= False)
@@ -78,24 +80,26 @@ input_field_sep         = args.input_field_sep
 input_comment_escape    = args.input_comment_escape
 gap_mark                = args.gap_mark
 max_size                = args.max_size
-sample_id               = args.sample_id
+#sample_id               = args.sample_id
 sample_n                = args.sample_n
 generalized             = args.generalized
 reflexive               = args.unreflexive
-draw_diagrams           = args.draw_diagrams
+build_lattice_stepwise  = args.build_lattice_stepwise
+draw_stepwise           = args.draw_stepwise
 layout                  = args.layout
 auto_fig_sizing         = args.auto_fig_sizing
 zscore_lowerbound       = args.zscore_lowerbound
 zscore_upperbound       = args.zscore_upperbound
 use_robust_zscore       = args.use_robust_zscore
 zscores_from_targets    = args.zscores_from_targets
+print_link_targets      = args.print_link_targets
 scale_factor            = args.scaling_factor
 use_multibyte_chars     = args.use_multibyte_chars
 
 ### implications
 # diagram drawing
 if not layout is None:
-    draw_diagrams       = True
+    draw_stepwise       = True
 ## z-scores handling
 zscores_from_sources    = not zscores_from_targets
 
@@ -116,7 +120,7 @@ print(f"#input_comment_escape: {input_comment_escape}")
 print(f"#lattice is generalized: {generalized}")
 print(f"#instantiation is reflexive: {reflexive}")
 print(f"#gap_mark: {gap_mark}")
-print(f"#draw_diagrams: {draw_diagrams}")
+print(f"#draw_stepwise: {draw_stepwise}")
 print(f"#use_robust_zscore: {use_robust_zscore}")
 print(f"#zscore_lowerbound: {zscore_lowerbound}")
 print(f"#zscore_upperbound: {zscore_upperbound}")
@@ -296,7 +300,7 @@ if detailed:
 ##
 #exit()
 ##
-if draw_diagrams and verbose:
+if draw_stepwise and verbose:
     print(f"##Drawing diagrams")
     for i, patlat in enumerate(L):
         print(f"#drawing diagram from PatternLattice {i+1}")
@@ -314,6 +318,30 @@ if simplified:
         print(f"#La: {La}")
         print(f"#Lb: {Lb}")
     M = La.merge_lattices (Lb, show_steps = True, check = False)
+elif build_lattice_stepwise:
+    gen_links_internally = True
+    label_sample_n = 10
+    null_pat = Pattern([], gap_mark = gap_mark)
+    M = PatternLattice(null_pat, generalized = generalized, check = False)
+    for patlat in L:
+        M = M.merge_lattices (patlat, gen_links_internally = gen_links_internally, use_multiprocess = use_mp, reflexive = reflexive, show_steps = True, check = False)
+        
+        if gen_links_internally:
+            ## checking links in M
+            print(f"##Links")
+            print(f"#generated {len(M.links)} links")
+            for i, link in enumerate(M.links):
+                link.pprint (indicator = i, paired = True, link_type = "instantiates", check = False)
+
+            ## generate z-scores
+            gen_zscores_from_sources (M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
+            if draw_stepwise:
+                M.draw_diagrams (layout = layout, generalized = generalized, auto_fig_sizing = auto_fig_sizing, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lowerbound = zscore_lowerbound, zscore_upperbound = zscore_upperbound, font_name = multibyte_font_name, zscores_from_sources = zscores_from_sources, scale_factor = scale_factor, check = draw_inspection)
+    ##
+    if not gen_links_internally and len(M.links) == 0:
+        print(f"##Generating links in delay")
+        M.update_links (reflexive = reflexive, check = False)
+
 else:
     gen_links_internally = False
     M = functools.reduce (lambda La, Lb: La.merge_lattices (Lb, gen_links_internally = gen_links_internally, use_multiprocess = use_mp, reflexive = reflexive, show_steps = True, check = False), L)
@@ -338,67 +366,21 @@ print(f"#generated {len(M.links)} links")
 for i, link in enumerate(M.links):
     link.pprint (indicator = i, paired = True, link_type = "instantiates", check = False)
 
-## adding link source z-scores to M
-if verbose:
-    print(f"##Link_sources")
-Link_sources     = M.link_sources
-ranked_links     = make_ranked_dict (Link_sources, gap_mark = gap_mark)
-averages_by_rank = calc_averages_by_rank (Link_sources, ranked_links) # returns dict
-stdevs_by_rank   = calc_stdevs_by_rank (Link_sources, ranked_links) # returns dict
-medians_by_rank  = calc_medians_by_rank (Link_sources, ranked_links) # returns dict
-MADs_by_rank     = calc_MADs_by_rank (Link_sources, ranked_links) # returns dict
+## get z-scores from link sources
+gen_zscores_from_sources (M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
+print(M.source_zscores)
+## get z-scores from link targets
+gen_zscores_from_targets (M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
 
-source_zscores = {}
-for i, link_source in enumerate(Link_sources):
-    value  = Link_sources[link_source]
-    rank   = get_rank_of_list (link_source, gap_mark = gap_mark)
-    if use_robust_zscore:
-        zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = True)
-    else:
-        zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = False)
-    source_zscores[link_source] = zscore
-    print(f"#source {i:3d}: {link_source} has {value} link(s) [{source_zscores[link_source]: .4f} at rank {rank}]")
-
-## attach source_zscores to M
-#M.source_zscores = source_zscores
-M.source_zscores.update(source_zscores)
-if verbose:
-    print(f"M.source_zscores: {M.source_zscores}")
-
-
-## adding link target z-scores to M
-if verbose:
-    print(f"##Link_targets")
-Link_targets     = M.link_targets
-ranked_links     = make_ranked_dict (Link_targets, gap_mark = gap_mark)
-averages_by_rank = calc_averages_by_rank (Link_targets, ranked_links) # returns dict
-stdevs_by_rank   = calc_stdevs_by_rank (Link_targets, ranked_links) # returns dict
-medians_by_rank  = calc_medians_by_rank (Link_targets, ranked_links) # returns dict
-MADs_by_rank     = calc_MADs_by_rank (Link_targets, ranked_links) # returns dict
-
-target_zscores = {}
-for i, link_target in enumerate(Link_targets):
-    value  = Link_targets[link_target]
-    rank   = get_rank_of_list (link_target, gap_mark = gap_mark)
-    if use_robust_zscore:
-        zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = True)
-    else:
-        zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = False)
-    target_zscores[link_target] = zscore
-    print(f"#target {i:3d}: {link_target} has {value} link(s) [{target_zscores[link_target]: .4f} at rank {rank}]")
-
-## attach source_zscores to M
-#M.source_zscores = source_zscores
-M.target_zscores.update(target_zscores)
-if verbose:
-    print(f"M.target_zscores: {M.target_zscores}")
-
+if print_link_targets:
+    print(M.target_zscores)
+    
 ## draw diagram of M
-if draw_diagrams:
+if draw_stepwise:
     print(f"#Drawing a diagram from the merged lattice")
     label_sample_n = 10
     M.draw_diagrams (layout = layout, generalized = generalized, auto_fig_sizing = auto_fig_sizing, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lowerbound = zscore_lowerbound, zscore_upperbound = zscore_upperbound, font_name = multibyte_font_name, zscores_from_sources = zscores_from_sources, scale_factor = scale_factor, check = draw_inspection)
 ##
-print(f"##from {len(S)} sources: {[ as_label( x, sep = ',') for x in S ]}")
+print(f"##from {len(S)} sources: {[ as_label(x, sep = ',') for x in S ]}")
 
 ### end of file

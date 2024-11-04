@@ -101,8 +101,6 @@ def check_instantiation (self, other, check: bool = False):
                 if check:
                     print(f"#no instantiation with {L_form}; {R_form}")
                 False
-            #elif l_seg == gap_mark and r_seg != gap_mark:
-            #    pass
             else:
                 pass
     if check:

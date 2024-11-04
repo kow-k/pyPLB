@@ -166,7 +166,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
             ## register instance nodes
             if count_items (node2, gap_mark) == 0 and node2 not in instances:
                 instances.append (node2)
-                
+
 
         ## populates nodes for G
         ## forward rank scan = rank increments
@@ -527,6 +527,66 @@ def normalize_score (x: float, use_robust_zscore: bool = False, min_val: float =
     return normalizer (x)
 
 ##
+def gen_zscores_from_sources (M, gap_mark: str, use_robust_zscore: bool, check: bool = False):
+    ## adding link source z-scores to M
+    Link_sources     = M.link_sources
+    if check:
+        print(f"##Link_sources")
+    ranked_links     = make_ranked_dict (Link_sources, gap_mark = gap_mark)
+    averages_by_rank = calc_averages_by_rank (Link_sources, ranked_links) # returns dict
+    stdevs_by_rank   = calc_stdevs_by_rank (Link_sources, ranked_links) # returns dict
+    medians_by_rank  = calc_medians_by_rank (Link_sources, ranked_links) # returns dict
+    MADs_by_rank     = calc_MADs_by_rank (Link_sources, ranked_links) # returns dict
+    
+    source_zscores = {}
+    for i, link_source in enumerate(Link_sources):
+        value  = Link_sources[link_source]
+        rank   = get_rank_of_list (link_source, gap_mark = gap_mark)
+        if use_robust_zscore:
+            zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = True)
+        else:
+            zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = False)
+        source_zscores[link_source] = zscore
+        print(f"#source {i:3d}: {link_source} has {value} link(s) [{source_zscores[link_source]: .4f} at rank {rank}]")
+    
+    ## attach source_zscores to M
+    M.source_zscores.update(source_zscores)
+    if check:
+        print(f"M.source_zscores: {M.source_zscores}")
+    ##
+    return M
+
+def gen_zscores_from_targets (M, gap_mark: str, use_robust_zscore: bool, check: bool = False):
+    ## adding link target z-scores to M
+    Link_targets     = M.link_targets
+    if check:
+        print(f"##Link_targets")
+    ranked_links     = make_ranked_dict (Link_targets, gap_mark = gap_mark)
+    averages_by_rank = calc_averages_by_rank (Link_targets, ranked_links) # returns dict
+    stdevs_by_rank   = calc_stdevs_by_rank (Link_targets, ranked_links) # returns dict
+    medians_by_rank  = calc_medians_by_rank (Link_targets, ranked_links) # returns dict
+    MADs_by_rank     = calc_MADs_by_rank (Link_targets, ranked_links) # returns dict
+    
+    target_zscores = {}
+    for i, link_target in enumerate(Link_targets):
+        value  = Link_targets[link_target]
+        rank   = get_rank_of_list (link_target, gap_mark = gap_mark)
+        if use_robust_zscore:
+            zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = True)
+        else:
+            zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = False)
+        target_zscores[link_target] = zscore
+        print(f"#target {i:3d}: {link_target} has {value} link(s) [{target_zscores[link_target]: .4f} at rank {rank}]")
+        
+    ## attach source_zscores to M
+    M.target_zscores.update(target_zscores)
+    if check:
+        print(f"M.target_zscores: {M.target_zscores}")
+    ##
+    return M
+
+## Classes
+##
 class PatternLattice():
     "definition of PatternLattice class"
     ##
@@ -619,13 +679,9 @@ class PatternLattice():
                     R = make_simplest_list (L, R)
             except KeyError:
                 pass
-            
+
             ## main: L and R are given
             sub_links = [ ]
-            #try:
-            #    sub_links = sub_links_pre1
-            #except NameError:
-            #    sub_links = [ ]
             ## define L
             try:
                 for l in L: # l is a Pattern
@@ -646,12 +702,13 @@ class PatternLattice():
                             #if not link in sub_links and not link in sub_links_pre1:
                             #if not link in sub_links:
                             if not link in seen:
+                            #if mp_test_for_membership (link, links): # This slows down
                                 #links.append (link)
                                 sub_links.append (link)
                                 link_sources[l_form] += 1
                                 link_targets[r_form] += 1
                             ##
-                            if link not in seen:
+                            if not link in seen:
                                 seen.append(link)
                 ## update sub_links_prev
                 #sub_links_pre1 = sub_links
@@ -663,83 +720,6 @@ class PatternLattice():
             ##
             except UnboundLocalError:
                 pass
-
-        ## return
-        return links, link_sources, link_targets
-        #yield links, link_sources, link_targets
-
-    ##
-    def gen_links_X (self, reflexive: bool, reductive: bool = True, check: bool = False):
-        "takes a PatternLattice, extracts ranked_nodes, and generates a list of links among them"
-        ##
-        if check:
-            print(f"#generating links ...")
-        ##
-        links = [ ]
-        link_sources, link_targets = defaultdict(int), defaultdict(int)
-        G = self.ranked_nodes
-        ## main to be multiprocessed
-        for rank in sorted (G.keys()):
-            if check:
-                print(f"#rank: {rank}")
-            ##
-            try:
-                sub_links = sub_links_pre1
-            except NameError:
-                sub_links = [ ]
-            try:
-                sub_links_pre1 = sub_links_pre2
-            except NameError:
-                sub_links_pre1 = [ ]
-            ## define L
-            L = G[rank]
-            if check:
-                print(f"#L: {list(L)}")
-            ## define R
-            try:
-                R = G[rank + 1]
-                if check:
-                    print(f"#R: {list(R)}")
-                if reflexive:
-                    R = make_simplest_list (L, R)
-            except KeyError:
-                pass
-            
-            ## main: L and R are given
-            try:
-                for l in L: # l is a Pattern
-                    l_form, l_content = l.form, l.content
-                    if len(l_form) == 0:
-                        continue
-                    for r in R: # r is a Pattern
-                        r_form, r_content = r.form, r.content
-                        if check:
-                            print(f"#linking r_form: {r_form}; r_content: {r_content}")
-                        ## main
-                        if len(r_form) == 0 or l_form == r_form:
-                            continue
-                        elif r.instantiates_or_not (l, check = check):
-                            print(f"#instantiate: {l.form} to {r.form}")
-                            link = PatternLink([l, r])
-                            ##
-                            if not link in sub_links and not link in sub_links_pre1:
-                                sub_links.append (link)
-                                if check:
-                                    print(f"#sub_link has: {link}")
-                                link_sources[l_form] += 1
-                                link_targets[r_form] += 1
-            ##
-            except UnboundLocalError:
-                pass
-            ## update sub_links_prev
-            sub_links_pre2 = sub_links_pre1
-            sub_links_pre1 = sub_links
-            
-            ##
-            links.extend (sub_links)
-            #links.extend ([ link for link in sub_links if not link in links ])
-            if check:
-                print(f"#links.extend: {links}")
 
         ## return
         return links, link_sources, link_targets
