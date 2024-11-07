@@ -10,18 +10,9 @@ def as_tuple (L: list) -> tuple:
 def as_label (T: (list, tuple), sep: str = "", add_sep_at_end: bool = False) -> str:
     "convert a given tuple to a string by concatenating its elements"
     result = ""
+    result = sep.join(T)
     if add_sep_at_end:
-        #for x in T:
-        #    result += f"{x}{sep}"
-        result = sep.join(T) + sep
-    else:
-        #for i, x in enumerate(T):
-        #    if i < len(T) - 1:
-        #        result += f"{x}{sep}"
-        #    else:
-        #        result += f"{x}"
-        result = sep.join(T)
-    #
+        result = result + sep
     return result
 
 ##
@@ -61,6 +52,16 @@ def count_items (L: list, item: str, check: bool = False) -> int:
     "returns the number of items in the given list"
     return len([ x for x in L if x == item ])
 
+## parallel filter, or pfilter
+def mp_filter (boolean_func, L: list):
+    #from multiprocessing import Pool
+    import os
+    from multiprocess import Pool
+    cores = max(os.cpu_count(), 1)
+    with Pool (cores) as pool:
+        boolean_res = pool.map (boolean_func, L)
+        return [ x for x, b in zip (L, boolean_res) if b ]
+
 ##
 def mp_test_for_membership (item, L: (list, tuple))-> bool:
     "multiprocess-version of membership test: effective only with a large list"
@@ -74,14 +75,5 @@ def mp_test_for_membership (item, L: (list, tuple))-> bool:
     else:
         return True
 
-## parallel filter, or pfilter
-def pfilter (func, X):
-    #from multiprocessing import Pool
-    from multiprocess import Pool
-    import os
-    cores = max(os.cpu_count(), 1)
-    with Pool (cores) as p:
-        booleans = p.map (func, X)
-        return [ x for x, b in zip (X, booleans) if b ]
 
 ### end of file
