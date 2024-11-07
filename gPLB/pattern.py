@@ -12,21 +12,6 @@ def list_encode_for_pattern (L: list) -> list:
     # Crucially, strip(..)
     return [ (str(x).strip(), [str(x).strip()]) for x in L if len(x) > 0 ]
 
-#def tuple_encode_for_pattern (L: list) -> tuple:
-#    """
-#    take a list L of segments and returns a list R of (form, content) tuples
-#    R needs to be a list because it needs to be expanded later at building generalized PatternLattice
-#    """
-#    # Crucially, strip(..)
-#    return tuple( (str(x).strip(), [str(x).strip()]) for x in L if len(x) > 0)
-
-#def array_encode_for_pattern (L: list) -> tuple:
-#    """
-#    take a list L of segments and returns a list R of (form, content) tuples
-#    R needs to be a list because it needs to be expanded later at building generalized PatternLattice
-#    """
-#    # Crucially, strip(..)
-#    return ak.Array((str(x).strip(), [str(x).strip()]) for x in L if len(x) > 0 )
 
 ##
 def attr_is_None_free (p, attr: str) -> bool:
@@ -63,7 +48,7 @@ def pattern_is_None_free (p):
 ##
 def get_rank_of_list (L, gap_mark: str):
     "takes a list and returns the count of its element which are not equal to gap_mark"
-    return len([ x for x in L if x != gap_mark ])
+    return len([ x for x in L if len(x) > 0 and x != gap_mark ])
 
 ##
 def test_completion (P: list, gap_mark: str, check: bool = False) -> bool:
@@ -183,27 +168,24 @@ class Pattern:
         ## size and others
         self.size          = len (self.form)
         self.rank          = self.get_rank()
-        self.gap_count     = self.get_gap_size()
-        self.content_count = self.get_substance_size()
+        self.gap_size      = self.get_gap_size()
+        self.content_size  = self.get_substance_size()
         #return self # offensive
 
     ## This is crucial
     def __eq__ (self, other):
         "defines response to '==' operator"
         # Multi-step returns get the judgement significantly faster
-        try:
-            #if self.form_hash != other.form_hash:
-            #    return False
-            if len(self.form) != len(other.form):
-                return False
-            if self.form != other.form:
-                return False
-            #elif self.content != other.content:
-            #    return False
-            else:
-                return True
-        except TypeError:
+        #if self.form_hash != other.form_hash:
+        #    return False
+        if len (self.form) != len (other.form):
             return False
+        if self.form != other.form:
+            return False
+        #elif self.content != other.content:
+        #    return False
+        else:
+            return True
 
     ##
     def __len__ (self):
@@ -408,10 +390,13 @@ class Pattern:
     ##
     def is_fully_gapped (self, gap_mark: str):
         "tests if a given pattern has the fully gapped form"
-        form = self.form
-        if all([ x == gap_mark for x in form if len(x) > 0 ]):
-            return True
-        return False
+        #if all([ x == gap_mark for x in self.form if len(x) > 0 ]):
+        #    return True
+        ## The following replaced the above
+        for seg in self.form:
+            if len(seg) > 0 and seg != gap_mark:
+                return False
+        return True
 
     ##
     def add_gap_at_edge (self, position: str, edge_value: str = "#", check: bool = False):
@@ -488,7 +473,7 @@ class Pattern:
 
 
     ##
-    def instantiates_or_not (self, other, check: bool = False):
+    def instantiates_or_not (self, other, check: bool = False) -> bool:
         """
         tests if pattern R instantiates another L, i.e., instance(R, L) == part_of(L, R)
         """
@@ -500,40 +485,34 @@ class Pattern:
         #R_size, L_size = R.size, L.size ## fails
         R_size, L_size = len(R.form), len(L.form)
         #R_rank, L_rank = R.rank, L.rank # fails
+        R_rank, L_rank  = R.get_rank(), L.get_rank()
         R_content       = self.content
         L_content       = other.content
-        R_content_count = len(R_content)
-        L_content_count = len(L_content)
-        R_rank, L_rank  = R.get_rank(), L.get_rank()
+        R_content_size  = len(R_content)
+        L_content_size  = len(L_content)
         R_substance     = R.get_substance()
         L_substance     = L.get_substance()
-        R_gap_count     = self.get_gap_size()
-        L_gap_count     = other.get_gap_size()
         if check:
             print(f"===================")
             print(f"#L: {L}; R: {R}")
             print(f"#L_size: {L_size}; R_size: {R_size}")
             print(f"#L_rank: {L_rank}; L_rank: {R_rank}")
             print(f"#L_form: {L_form}; R_form: {R_form}")
-            print(f"#L_gap_count: {L_gap_count}; R_gap_count: {R_gap_count}")
-            print(f"#L_content: {L_content}; R_content: {R_content}")
-            print(f"#L_content_count: {L_content_count}; R_content_count: {R_content_count}")
         ## L's rank is one-segment smaller than R's
         if L_size == R_size and L_rank + 1 == R_rank:
             return check_instantiation (R, L, check = check)
-        ## L and R are of different sizes but at the same rank
-        elif L_rank == R_rank:
-            if L_size - 1 != R_size:
+        ## when L is one-segment longer than R
+        #elif L_size - 1 == R_size and L_rank == R_rank: # goes awry, but why?
+        #elif (L_size + 1 == R_size) and len(L_substance) == len(R_substance):
+        elif (L_size - 1 == R_size) and len(L_substance) == len(R_substance):
+            if L_substance == R_substance:
+                ## risks overgeneration ...
+                return True
+                if check:
+                    print(f"L_substance: {L_substance}")
+                    print(f"R_substance: {R_substance}")
+            else:
                 return False
-            else: ## when L is one-segment longer than R
-                if L_substance == R_substance:
-                    ## allows overgeneration ...
-                    if check:
-                        print(f"L_substance: {L_substance}")
-                        print(f"R_substance: {R_substance}")
-                    return True
-                else:
-                    return False
         ## other cases
         else:
             return False
