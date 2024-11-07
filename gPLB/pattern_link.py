@@ -34,11 +34,11 @@ class PatternLink:
         #assert len (left) == len (right) # offensive
         self.left            = left
         self.right           = right
+        self.gap_mark        = left.gap_mark
         self.link_type       = link_type
         self.paired          = (left, right)
         self.form_paired     = (left.form, right.form)
         self.content_paired  = (left.content, right.content)
-        self.gap_mark        = left.gap_mark
 
     ## Unimplementation of this method seems the last cause for slow processing
     def __eq__ (self, other):
@@ -71,7 +71,7 @@ class PatternLink:
         left, right  = self.left, self.right
         gap_mark     = self.gap_mark
         #assert len(left) == len(right)
-        assert len(left) >= len(right)
+        assert abs(len(left) - len(right)) <= 1
         form = left.form
         #form = right.form
         return len([ x for x in form if x != gap_mark ])
