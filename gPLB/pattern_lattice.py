@@ -537,7 +537,7 @@ def gen_zscores_from_sources (M, gap_mark: str, use_robust_zscore: bool, check: 
     stdevs_by_rank   = calc_stdevs_by_rank (Link_sources, ranked_links) # returns dict
     medians_by_rank  = calc_medians_by_rank (Link_sources, ranked_links) # returns dict
     MADs_by_rank     = calc_MADs_by_rank (Link_sources, ranked_links) # returns dict
-    
+
     source_zscores = {}
     for i, link_source in enumerate(Link_sources):
         value  = Link_sources[link_source]
@@ -548,7 +548,7 @@ def gen_zscores_from_sources (M, gap_mark: str, use_robust_zscore: bool, check: 
             zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = False)
         source_zscores[link_source] = zscore
         print(f"#source {i:3d}: {link_source} has {value} link(s) [{source_zscores[link_source]: .4f} at rank {rank}]")
-    
+
     ## attach source_zscores to M
     M.source_zscores.update(source_zscores)
     if check:
@@ -566,7 +566,7 @@ def gen_zscores_from_targets (M, gap_mark: str, use_robust_zscore: bool, check: 
     stdevs_by_rank   = calc_stdevs_by_rank (Link_targets, ranked_links) # returns dict
     medians_by_rank  = calc_medians_by_rank (Link_targets, ranked_links) # returns dict
     MADs_by_rank     = calc_MADs_by_rank (Link_targets, ranked_links) # returns dict
-    
+
     target_zscores = {}
     for i, link_target in enumerate(Link_targets):
         value  = Link_targets[link_target]
@@ -577,7 +577,7 @@ def gen_zscores_from_targets (M, gap_mark: str, use_robust_zscore: bool, check: 
             zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = False)
         target_zscores[link_target] = zscore
         print(f"#target {i:3d}: {link_target} has {value} link(s) [{target_zscores[link_target]: .4f} at rank {rank}]")
-        
+
     ## attach source_zscores to M
     M.target_zscores.update(target_zscores)
     if check:
@@ -602,7 +602,7 @@ class PatternLattice():
         else:
             raise "Error: gap_mark is missing"
         self.nodes        = pattern.build_lattice_nodes (generalized = generalized, check = check)
-        self.ranked_nodes = self.group_by_rank (check = check)
+        self.ranked_nodes = self.group_nodes_by_rank (check = check)
         self.links, self.link_sources, self.link_targets = \
             self.gen_links (reflexive = reflexive, check = check)
         self.source_zscores = {}
@@ -629,7 +629,7 @@ class PatternLattice():
             yield x
 
     ##
-    def group_by_rank (self, check: bool = False) -> dict:
+    def group_nodes_by_rank (self, check: bool = False) -> dict:
         "takes a list of patterns, P, and generates a dictionary of patterns grouped by their ranks"
         import collections
         ##
@@ -661,6 +661,7 @@ class PatternLattice():
         ##
         links = [ ]; seen = [ ]
         link_sources, link_targets = defaultdict(int), defaultdict(int)
+        #link_sources, link_targets = {}, {}
         G = self.ranked_nodes
         ## main to be multiprocessed
         for rank in sorted (G.keys()):
@@ -693,23 +694,25 @@ class PatternLattice():
                         if check:
                             print(f"#linking r_form: {r_form}; r_content: {r_content}")
                         ## main
-                        if len(r_form) == 0 or l_form == r_form:
+                        if len(r_form) == 0:
+                            continue
+                        elif l_form == r_form:
                             continue
                         elif r.instantiates_or_not (l, check = check):
-                            print(f"#instantiate: {l.form} to {r.form}")
-                            link = PatternLink([l, r])
+                            print(f"#is-a: {l_form} <- {r_form}")
+                            link = PatternLink((l, r))
                             ##
+                            #if not link in links:
+                            if not link in sub_links:
                             #if not link in sub_links and not link in sub_links_pre1:
-                            #if not link in sub_links:
-                            if not link in seen:
+                            #if not link in seen:
                             #if mp_test_for_membership (link, links): # This slows down
                                 #links.append (link)
                                 sub_links.append (link)
                                 link_sources[l_form] += 1
                                 link_targets[r_form] += 1
-                            ##
-                            if not link in seen:
-                                seen.append(link)
+                                ## update seen
+                                #seen.append(link)
                 ## update sub_links_prev
                 #sub_links_pre1 = sub_links
                 ##
@@ -759,9 +762,9 @@ class PatternLattice():
         pooled_nodes = self.nodes
         nodes_to_add = other.nodes
         ## remove None-containers
-        if remove_None_containers:
-            pooled_nodes = [ node for node in pooled_nodes if form_is_None_free (node) ]
-            nodes_to_add = [ node for node in other.nodes if form_is_None_free (node) ]
+        #if remove_None_containers:
+        #    pooled_nodes = [ node for node in pooled_nodes if form_is_None_free (node) ]
+        #    nodes_to_add = [ node for node in other.nodes if form_is_None_free (node) ]
         if check:
             print(f"#pooled_nodes [0]: {pooled_nodes}")
 
@@ -818,7 +821,7 @@ class PatternLattice():
         empty_pat           = Pattern([], gap_mark)
         merged              = PatternLattice (empty_pat, generalized = generalized, reflexive = reflexive)
         merged.nodes        = merged_nodes
-        merged.ranked_nodes = merged.group_by_rank (check = check)
+        merged.ranked_nodes = merged.group_nodes_by_rank (check = check)
         if check:
             print(f"#merged_ranked_nodes: {merged.ranked_nodes}")
 
