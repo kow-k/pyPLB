@@ -527,10 +527,13 @@ class Pattern:
             print(f"#other: {other}")
 
         ## prevents void operation
-        #if self.form_hash == other.form_hash:
-        if self.form == other.form:
+        if self.form == [] and other.form != []:
+            return other
+        elif self.form != [] and other.form == []:
             return self
-
+        #elif self.form_hash == other.form_hash:
+        elif self.form == other.form:
+            return self
         ## main
         gap_mark       = self.gap_mark
         boundary_mark  = self.boundary_mark
