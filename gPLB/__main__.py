@@ -105,7 +105,7 @@ zscores_from_sources    = not zscores_from_targets
 
 ## inspection paramters
 draw_inspection      = False
-mp_inspection        = True # This disables use of multiprocess
+mp_inspection        = False # This disables use of multiprocess
 if mp_inspection:
     use_mp = False
 else:
@@ -327,6 +327,14 @@ elif build_lattice_stepwise:
     M = L[0]
     for patlat in L[1:]:
         M = M.merge_lattices (patlat, gen_links_internally = gen_links_internally, use_multiprocess = use_mp, reflexive = reflexive, show_steps = True, check = False)
+
+        ## check nodes in M
+        print(f"generated {len(M.nodes)} Patterns")
+        if verbose:
+            print(f"#Patterns")
+            for i, p in enumerate(M.nodes):
+                print(f"#Pattern {i+1}: {p}")
+
         ##
         if not gen_links_internally and len(M.links) > 0:
             M.update_links (reflexive = reflexive, check = False) ## Crucially
@@ -339,9 +347,11 @@ elif build_lattice_stepwise:
 
         ## generate z-scores from link targets
         gen_zscores_from_targets (M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
+
         ## generate z-scores from link sources
         gen_zscores_from_sources (M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
         ##
+        print(f"##Results")
         if draw_stepwise:
             M.draw_diagrams (layout = layout, generalized = generalized, auto_fig_sizing = auto_fig_sizing, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lowerbound = zscore_lowerbound, zscore_upperbound = zscore_upperbound, font_name = multibyte_font_name, zscores_from_sources = zscores_from_sources, scale_factor = scale_factor, check = draw_inspection)
 
@@ -353,38 +363,36 @@ else:
         print(f"##Generating links independently")
         M.update_links (reflexive = reflexive, check = False)
 
-##
-print(f"##Results")
-
-## check nodes in M
-print(f"generated {len(M.nodes)} Patterns")
-if verbose:
-    print(f"#Patterns")
-    for i, p in enumerate(M.nodes):
-        print(f"#Pattern {i+1}: {p}")
-
-## checking links in M
-print(f"##Links")
-print(f"#generated {len(M.links)} links")
-for i, link in enumerate(M.links):
-    link.pprint (indicator = i, paired = True, link_type = "instantiates", check = False)
-
-## get z-scores from link targets
-gen_zscores_from_targets (M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
-if print_link_targets:
-    print(M.target_zscores)
-
-## get z-scores from link sources
-gen_zscores_from_sources (M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
-print(M.source_zscores)
-
-
-## draw diagram of M
-if draw_stepwise:
+    ##
+    print(f"##Results")
+    ## check nodes in M
+    print(f"generated {len(M.nodes)} Patterns")
+    if verbose:
+        print(f"#Patterns")
+        for i, p in enumerate(M.nodes):
+            print(f"#Pattern {i+1}: {p}")
+    
+    ## checking links in M
+    print(f"##Links")
+    print(f"#generated {len(M.links)} links")
+    for i, link in enumerate(M.links):
+        link.pprint (indicator = i, paired = True, link_type = "instantiates", check = False)
+    
+    ## get z-scores from link targets
+    gen_zscores_from_targets (M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
+    if print_link_targets:
+        print(M.target_zscores)
+    
+    ## get z-scores from link sources
+    gen_zscores_from_sources (M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
+    print(M.source_zscores)
+    
+    ## draw diagram of M
     print(f"##Drawing a diagram from the merged lattice")
     label_sample_n = 10
     M.draw_diagrams (layout = layout, generalized = generalized, auto_fig_sizing = auto_fig_sizing, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lowerbound = zscore_lowerbound, zscore_upperbound = zscore_upperbound, font_name = multibyte_font_name, zscores_from_sources = zscores_from_sources, scale_factor = scale_factor, check = draw_inspection)
-##
+
+## conclude
 print(f"##built from {len(S)} sources: {[ as_label(x, sep = ',') for x in S ]}")
 
 ### end of file
