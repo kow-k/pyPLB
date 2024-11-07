@@ -65,7 +65,7 @@ parser.add_argument('-zu', '--zscore_upperbound', type= float, default= None)
 parser.add_argument('-Z', '--use_robust_zscore', action='store_true', default= False)
 parser.add_argument('-T', '--zscores_from_targets', action='store_true', default= False)
 parser.add_argument('-t', '--print_link_targets', action='store_true', default= False)
-parser.add_argument('-D', '--draw_stepwise', action= 'store_false', default = True)
+parser.add_argument('-D', '--draw_individually', action= 'store_false', default = True)
 parser.add_argument('-J', '--use_multibyte_chars', action= 'store_true', default = False)
 parser.add_argument('-L', '--layout', type= str, default= 'Multi_partite')
 parser.add_argument('-A', '--auto_fig_sizing', action= 'store_true', default= False)
@@ -85,7 +85,7 @@ sample_n                = args.sample_n
 generalized             = args.generalized
 reflexive               = args.unreflexive
 build_lattice_stepwise  = args.build_lattice_stepwise
-draw_stepwise           = args.draw_stepwise
+draw_individually       = args.draw_individually
 layout                  = args.layout
 auto_fig_sizing         = args.auto_fig_sizing
 zscore_lowerbound       = args.zscore_lowerbound
@@ -99,7 +99,7 @@ use_multibyte_chars     = args.use_multibyte_chars
 ### implications
 # diagram drawing
 if not layout is None:
-    draw_stepwise       = True
+    draw_individually   = True
 ## z-scores handling
 zscores_from_sources    = not zscores_from_targets
 
@@ -120,7 +120,7 @@ print(f"#input_comment_escape: {input_comment_escape}")
 print(f"#lattice is generalized: {generalized}")
 print(f"#instantiation is reflexive: {reflexive}")
 print(f"#gap_mark: {gap_mark}")
-print(f"#draw_stepwise: {draw_stepwise}")
+print(f"#draw_individually: {draw_individually}")
 print(f"#use_robust_zscore: {use_robust_zscore}")
 print(f"#zscore_lowerbound: {zscore_lowerbound}")
 print(f"#zscore_upperbound: {zscore_upperbound}")
@@ -300,7 +300,7 @@ if detailed:
 ##
 #exit()
 ##
-if draw_stepwise and verbose:
+if draw_individually and verbose:
     print(f"##Drawing diagrams")
     for i, patlat in enumerate(L):
         print(f"#drawing diagram from PatternLattice {i+1}")
@@ -352,12 +352,13 @@ elif build_lattice_stepwise:
         gen_zscores_from_sources (M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
         ##
         print(f"##Results")
-        if draw_stepwise:
+        if draw_individually:
             M.draw_diagrams (layout = layout, generalized = generalized, auto_fig_sizing = auto_fig_sizing, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lowerbound = zscore_lowerbound, zscore_upperbound = zscore_upperbound, font_name = multibyte_font_name, zscores_from_sources = zscores_from_sources, scale_factor = scale_factor, check = draw_inspection)
 
 else:
     gen_links_internally = False
     M = functools.reduce (lambda La, Lb: La.merge_lattices (Lb, gen_links_internally = gen_links_internally, use_multiprocess = use_mp, reflexive = reflexive, show_steps = True, check = False), L)
+    
     # The following process was isolated for memory conservation
     if not gen_links_internally and len(M.links) == 0:
         print(f"##Generating links independently")
@@ -365,6 +366,7 @@ else:
 
     ##
     print(f"##Results")
+    
     ## check nodes in M
     print(f"generated {len(M.nodes)} Patterns")
     if verbose:
