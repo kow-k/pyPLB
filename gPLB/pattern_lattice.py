@@ -547,7 +547,7 @@ def gen_zscores_from_sources (M, gap_mark: str, use_robust_zscore: bool, check: 
         else:
             zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = False)
         source_zscores[link_source] = zscore
-        print(f"#source {i:3d}: {link_source} has {value} link(s) [{source_zscores[link_source]: .4f} at rank {rank}]")
+        print(f"#source {i:3d}: {link_source} has {value} out-going link(s) [{source_zscores[link_source]: .4f} at rank {rank}]")
 
     ## attach source_zscores to M
     M.source_zscores.update(source_zscores)
@@ -576,7 +576,7 @@ def gen_zscores_from_targets (M, gap_mark: str, use_robust_zscore: bool, check: 
         else:
             zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = False)
         target_zscores[link_target] = zscore
-        print(f"#target {i:3d}: {link_target} has {value} link(s) [{target_zscores[link_target]: .4f} at rank {rank}]")
+        print(f"#target {i:3d}: {link_target} has {value} in-coming link(s) [{target_zscores[link_target]: .4f} at rank {rank}]")
 
     ## attach source_zscores to M
     M.target_zscores.update(target_zscores)
@@ -659,9 +659,10 @@ class PatternLattice():
         if check:
             print(f"#generating links ...")
         ##
-        links = [ ]; seen = [ ]
-        link_sources, link_targets = defaultdict(int), defaultdict(int)
+        links = [ ]
+        #seen = [ ]
         #link_sources, link_targets = {}, {}
+        link_sources, link_targets = defaultdict(int), defaultdict(int)
         G = self.ranked_nodes
         ## main to be multiprocessed
         for rank in sorted (G.keys()):
@@ -678,6 +679,7 @@ class PatternLattice():
                     print(f"#R: {list(R)}")
                 if reflexive:
                     R = make_simplest_list (L, R)
+            
             except KeyError:
                 pass
 
@@ -702,11 +704,11 @@ class PatternLattice():
                             print(f"#is-a: {l_form} <- {r_form}")
                             link = PatternLink((l, r))
                             ##
+                            #if mp_test_for_membership (link, links): # This slows down
                             #if not link in links:
                             if not link in sub_links:
                             #if not link in sub_links and not link in sub_links_pre1:
                             #if not link in seen:
-                            #if mp_test_for_membership (link, links): # This slows down
                                 #links.append (link)
                                 sub_links.append (link)
                                 link_sources[l_form] += 1
