@@ -193,7 +193,7 @@ class Pattern:
         try:
             return len (self.paired)
         except TypeError:
-            return None
+            return len (self.form)
     ##
     def __lt__ (self, other):
         #return self.form < other.form
@@ -253,7 +253,8 @@ class Pattern:
         "takes a pattern and returns its rank, i.e., the number of non-gap elements"
         #return len([ x for x in self.form if x != self.gap_mark ])
         return len (self.get_substance())
-    ##
+
+    ## alias
     get_rank = get_substance_size
 
     ##
@@ -525,14 +526,12 @@ class Pattern:
             print(f"#=====================")
             print(f"#self: {self}")
             print(f"#other: {other}")
-
+        ##
+        #assert len(self.form) == len (other.form)
         ## prevents void operation
-        if self.form == [] and other.form != []:
-            return other
-        elif self.form != [] and other.form == []:
-            return self
-        #elif self.form_hash == other.form_hash:
-        elif self.form == other.form:
+        if len(self) != len(other):
+            return None
+        elif self.form == other.form and self.content == other.content:
             return self
         ## main
         gap_mark       = self.gap_mark
