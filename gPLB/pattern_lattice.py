@@ -335,14 +335,15 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     )
 
     ## set labels used in title
-    used_labels = [ as_label (x, sep = ",") for x in sorted (instances) ]
+    #used_labels = [ as_label (x, sep = ",") for x in sorted (instances) ]
+    used_labels = [ as_label (x, sep = ",") for x in instances ]
     label_count = len (used_labels)
-    if label_sample_n is not None and label_count > label_sample_n:
-        new_labels = used_labels[:label_sample_n - 1]
-        new_labels.append("…")
-        new_labels.append(used_labels[-1])
-        used_labels = new_labels
-    print(f"#used_labels: {used_labels}")
+    #if label_sample_n is not None and label_count > label_sample_n:
+    #    new_labels = used_labels[:label_sample_n - 1]
+    #    new_labels.append("…")
+    #    new_labels.append(used_labels[-1])
+    #    used_labels = new_labels
+    print(f"#used_labels {label_count}: {used_labels}")
 
     ### set title
     if generalized:
@@ -368,6 +369,16 @@ def make_ranked_dict (L: list, gap_mark: str) -> dict:
         ranked_dict[rank] = [ x for x in L if Pattern(x, gap_mark).get_rank() == rank ]
     ##
     return ranked_dict
+
+##
+def sort_nodes_by_size (L: list, gap_mark: str) -> dict:
+    "takes a list of Patterns and returns a dict whose keys are sizes of them"
+    ##
+    sized_dict = {}
+    for size in set([ len(p.form) for p in L ]):
+        sized_dict[size] = [ p for p in L if len (p.form) == size ]
+    ##
+    return sized_dict
 
 ##
 def merge_patterns_and_filter (A, B, check = False):
@@ -496,13 +507,13 @@ def calc_zscore (value: float, average: float, stdev: float, median: float, MAD:
     ##
     import numpy as np
     import scipy.stats as stats
-    coeff     = 0.6745
+    robust_coeff     = 0.6745
     ##
     if stdev == 0 or MAD == 0:
         return 0
     else:
         if robust:
-            return (coeff * (value - median)) / MAD
+            return (robust_coeff * (value - median)) / MAD
         else:
             return (value - average) / stdev
 
@@ -515,7 +526,7 @@ def calc_zscore_old (value: float, average_val: float, stdev_val: float) -> floa
         return (value - average_val) / stdev_val
 
 ##
-def normalize_score (x: float, use_robust_zscore: bool = False, min_val: float = -3, max_val: float = 6) -> float:
+def normalize_score (x: float, use_robust_zscore: bool = False, min_val: float = -4, max_val: float = 5) -> float:
     "takes a value in the range of min, max and returns its normalized value"
     ##
     import matplotlib.colors as colors
@@ -679,7 +690,7 @@ class PatternLattice():
                     print(f"#R: {list(R)}")
                 if reflexive:
                     R = make_simplest_list (L, R)
-            
+
             except KeyError:
                 pass
 
@@ -745,14 +756,14 @@ class PatternLattice():
 
     ##
     #@jit(nopython = True)
-    def merge_lattices (self, other, gen_links_internally: bool, reflexive: bool, generalized: bool = True, reductive: bool = True, remove_None_containers: bool = False, show_steps: bool = False, use_multiprocess: bool = True, check: bool = False):
+    def merge_lattices (self, other, gen_links_internally: bool, generalized: bool = True, reflexive: bool = True, reductive: bool = True, remove_None_containers: bool = False, show_steps: bool = False, use_multiprocess: bool = True, check: bool = False):
         "takes a pair of PatternLattices and returns its merger"
         ##
         print(f"#merging pattern lattices ...")
-        if len(other.nodes) == 0:
-            return self
-        elif len(self.nodes) == 0:
-            return other
+        #if len (other.nodes) == 0:
+        #    return self
+        #elif len (self.nodes) == 0:
+        #    return other
         ##
         import itertools # This code needs to be externalized under jit
         import os
@@ -767,8 +778,12 @@ class PatternLattice():
         #if remove_None_containers:
         #    pooled_nodes = [ node for node in pooled_nodes if form_is_None_free (node) ]
         #    nodes_to_add = [ node for node in other.nodes if form_is_None_free (node) ]
+        #pooled_nodes = [ p for p in pooled_nodes if p is not None ]
+        #nodes_to_add = [ p for p in nodes_to_add if p is not None ]
+
         if check:
             print(f"#pooled_nodes [0]: {pooled_nodes}")
+            print(f"#nodes_to_add [0]: {nodes_to_add}")
 
         ## adding
         if reductive:
@@ -794,6 +809,8 @@ class PatternLattice():
         if check:
             print(f"#pooled_nodes [3]: {pooled_nodes}")
 
+        ## merger main
+        merged_nodes = [ ]
         ## multiprocess(ing) version
         if use_multiprocess:
             print(f"#running in multi-processing mode")
@@ -801,21 +818,26 @@ class PatternLattice():
             import multiprocess as mp
             cores = max(os.cpu_count(), 1)
             with mp.Pool(cores) as pool:
-                merged_nodes = pool.starmap (merge_patterns_and_filter, itertools.combinations (pooled_nodes, 2))
-                ## The following fails unless Pattern.__eq__ is redefined
-                #merged_nodes = [ node for node in merged_nodes if not node is None ]
-                #booleans = pool.map (lambda x: not x is None, merged_nodes)
-                #merged_nodes = [ node for node, boolean in zip (merged_nodes, booleans) if boolean == True ]
-            merged_nodes = simplify_list (merged_nodes)
+                for size, sized_nodes in sort_nodes_by_size (pooled_nodes, gap_mark = gap_mark).items():
+                    if check:
+                        print(f"#sized_nodes {size}: {sized_nodes}")
+                    merged_sized_nodes = pool.starmap (merge_patterns_and_filter, itertools.combinations (sized_nodes, 2))
+                    merged_sized_nodes = simplify_list (merged_sized_nodes)
+                    merged_nodes.extend (merged_sized_nodes)
         ## original slower version
         else:
-            merged_nodes = [ ]
-            for A, B in itertools.combinations (pooled_nodes, 2):
-                C = A.merge_patterns (B, check = False)
-                ## The following fails unless Pattern.__eq__ is redefined
-                #if form_is_None_free (C) and not C in merged_nodes:
-                if not C in merged_nodes: # This fails => worsk after supressing None
-                    merged_nodes.append(C)
+            for rank, sized_nodes in sort_nodes_by_size (pooled_nodes, gap_mark = gap_mark).items():
+                if check:
+                    print(f"#sized_nodes {size}: {sized_nodes}")
+                merged_sized_nodes = [ ]
+                for A, B in itertools.combinations (sized_nodes, 2):
+                    C = A.merge_patterns (B, check = False)
+                    ## The following fails unless Pattern.__eq__ is redefined
+                    if not C in merged_sized_nodes:
+                        merged_sized_nodes.append (C)
+                ##
+                merged_nodes.extend (merged_sized_nodes)
+        ##
         if check:
             print(f"#merged_nodes: {merged_nodes}")
 
@@ -842,7 +864,7 @@ class PatternLattice():
         return merged
 
     ##
-    def draw_diagrams (self, generalized: bool, layout: str = None, zscores_from_sources: bool = True, auto_fig_sizing: bool = False, zscore_lowerbound: float = None, zscore_upperbound: float = None, use_robust_zscore: bool = False, scale_factor: float = 3, fig_size: tuple = None, label_size: int = None, label_sample_n: int = None, node_size: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
+    def draw_diagrams (self, generalized: bool, zscores_from_targets: bool, layout: str = None, auto_fig_sizing: bool = False, zscore_lowerbound: float = None, zscore_upperbound: float = None, use_robust_zscore: bool = False, scale_factor: float = 3, fig_size: tuple = None, label_size: int = None, label_sample_n: int = None, node_size: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
         """
         draw a lattice digrams from a given PatternLattice L by extracting L.links
         """
@@ -858,10 +880,13 @@ class PatternLattice():
                 print(f"#links at rank {rank}:\n{links}")
 
         ## handle z-scores
-        if zscores_from_sources:
-            zscores = self.source_zscores
-        else:
+        #zscores = self.source_zscores
+        if zscores_from_targets:
             zscores = self.target_zscores
+            #zscores = self.source_zscores
+        else:
+            zscores = self.source_zscores
+        ##
         if check:
             i = 0
             for node, v in zscores.items():
