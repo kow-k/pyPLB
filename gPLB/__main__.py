@@ -249,7 +249,7 @@ for s in S:
     Patterns.append(p)
 
 ##
-Patterns = sorted (Patterns, key = lambda x: len(x), reverse = True)
+Patterns = sorted (Patterns, key = lambda x: len(x), reverse = False)
 
 
 ##
@@ -309,6 +309,7 @@ if draw_individually and verbose:
         patlat.draw_diagrams (layout = layout, generalized = generalized, auto_fig_sizing = auto_fig_sizing, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
 ##
 #exit()
+
 ##
 print(f"##Merging {len(L)} PatternLattices ...")
 
@@ -330,16 +331,13 @@ elif build_lattice_stepwise:
         if i == 0:
             M = patlat
         else: ## merger
-            M = M.merge_lattices (patlat, gen_links_internally = gen_links_internally, use_multiprocess = use_mp, reflexive = reflexive, show_steps = True, check = False)
-            if draw_individually:
-                M.draw_diagrams (layout = layout, generalized = generalized, auto_fig_sizing = auto_fig_sizing, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lowerbound = zscore_lowerbound, zscore_upperbound = zscore_upperbound, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+            M = patlat.merge_lattices (M, gen_links_internally = gen_links_internally, use_multiprocess = use_mp, reflexive = reflexive, show_steps = True, check = False)
 
         ## check nodes in M
-        print(f"generated {len(M.nodes)} Patterns")
+        print(f"generated {len(M.nodes)} merged")
         if verbose:
-            print(f"#Patterns")
             for i, p in enumerate(M.nodes):
-                print(f"#Pattern {i+1}: {p}")
+                print(f"#merged Pattern {i+1}: {p}")
 
         ##
         if not gen_links_internally and len(M.links) > 0:
@@ -362,7 +360,7 @@ elif build_lattice_stepwise:
 
 
 else:
-    gen_links_internally = True
+    gen_links_internally = False
     M = functools.reduce (lambda La, Lb: La.merge_lattices (Lb, gen_links_internally = gen_links_internally, use_multiprocess = use_mp, reflexive = reflexive, show_steps = True, check = False), L)
 
     # The following process was isolated for memory conservation
@@ -374,11 +372,10 @@ else:
     print(f"##Results")
 
     ## check nodes in M
-    print(f"generated {len(M.nodes)} Patterns")
+    print(f"generated {len(M.nodes)} merged Patterns")
     if verbose:
-        print(f"#Patterns")
         for i, p in enumerate(M.nodes):
-            print(f"#Pattern {i+1}: {p}")
+            print(f"#merged {i+1}: {p}")
 
     ## checking links in M
     print(f"##Links")
