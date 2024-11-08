@@ -371,23 +371,14 @@ def make_ranked_dict (L: list, gap_mark: str) -> dict:
     return ranked_dict
 
 ##
-def sort_nodes_by_size (L: list, gap_mark: str) -> dict:
+def sort_nodes_by_size (L: list, gap_mark: str, reverse: bool = False) -> dict:
     "takes a list of Patterns and returns a dict whose keys are sizes of them"
     ##
     sized_dict = {}
-    for size in set([ len(p.form) for p in L ]):
+    for size in sorted (set ([ len(p.form) for p in L ]), reverse = reverse):
         sized_dict[size] = [ p for p in L if len (p.form) == size ]
     ##
     return sized_dict
-
-##
-def merge_patterns_and_filter (A, B, check = False):
-    return A.merge_patterns (B, check = check)
-    #C = A.merge_patterns (B, check = check)
-    #return C
-    #if not C is None and form_is_None_free (C):
-    #    #yield C # fails
-    #    return C
 
 ##
 def mp_gen_links_main (links, link_souces, link_targets, x, check: bool = False):
@@ -440,6 +431,15 @@ def get_rank_dists (link_dict: dict, ranked_links: dict, check: bool = False) ->
         rank_dists[rank] = stats
     ##
     return rank_dists
+
+##
+def merge_patterns_and_filter (A, B, check = False):
+    #return A.merge_patterns (B, check = check) # turned out to be offensive
+    C = A.merge_patterns (B, check = check)
+    #if C is not None: # fails to work
+    if len(C) > 0:
+        return C
+    #    #yield C # fails
 
 ##
 def calc_averages_by_rank (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
@@ -664,7 +664,7 @@ class PatternLattice():
         return rank_groups
 
     ##
-    def gen_links (self, reflexive: bool, reductive: bool = True, check: bool = False):
+    def gen_links (self, reflexive: bool, reductive: bool = True, check: bool = True):
         "takes a PatternLattice, extracts ranked_nodes, and generates a list of links among them"
         ##
         if check:
@@ -688,11 +688,11 @@ class PatternLattice():
                 R = G[rank + 1]
                 if check:
                     print(f"#R: {list(R)}")
-                if reflexive:
-                    R = make_simplest_list (L, R)
-
             except KeyError:
                 pass
+            #
+            if reflexive:
+                R = make_simplest_list (R, L)
 
             ## main: L and R are given
             sub_links = [ ]
@@ -701,31 +701,38 @@ class PatternLattice():
                 for l in L: # l is a Pattern
                     l_form, l_content = l.form, l.content
                     if len(l_form) == 0:
+                        #print(f"#ignored l_form: {l_form}")
                         continue
                     for r in R: # r is a Pattern
                         r_form, r_content = r.form, r.content
-                        if check:
-                            print(f"#linking r_form: {r_form}; r_content: {r_content}")
+                        assert len(l.get_substance()) <= len(r.get_substance())
                         ## main
-                        if len(r_form) == 0:
+                        if len(r_form) == 0 or l_form == r_form:
+                            #print(f"#ignored pair: {l_form}; {r_form}")
                             continue
-                        elif l_form == r_form:
+                        ## valid case
+                        elif len(l_form) == len(r_form) or len(l_form) == len(r_form) + 1:
+                            if r.instantiates_or_not (l, check = check):
+                                print(f"#is-a: {l_form} <- {r_form}")
+                                ##
+                                link = PatternLink ((l, r))
+                                #if mp_test_for_membership (link, links): # This slows down
+                                #if not link in links:
+                                if link and not link in sub_links:
+                                #if not link in sub_links and not link in sub_links_pre1:
+                                #if not link in seen:
+                                    #links.append (link)
+                                    sub_links.append (link)
+                                    link_sources[l_form] += 1
+                                    link_targets[r_form] += 1
+                                    ## update seen
+                                    #seen.append(link)
+                            else:
+                                #print(f"#not-is-a 2: {l_form} <-/- {r_form}")
+                                continue
+                        else:
+                            #print(f"#not-is-a 1: {l_form} <-/- {r_form}")
                             continue
-                        elif r.instantiates_or_not (l, check = check):
-                            print(f"#is-a: {l_form} <- {r_form}")
-                            link = PatternLink((l, r))
-                            ##
-                            #if mp_test_for_membership (link, links): # This slows down
-                            #if not link in links:
-                            if not link in sub_links:
-                            #if not link in sub_links and not link in sub_links_pre1:
-                            #if not link in seen:
-                                #links.append (link)
-                                sub_links.append (link)
-                                link_sources[l_form] += 1
-                                link_targets[r_form] += 1
-                                ## update seen
-                                #seen.append(link)
                 ## update sub_links_prev
                 #sub_links_pre1 = sub_links
                 ##
@@ -755,60 +762,62 @@ class PatternLattice():
 
 
     ##
-    #@jit(nopython = True)
     def merge_lattices (self, other, gen_links_internally: bool, generalized: bool = True, reflexive: bool = True, reductive: bool = True, remove_None_containers: bool = False, show_steps: bool = False, use_multiprocess: bool = True, check: bool = False):
         "takes a pair of PatternLattices and returns its merger"
         ##
         print(f"#merging pattern lattices ...")
-        #if len (other.nodes) == 0:
-        #    return self
-        #elif len (self.nodes) == 0:
-        #    return other
-        ##
-        import itertools # This code needs to be externalized under jit
-        import os
+        #
+        if len (self.nodes) > 0 and len (other.nodes) == 0:
+            return self
+        elif len (self.nodes) == 0 and len (other.nodes) > 0:
+            return other
         ##
         sample_pattern = self.nodes[0]
         gap_mark       = sample_pattern.gap_mark
-
+        import itertools # This code needs to be externalized under jit
+        
         ## creates .nodes
-        pooled_nodes = self.nodes
-        nodes_to_add = other.nodes
+        pooled_nodes  = self.nodes
+        nodes_to_add  = other.nodes
         ## remove None-containers
         #if remove_None_containers:
         #    pooled_nodes = [ node for node in pooled_nodes if form_is_None_free (node) ]
         #    nodes_to_add = [ node for node in other.nodes if form_is_None_free (node) ]
-        #pooled_nodes = [ p for p in pooled_nodes if p is not None ]
-        #nodes_to_add = [ p for p in nodes_to_add if p is not None ]
-
+        ##
+        pooled_nodes = [ p for p in pooled_nodes if len(p) > 0 ]
+        nodes_to_add = [ p for p in nodes_to_add if len(p) > 0 ]
         if check:
             print(f"#pooled_nodes [0]: {pooled_nodes}")
             print(f"#nodes_to_add [0]: {nodes_to_add}")
-
-        ## adding
-        if reductive:
-            for node in nodes_to_add:
-                ## The following fails to work if Pattern.__eq__ is not redefined
-                if not node in pooled_nodes:
-                    pooled_nodes.append(node)
-        else:
-            pooled_nodes += nodes_to_add
-        if check:
-            print(f"#pooled_nodes [1]: {pooled_nodes}")
-
-        ## reduce source
+        
+        ## reduce nodes from self
+        size1 = len (pooled_nodes)
         if reductive:
             R = [ ]
             ## The following fails to work if Pattern.__eq__ is not redefined
             for node in pooled_nodes:
                 if node not in R:
-                    R.append(node)
+                    R.append (node)
             pooled_nodes = R
-            if check:
-                print(f"#pooled_nodes [2]: {pooled_nodes}")
+            ## check difference
+            size2 = len(pooled_nodes)
+            d = size2 - size1
+            if d > 0:
+                print(f"#reduced {d} nodes from pooled nodes")
         if check:
-            print(f"#pooled_nodes [3]: {pooled_nodes}")
+            print(f"#pooled_nodes [1]: {pooled_nodes}")
 
+        ## adding nodes from other
+        if reductive:
+            for node in nodes_to_add:
+                ## The following fails to work if Pattern.__eq__ is not redefined
+                if not node in pooled_nodes:
+                    pooled_nodes.append (node)
+            if check:
+                print(f"#nodes_to_add [0]: {nodes_to_add}")
+        else:
+            pooled_nodes += nodes_to_add
+        
         ## merger main
         merged_nodes = [ ]
         ## multiprocess(ing) version
@@ -816,9 +825,9 @@ class PatternLattice():
             print(f"#running in multi-processing mode")
             import os
             import multiprocess as mp
-            cores = max(os.cpu_count(), 1)
+            cores = max (os.cpu_count(), 1)
             with mp.Pool(cores) as pool:
-                for size, sized_nodes in sort_nodes_by_size (pooled_nodes, gap_mark = gap_mark).items():
+                for size, sized_nodes in sort_nodes_by_size (pooled_nodes, gap_mark = gap_mark, reverse = True).items():
                     if check:
                         print(f"#sized_nodes {size}: {sized_nodes}")
                     merged_sized_nodes = pool.starmap (merge_patterns_and_filter, itertools.combinations (sized_nodes, 2))
@@ -826,40 +835,43 @@ class PatternLattice():
                     merged_nodes.extend (merged_sized_nodes)
         ## original slower version
         else:
-            for rank, sized_nodes in sort_nodes_by_size (pooled_nodes, gap_mark = gap_mark).items():
+            for rank, sized_nodes in sort_nodes_by_size (pooled_nodes, gap_mark = gap_mark, reverse = True).items():
                 if check:
                     print(f"#sized_nodes {size}: {sized_nodes}")
                 merged_sized_nodes = [ ]
                 for A, B in itertools.combinations (sized_nodes, 2):
                     C = A.merge_patterns (B, check = False)
                     ## The following fails unless Pattern.__eq__ is redefined
-                    if not C in merged_sized_nodes:
+                    if len(C) > 0 and not C in merged_sized_nodes:
                         merged_sized_nodes.append (C)
                 ##
                 merged_nodes.extend (merged_sized_nodes)
+        
+        ## remove None-containing nodes
+        #merged_nodes = [ p for p in merged_nodes if not p is None ] 
         ##
         if check:
             print(f"#merged_nodes: {merged_nodes}")
 
         # generate merged PatternLattice
-        empty_pat           = Pattern([], gap_mark)
-        merged              = PatternLattice (empty_pat, generalized = generalized, reflexive = reflexive)
-        merged.nodes        = merged_nodes
-        merged.ranked_nodes = merged.group_nodes_by_rank (check = check)
+        empty_pat            = Pattern([], gap_mark)
+        merged               = PatternLattice (empty_pat, generalized = generalized, reflexive = reflexive)
+        merged.nodes         = merged_nodes
+        merged.ranked_nodes  = merged.group_nodes_by_rank (check = check)
         if check:
             print(f"#merged_ranked_nodes: {merged.ranked_nodes}")
 
+        ##
+        merged.links, merged.link_sources, merged.link_targets = [ ], [ ], [ ]
         ## conditionally generates links
         if gen_links_internally:
             merged.links, merged.link_sources, merged.link_targets  = \
                 merged.gen_links (reflexive = reflexive, check = check)
-        else:
-            merged.links, merged.link_sources, merged.link_targets = [], [], []
+        
         ## return result
         if len(merged.links) > 0:
             if show_steps:
                 print(f"#merger into {len(merged_nodes)} nodes done")
-        ## return result
         #yield merged # fails
         return merged
 
