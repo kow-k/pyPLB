@@ -24,7 +24,6 @@ def make_PatternLinks_ranked (L, check: bool = False):
     return ranked_links
 
 ### Classes
-
 ##
 class PatternLink:
     "definition of PatternLink class"
@@ -42,6 +41,8 @@ class PatternLink:
 
     ## Unimplementation of this method seems the last cause for slow processing
     def __eq__ (self, other):
+        if len(self) != len(other):
+            return False
         if self.left != other.left:
             return False
         else:

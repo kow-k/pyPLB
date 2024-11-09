@@ -44,7 +44,11 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     instances = [ ] # register instances
     node_counts_by_layers = [ ]
     ##
-    rank_max = max(int(x[0]) for x in list(D))
+    try:
+        rank_max = max(int(x[0]) for x in list(D))
+    except ValueError:
+        rank_max = 3
+    ##
     pruned_node_count = 0
     for rank, links in sorted (D, reverse = True): # be careful on list up direction
         L = [ ]
@@ -186,7 +190,10 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     print(f"#pruned {pruned_node_count} nodes")
 
     ## post-process for max_node_count_by_layers
-    max_node_count_on_layer = max(node_counts_by_layers)
+    try:
+        max_node_count_on_layer = max(node_counts_by_layers)
+    except ValueError:
+        max_node_count_on_layer = 4
 
     ## node color setting
     values_for_color = []
@@ -370,8 +377,11 @@ def make_ranked_dict (L: list, gap_mark: str) -> dict:
     ##
     return ranked_dict
 
+## alises
+group_nodes_by_rank = make_ranked_dict
+
 ##
-def sort_nodes_by_size (L: list, gap_mark: str, reverse: bool = False) -> dict:
+def group_nodes_by_size (L: list, gap_mark: str, reverse: bool = False) -> dict:
     "takes a list of Patterns and returns a dict whose keys are sizes of them"
     ##
     sized_dict = {}
@@ -550,22 +560,24 @@ def gen_zscores_from_sources (M, gap_mark: str, use_robust_zscore: bool, check: 
     MADs_by_rank     = calc_MADs_by_rank (Link_sources, ranked_links) # returns dict
 
     source_zscores = {}
-    for i, link_source in enumerate(Link_sources):
+    for i, link_source in enumerate (Link_sources):
         value  = Link_sources[link_source]
         rank   = get_rank_of_list (link_source, gap_mark = gap_mark)
         if use_robust_zscore:
             zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = True)
         else:
             zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = False)
+        ##
         source_zscores[link_source] = zscore
-        print(f"#source {i:3d}: {link_source} has {value} out-going link(s) [{source_zscores[link_source]: .4f} at rank {rank}]")
+        if check:
+            print(f"#source {i:3d}: {link_source} has {value} out-going link(s) [{source_zscores[link_source]: .4f} at rank {rank}]")
 
     ## attach source_zscores to M
     M.source_zscores.update(source_zscores)
     if check:
         print(f"M.source_zscores: {M.source_zscores}")
     ##
-    return M
+    #return M
 
 def gen_zscores_from_targets (M, gap_mark: str, use_robust_zscore: bool, check: bool = False):
     ## adding link target z-scores to M
@@ -587,21 +599,22 @@ def gen_zscores_from_targets (M, gap_mark: str, use_robust_zscore: bool, check: 
         else:
             zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = False)
         target_zscores[link_target] = zscore
-        print(f"#target {i:3d}: {link_target} has {value} in-coming link(s) [{target_zscores[link_target]: .4f} at rank {rank}]")
+        if check:
+            print(f"#target {i:3d}: {link_target} has {value} in-coming link(s) [{target_zscores[link_target]: .4f} at rank {rank}]")
 
     ## attach source_zscores to M
     M.target_zscores.update(target_zscores)
     if check:
         print(f"M.target_zscores: {M.target_zscores}")
     ##
-    return M
+    #return M
 
 ## Classes
 ##
 class PatternLattice():
     "definition of PatternLattice class"
     ##
-    def __init__ (self, pattern, generalized: bool, reflexive: bool = True, check: bool = False):
+    def __init__ (self, pattern, generalized: bool, reflexive: bool = True, reductive: bool = True, check: bool = False):
         "initialization of a PatternLattice"
         if check:
             print(f"pattern.paired: {pattern.paired}")
@@ -614,8 +627,10 @@ class PatternLattice():
             raise "Error: gap_mark is missing"
         self.nodes        = pattern.build_lattice_nodes (generalized = generalized, check = check)
         self.ranked_nodes = self.group_nodes_by_rank (check = check)
-        self.links, self.link_sources, self.link_targets = \
-            self.gen_links (reflexive = reflexive, check = check)
+        ## old code
+        #self.links, self.link_sources, self.link_targets = self.gen_links (reflexive = reflexive, check = check)
+        self.links = self.gen_links (reflexive = reflexive, check = check)
+        self.link_sources, self.link_targets = self.get_link_stats (check = check)
         self.source_zscores = {}
         self.target_zscores = {}
         #return self # This may not be run
@@ -628,11 +643,6 @@ class PatternLattice():
     def __repr__(self):
         return f"{type(self).__name__} ({self.nodes!r})"
 
-    ##
-    def print (self):
-        out = f"{type(self).__name__} ({self.nodes!r})\n"
-        out += f"{type(self).__name__} ({self.source_zscores!r})\n"
-        return out
 
     ##
     def __iter__(self):
@@ -640,240 +650,11 @@ class PatternLattice():
             yield x
 
     ##
-    def group_nodes_by_rank (self, check: bool = False) -> dict:
-        "takes a list of patterns, P, and generates a dictionary of patterns grouped by their ranks"
-        import collections
-        ##
-        gap_mark  = self.gap_mark
-        N         = self.nodes
-        size      = len(N)
-        ## implementation using itertooks.groupby() failed
-        rank_finder = lambda p: len([ x for x in p.form if x != gap_mark ])
-        ## main
-        rank_groups = collections.defaultdict(list) # dictionary
-        for pattern in sorted (N, key = rank_finder):
-            pattern_rank = pattern.get_rank ()
-            if check:
-                print(f"#rank: {pattern_rank}")
-                print(f"#ranked pattern: {pattern}")
-            if pattern_rank <= size:
-                rank_groups[pattern_rank].append(pattern)
-            if check:
-                print(f"#rank_groups: {rank_groups}")
-        ##
-        return rank_groups
+    def print (self):
+        out = f"{type(self).__name__} ({self.nodes!r})\n"
+        out += f"{type(self).__name__} ({self.source_zscores!r})\n"
+        return out
 
-    ##
-    def gen_links (self, reflexive: bool, reductive: bool = True, check: bool = True):
-        "takes a PatternLattice, extracts ranked_nodes, and generates a list of links among them"
-        ##
-        if check:
-            print(f"#generating links ...")
-        ##
-        links = [ ]
-        #seen = [ ]
-        #link_sources, link_targets = {}, {}
-        link_sources, link_targets = defaultdict(int), defaultdict(int)
-        G = self.ranked_nodes
-        ## main to be multiprocessed
-        for rank in sorted (G.keys()):
-            if check:
-                print(f"#rank: {rank}")
-            ##
-            L = G[rank]
-            if check:
-                print(f"#L: {list(L)}")
-            ## define R
-            try:
-                R = G[rank + 1]
-                if check:
-                    print(f"#R: {list(R)}")
-            except KeyError:
-                pass
-            #
-            if reflexive:
-                R = make_simplest_list (R, L)
-
-            ## main: L and R are given
-            sub_links = [ ]
-            ## define L
-            try:
-                for l in L: # l is a Pattern
-                    l_form, l_content = l.form, l.content
-                    if len(l_form) == 0:
-                        #print(f"#ignored l_form: {l_form}")
-                        continue
-                    for r in R: # r is a Pattern
-                        r_form, r_content = r.form, r.content
-                        assert len(l.get_substance()) <= len(r.get_substance())
-                        ## main
-                        if len(r_form) == 0 or l_form == r_form:
-                            #print(f"#ignored pair: {l_form}; {r_form}")
-                            continue
-                        ## valid case
-                        elif len(l_form) == len(r_form) or len(l_form) == len(r_form) + 1:
-                            if r.instantiates_or_not (l, check = check):
-                                print(f"#is-a: {l_form} <- {r_form}")
-                                ##
-                                link = PatternLink ((l, r))
-                                #if mp_test_for_membership (link, links): # This slows down
-                                #if not link in links:
-                                if link and not link in sub_links:
-                                #if not link in sub_links and not link in sub_links_pre1:
-                                #if not link in seen:
-                                    #links.append (link)
-                                    sub_links.append (link)
-                                    link_sources[l_form] += 1
-                                    link_targets[r_form] += 1
-                                    ## update seen
-                                    #seen.append(link)
-                            else:
-                                #print(f"#not-is-a 2: {l_form} <-/- {r_form}")
-                                continue
-                        else:
-                            #print(f"#not-is-a 1: {l_form} <-/- {r_form}")
-                            continue
-                ## update sub_links_prev
-                #sub_links_pre1 = sub_links
-                ##
-                links.extend (sub_links)
-                #links.extend ([ link for link in sub_links if not link in links ])
-                if check:
-                    print(f"#links.extend: {links}")
-            ##
-            except UnboundLocalError:
-                pass
-
-        ## return
-        return links, link_sources, link_targets
-        #yield links, link_sources, link_targets
-
-    ##
-    def update_links (self, reflexive: bool = True, reductive: bool = True, check: bool = False):
-        "update links"
-        L, L_sources, L_targets = self.gen_links (reflexive = reflexive, reductive = reductive, check = check)
-        if check:
-            print(f"#L (in update): {L}")
-        ##
-        self.links = L
-        self.link_sources = L_sources
-        self.link_targets = L_targets
-        return self
-
-
-    ##
-    def merge_lattices (self, other, gen_links_internally: bool, generalized: bool = True, reflexive: bool = True, reductive: bool = True, remove_None_containers: bool = False, show_steps: bool = False, use_multiprocess: bool = True, check: bool = False):
-        "takes a pair of PatternLattices and returns its merger"
-        ##
-        print(f"#merging pattern lattices ...")
-        #
-        if len (self.nodes) > 0 and len (other.nodes) == 0:
-            return self
-        elif len (self.nodes) == 0 and len (other.nodes) > 0:
-            return other
-        ##
-        sample_pattern = self.nodes[0]
-        gap_mark       = sample_pattern.gap_mark
-        import itertools # This code needs to be externalized under jit
-        
-        ## creates .nodes
-        pooled_nodes  = self.nodes
-        nodes_to_add  = other.nodes
-        ## remove None-containers
-        #if remove_None_containers:
-        #    pooled_nodes = [ node for node in pooled_nodes if form_is_None_free (node) ]
-        #    nodes_to_add = [ node for node in other.nodes if form_is_None_free (node) ]
-        ##
-        pooled_nodes = [ p for p in pooled_nodes if len(p) > 0 ]
-        nodes_to_add = [ p for p in nodes_to_add if len(p) > 0 ]
-        if check:
-            print(f"#pooled_nodes [0]: {pooled_nodes}")
-            print(f"#nodes_to_add [0]: {nodes_to_add}")
-        
-        ## reduce nodes from self
-        size1 = len (pooled_nodes)
-        if reductive:
-            R = [ ]
-            ## The following fails to work if Pattern.__eq__ is not redefined
-            for node in pooled_nodes:
-                if node not in R:
-                    R.append (node)
-            pooled_nodes = R
-            ## check difference
-            size2 = len(pooled_nodes)
-            d = size2 - size1
-            if d > 0:
-                print(f"#reduced {d} nodes from pooled nodes")
-        if check:
-            print(f"#pooled_nodes [1]: {pooled_nodes}")
-
-        ## adding nodes from other
-        if reductive:
-            for node in nodes_to_add:
-                ## The following fails to work if Pattern.__eq__ is not redefined
-                if not node in pooled_nodes:
-                    pooled_nodes.append (node)
-            if check:
-                print(f"#nodes_to_add [0]: {nodes_to_add}")
-        else:
-            pooled_nodes += nodes_to_add
-        
-        ## merger main
-        merged_nodes = [ ]
-        ## multiprocess(ing) version
-        if use_multiprocess:
-            print(f"#running in multi-processing mode")
-            import os
-            import multiprocess as mp
-            cores = max (os.cpu_count(), 1)
-            with mp.Pool(cores) as pool:
-                for size, sized_nodes in sort_nodes_by_size (pooled_nodes, gap_mark = gap_mark, reverse = True).items():
-                    if check:
-                        print(f"#sized_nodes {size}: {sized_nodes}")
-                    merged_sized_nodes = pool.starmap (merge_patterns_and_filter, itertools.combinations (sized_nodes, 2))
-                    merged_sized_nodes = simplify_list (merged_sized_nodes)
-                    merged_nodes.extend (merged_sized_nodes)
-        ## original slower version
-        else:
-            for rank, sized_nodes in sort_nodes_by_size (pooled_nodes, gap_mark = gap_mark, reverse = True).items():
-                if check:
-                    print(f"#sized_nodes {size}: {sized_nodes}")
-                merged_sized_nodes = [ ]
-                for A, B in itertools.combinations (sized_nodes, 2):
-                    C = A.merge_patterns (B, check = False)
-                    ## The following fails unless Pattern.__eq__ is redefined
-                    if len(C) > 0 and not C in merged_sized_nodes:
-                        merged_sized_nodes.append (C)
-                ##
-                merged_nodes.extend (merged_sized_nodes)
-        
-        ## remove None-containing nodes
-        #merged_nodes = [ p for p in merged_nodes if not p is None ] 
-        ##
-        if check:
-            print(f"#merged_nodes: {merged_nodes}")
-
-        # generate merged PatternLattice
-        empty_pat            = Pattern([], gap_mark)
-        merged               = PatternLattice (empty_pat, generalized = generalized, reflexive = reflexive)
-        merged.nodes         = merged_nodes
-        merged.ranked_nodes  = merged.group_nodes_by_rank (check = check)
-        if check:
-            print(f"#merged_ranked_nodes: {merged.ranked_nodes}")
-
-        ##
-        merged.links, merged.link_sources, merged.link_targets = [ ], [ ], [ ]
-        ## conditionally generates links
-        if gen_links_internally:
-            merged.links, merged.link_sources, merged.link_targets  = \
-                merged.gen_links (reflexive = reflexive, check = check)
-        
-        ## return result
-        if len(merged.links) > 0:
-            if show_steps:
-                print(f"#merger into {len(merged_nodes)} nodes done")
-        #yield merged # fails
-        return merged
 
     ##
     def draw_diagrams (self, generalized: bool, zscores_from_targets: bool, layout: str = None, auto_fig_sizing: bool = False, zscore_lowerbound: float = None, zscore_upperbound: float = None, use_robust_zscore: bool = False, scale_factor: float = 3, fig_size: tuple = None, label_size: int = None, label_sample_n: int = None, node_size: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
@@ -907,5 +688,166 @@ class PatternLattice():
 
         ## draw PatternLattice
         draw_network (ranked_links.items(), generalized = generalized, layout = layout, fig_size = fig_size, auto_fig_sizing = auto_fig_sizing, node_size = node_size, scale_factor = scale_factor, label_sample_n = label_sample_n, font_name = font_name, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lowerbound = zscore_lowerbound, zscore_upperbound = zscore_upperbound, check = check)
+
+    ##
+    def merge_lattices (self, other, **params):
+        """
+        take two PatternLattices and merge them into one.
+        """
+        gen_links_internally = params['gen_links_internally']
+        generalized = params['generalized']
+        reductive   = params['reductive']
+        reflexive   = params['reflexive']
+        check       = params['check']
+        
+        ## merger nodes of two pattern lattices given
+        main_nodes   = [ p for p in self.nodes if len(p) > 0 ]
+        nodes_to_add = [ p for p in other.nodes if len(p) > 0 ]
+        ##
+        gap_mark = main_nodes[0].gap_mark
+        ##
+        if reductive:
+            pool_nodes   = simplify_list (main_nodes)
+            nodes_to_add = simplify_list (nodes_to_add)
+        main_nodes = make_simplest_merger (main_nodes, nodes_to_add)
+        
+        ## define a new pattern lattice and elaborates it
+        dummy_pattern = Pattern([], gap_mark = gap_mark, check = check)
+        merged = PatternLattice (dummy_pattern, generalized = generalized, reductive = reductive, check = check)
+        ##
+        merged.origin        = dummy_pattern
+        merged.nodes         = main_nodes
+        merged.ranked_nodes  = group_nodes_by_rank (merged.nodes, gap_mark = gap_mark)
+        merged.links         =  []
+        merged.link_source   =  []
+        merged.link_targets  =  []
+        
+        ## generate links
+        if gen_links_internally:
+            merged = merged.update_links (reflexive = reflexive, check = check)
+        ##
+        if check:
+            print(f"#merged lattice: {merged}")
+        ##
+        return merged
+
+    ##
+    def group_nodes_by_rank (self, check: bool = False) -> dict:
+        "takes a list of patterns, P, and generates a dictionary of patterns grouped by their ranks"
+        import collections
+        ##
+        gap_mark  = self.gap_mark
+        N         = self.nodes
+        size      = len(N)
+        ## implementation using itertooks.groupby() failed
+        rank_finder = lambda p: len([ x for x in p.form if x != gap_mark ])
+        ## main
+        rank_groups = collections.defaultdict(list) # dictionary
+        for pattern in sorted (N, key = rank_finder):
+            pattern_rank = pattern.get_rank ()
+            if check:
+                print(f"#rank: {pattern_rank}")
+                print(f"#ranked pattern: {pattern}")
+            if pattern_rank <= size:
+                rank_groups[pattern_rank].append(pattern)
+            if check:
+                print(f"#rank_groups: {rank_groups}")
+        ##
+        return rank_groups
+
+    ## generate links
+    def gen_links (self, reflexive: bool = True, check: bool = False):
+        """
+        takes a PatternLattice P, and generates data for for P.links
+        """
+        ##
+        ranked_nodes = self.ranked_nodes
+        if len (ranked_nodes) == 0:
+            ranked_nodes = make_ranked_dict (self.nodes)
+        ##
+        ranks = ranked_nodes.keys()
+        links =  []
+        for rank in sorted (ranks, reverse = False):
+            try:
+                L = ranked_nodes[rank]
+                if check:
+                    print(f"#L rank {rank} nodes: {L}")
+                R = ranked_nodes[rank + 1]
+                if check:
+                    print(f"#R rank {rank + 1} nodes: {R}")
+                ## make R reflexive
+                if reflexive:
+                    supplement = [ ]
+                    for node in L:
+                        if len(node) > 0 and node not in R:
+                            supplement.append (node)
+                    R.extend (supplement)
+                ## main
+                sub_links = [ ]
+                for r in sorted (R, key = lambda x: len(x)):
+                    for l in sorted (L, key = lambda x: len(x)):
+                        if r.form == l.form:
+                            if check:
+                                print(f"#is-a:F[0]; {l.form} ~ {r.form}")
+                            continue
+                        elif abs(len(r.form) - len(l.form)) > 1:
+                            if check:
+                                print(f"#is-a:F[1]; {l.form} ~ {r.form}")
+                            continue
+                        elif len(r.get_form()) == len(l.get_form()) and r.count_gaps() == 0 and l.count_gaps() == 1:
+                            if r.includes(l):
+                                print(f"#is-an instance: {l.form} <- {r.form}")
+                                link = PatternLink ((l, r))
+                                if len(link) > 0 and not link in sub_links:
+                                    sub_links.append(link)
+                                #if len(link) > 0 and not link in links:
+                                #    links.append(link)
+                        elif test_for_is_a_relation (r, l, check = False):
+                            print(f"#is-a: {l.form} <- {r.form}")
+                            link = PatternLink ((l, r))
+                            if len(link) > 0 and not link in sub_links:
+                                sub_links.append(link)
+                            #if len(link) > 0 and not link in links:
+                            #    links.append(link)
+                        else:
+                            pass
+                ##
+                links.extend (sub_links)
+            except KeyError:
+                pass
+        ##
+        return links
+    
+    ##
+    def get_link_stats (self, check: bool = False):
+        """
+        takes a PatternLattice P, and generate data for P.link_sources and P.link_targets
+        """
+        from collections import defaultdict
+        ##
+        link_sources, link_targets = defaultdict(int), defaultdict(int)
+        seen = [ ]
+        for link in sorted (self.links, key = lambda x: len(x), reverse = True):
+            if not link in seen:
+                l_form, r_form = link.left.form, link.right.form
+                link_sources[l_form] += 1
+                #if link.right.count_gaps() > 0:
+                #    link_targets[r_form] += 1
+                link_targets[r_form] += 1
+                seen.append(link)
+        ## return result
+        return link_sources, link_targets
+
+    ##
+    def update_links (self, reflexive: bool, check: bool = False):
+        """
+        takes a PatternLattice P, and updates P.links, P.link_sources and P.link_targets.
+        """
+        ## update links
+        self.links  = self.gen_links (reflexive = reflexive, check = check)
+        ## update link_sources, link_targets
+        self.link_sources, self.link_targets = self.get_link_stats (check = check)
+        ## return result
+        return self
 
 ### end of file

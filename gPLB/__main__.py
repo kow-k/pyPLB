@@ -11,7 +11,7 @@ developed by Kow Kuroda
 "Generalized" means that a pattern lattice build from [a, b, c] includes [_, a, b, c], [a, b, c, _] and [_, a, b, c, _]. This makes gPLB different from RubyPLB (rubyplb) developed by Yoichoro Hasebe and Kow Kuroda, available at <https://github.com/yohasebe/rubyplb>.
 
 created on 2024/09/24
-modified on 2024/09/25, 28, 29, 30; 10/01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 12, 15, 16, 17, 18, 19, 20, 21, 23, 24, 30, 31; 11/01
+modified on 2024/09/25, 28, 29, 30; 10/01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 12, 15, 16, 17, 18, 19, 20, 21, 23, 24, 30, 31; 11/01, 06, 07, 08
 
 modification history
 2024/10/11 fixed a bug in instantiates(), added make_R_reflexive
@@ -314,8 +314,7 @@ if draw_individually and verbose:
 print(f"##Merging {len(L)} PatternLattices ...")
 
 label_sample_n = 10
-simplified = False
-
+simplified     = False
 if simplified:
     #print(f"#binary merger")
     La, Lb = L[0], L[1]
@@ -331,17 +330,17 @@ elif build_lattice_stepwise:
         if i == 0:
             M = patlat
         else: ## merger
-            M = patlat.merge_lattices (M, gen_links_internally = gen_links_internally, use_multiprocess = use_mp, reflexive = reflexive, show_steps = True, check = False)
+            M = M.merge_lattices (patlat, gen_links_internally = gen_links_internally, use_multiprocess = use_mp, generalized = generalized, reflexive = reflexive, reductive = True, show_steps = True, check = False)
 
         ## check nodes in M
-        print(f"generated {len(M.nodes)} merged")
-        if verbose:
+        print(f"generated merged lattice with {len(M.nodes)} nodes")
+        if detailed:
             for i, p in enumerate(M.nodes):
-                print(f"#merged Pattern {i+1}: {p}")
+                print(f"#merged {i+1}: {p}")
 
-        ##
+        ## genenrate links in delay
         if not gen_links_internally and len(M.links) > 0:
-            M.update_links (reflexive = reflexive, check = False) ## Crucially
+            M = M.update_links (reflexive = reflexive, check = False) ## Crucially
 
         ## checking links in M
         print(f"##Links")
@@ -350,23 +349,28 @@ elif build_lattice_stepwise:
             link.pprint (indicator = i, paired = True, link_type = "instantiates", check = False)
 
         ## generate z-scores from link targets
-        #gen_zscores_from_targets (M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
+        gen_zscores_from_targets (M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
+        if print_link_targets:
+            for node, zscore in M.source_zscores.items():
+                print(f"#node {node} has z-score {zscore: .3f}")
 
         ## generate z-scores from link sources
         gen_zscores_from_sources (M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
+        for node, zscore in M.source_zscores.items():
+            print(f"#node {node} has z-score {zscore: .3f}")
+        
         ##
         print(f"##Results")
         M.draw_diagrams (layout = layout, generalized = generalized, auto_fig_sizing = auto_fig_sizing, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lowerbound = zscore_lowerbound, zscore_upperbound = zscore_upperbound, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 
-
 else:
     gen_links_internally = False
-    M = functools.reduce (lambda La, Lb: La.merge_lattices (Lb, gen_links_internally = gen_links_internally, use_multiprocess = use_mp, reflexive = reflexive, show_steps = True, check = False), L)
+    M = functools.reduce (lambda La, Lb: La.merge_lattices (Lb, gen_links_internally = gen_links_internally, use_multiprocess = use_mp, generalized = generalized, reflexive = reflexive, reductive = True, check = False), L)
 
     # The following process was isolated for memory conservation
     if not gen_links_internally and len(M.links) == 0:
         print(f"##Generating links independently")
-        M.update_links (reflexive = reflexive, check = False)
+        M = M.update_links (reflexive = reflexive, check = False)
 
     ##
     print(f"##Results")
@@ -384,13 +388,15 @@ else:
         link.pprint (indicator = i, paired = True, link_type = "instantiates", check = False)
 
     ## get z-scores from link targets
-    #gen_zscores_from_targets (M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
-    #if print_link_targets:
-    #    print(M.target_zscores)
+    gen_zscores_from_targets (M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
+    if print_link_targets:
+        for node, zscore in M.source_zscores.items():
+            print(f"#node {node} has z-score {zscore: .3f}")
 
     ## get z-scores from link sources
     gen_zscores_from_sources (M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
-    print(M.source_zscores)
+    for node, zscore in M.source_zscores.items():
+        print(f"#node {node} has z-score {zscore: .3f}")
 
     ## draw diagram of M
     print(f"##Drawing a diagram from the merged lattice")

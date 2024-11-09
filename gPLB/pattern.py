@@ -4,6 +4,7 @@
 #import awkward as ak # turned out not to be suited
 
 ## Functions
+##
 def list_encode_for_pattern (L: list) -> list:
     """
     take a list L of segments and returns a list R of (form, content) tuples
@@ -13,20 +14,15 @@ def list_encode_for_pattern (L: list) -> list:
     return [ (str(x).strip(), [str(x).strip()]) for x in L if len(x) > 0 ]
 
 ##
-def test_completion (P: list, gap_mark: str, check: bool = False) -> bool:
-    "tests if P, a list of patterns, contains a fully gapped pattern"
-    for p in P:
-        if check:
-            print(f"#checking for completion: {p}")
-        if p.is_fully_gapped (gap_mark = gap_mark): # Crucially, len(x) > 0
-            return True
-    return False
-
-
-##
 def merge_patterns_with_equaly_size (form_pairs: list, content_pairs: list, gap_mark: str, boundary_mark: str, check: bool = False):
     ## The following operation needs to be re-implemented for speed up
     #import numpy as np
+    ##
+    Fa = [ f[0] for f in form_pairs ]
+    Fb = [ f[1] for f in form_pairs ]
+    if abs(get_rank(Fa) == get_rank(Fb)) > 1:
+        return None
+    ##
     new_form    = [ ]
     void_result = [ ]
     new_content = [ [ ] for _ in range(len(form_pairs)) ] # Crucially
@@ -89,6 +85,11 @@ def check_instantiation (self, other, check: bool = False):
     gap_mark   = self.gap_mark
     R_form     = self.form
     L_form     = other.form
+    ## filter invalid cases
+    if abs (len (R.get_substance()) - len(L.get_substance())) > 1:
+        if check:
+            print(f"#is-a:F[3]; {L_form} ~ {R_form}")
+        return False
     ##
     for i, r_seg in enumerate(R_form):
         l_seg = L_form[i]
@@ -97,25 +98,39 @@ def check_instantiation (self, other, check: bool = False):
         else: # l_seg != r_seg
             if l_seg != gap_mark:
                 if check:
-                    print(f"#no instantiation with {L_form}; {R_form}")
+                    print(f"#is-a:F[4]; {L_form} ~ {R_form}")
                 return False
             elif l_seg != r_seg:
                 if check:
-                    print(f"#no instantiation with {L_form}; {R_form}")
+                    print(f"#is-a:F[5]; {L_form} ~ {R_form}")
                 False
             else:
                 pass
+    ##
     if check:
-        print(f"#{R_form} instantiates {L_form}")
+        print(f"#is-a:T; {L_form} ~ {R_form}")
     ##
     #yield True # offensive??
     return True
+
+## aliases
+test_for_is_a_relation = check_instantiation
+
+##
+def test_completion (P: list, gap_mark: str, check: bool = False) -> bool:
+    "tests if P, a list of patterns, contains a fully gapped pattern"
+    for p in P:
+        if check:
+            print(f"#checking for completion: {p}")
+        if p.is_fully_gapped (gap_mark = gap_mark): # Crucially, len(x) > 0
+            return True
+    return False
 
 ##
 class Pattern:
     # The idea of using NamedTuple turned out inadequate
     #def __init__ (L): # <= This is wrong.
-    def __init__ (self, L: (list, tuple), gap_mark: str, boundary_mark: str = "#"):
+    def __init__ (self, L: (list, tuple), gap_mark: str, boundary_mark: str = "#", check: bool = False):
         "creates a Pattern object from a given L, a list of elements, or from a paired"
         ##
         self.gap_mark      = gap_mark
@@ -230,6 +245,19 @@ class Pattern:
     get_rank = get_substance_size
 
     ##
+    def includes (self, other, check: bool = False):
+        """
+        takes two patterns, A and B, and tests if A includes B.
+        """
+        self_substance  = self.get_substance()
+        other_substance = other.get_substance()
+        for x in other_substance:
+            if not x in self_substance:
+                return False
+        ##
+        return True
+
+    ##
     def has_compatible_content (R, L: list, check: bool = False) -> bool:
         "tests if a pair of Patterns has compatible contents"
         if check:
@@ -304,6 +332,9 @@ class Pattern:
     def get_gap_size(self):
         "takes a pattern and returns the number of gap_marks in it"
         return len(self.get_gaps())
+    
+    ##
+    count_gaps = get_gap_size
 
     ##
     def create_gapped_versions (self: list, check: bool = False) -> list:

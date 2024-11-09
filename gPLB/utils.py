@@ -20,8 +20,11 @@ def simplify_list (A: list) -> list:
     C = []
     return [ x for x in A if x is not None and len(x) > 0 and x not in C ]
 
+## alises
+make_list_simplest  = simplify_list
+
 ##
-def make_simplest_list (A: list, B: list) -> list:
+def make_simplest_merger (A: list, B: list) -> list:
     "takes a list or a pair of lists and returns a unification of them without reduplication"
     C = [ ]
     for a in A:
@@ -39,8 +42,8 @@ def make_simplest_list (A: list, B: list) -> list:
     ##
     return C
 
-## alias
-make_list_simplest = make_simplest_list
+## aliases
+make_simplest_list  = make_simplest_merger 
 
 ##
 def wrapped_make_simplest_list (*args):
@@ -53,10 +56,9 @@ def count_items (L: list, item: str, check: bool = False) -> int:
     return len([ x for x in L if x == item ])
 
 ##
-def get_rank_of_list (L, gap_mark: str):
+def get_rank_of_list (L: (list, tuple), gap_mark: str):
     "takes a list and returns the count of its element which are not equal to gap_mark"
     return len([ x for x in L if len(x) > 0 and x != gap_mark ])
-
 
 ## parallel filter, or pfilter
 def mp_filter (boolean_func, L: list):
