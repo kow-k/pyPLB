@@ -26,17 +26,32 @@ from collections import defaultdict
 
 ##
 def classify_relations (R, L, check: bool = False):
+    """
+    takes two Patterns, classify their relation and returns the list of is-a cases.
+    """
+    if len(R) == 0 or len(L) == 0:
+        return [ ]
+    ##
+    gap_mark = R[0].gap_mark
     sub_links = [ ]
     seen = [ ]
     for r in sorted (R, key = lambda x: len(x)):
         for l in sorted (L, key = lambda x: len(x)):
             l_size, r_size = len(l), len(r)
             l_form, r_form = l.form, r.form
+            l_rank, r_rank = l.get_rank(), r.get_rank()
             ##
             if r_form == l_form:
                 if check:
                     print(f"#is-a:F[0]; {l_form} ~~ {r_form}")
                 continue
+            ##
+            if l_size >= r_size and l_rank == 0 and r_rank == 1:
+                print(f"#is-a:T[0]; {l_form} <- {r_form}")
+                link = PatternLink ((l, r))
+                if len(link) > 0 and not link in sub_links and not link in seen:
+                    sub_links.append (link)
+                    seen.append (link)
             ##
             if abs(l_size - r_size) > 1:
                 if check:
@@ -66,7 +81,7 @@ def classify_relations (R, L, check: bool = False):
                     continue
             else:
                 if l_size == r_size + 1:
-                    if l_form[1:] == r_form or l_form[:-1] == r_form:
+                    if (l_form[1:] == r_form and r_form[-1] != gap_mark ) or (l_form[:-1] == r_form and r_form[0] != gap_mark):
                         print(f"#is-a:T[2]; {l_form} <- {r_form}")
                         link = PatternLink ((l, r))
                         if len(link) > 0 and not link in sub_links and not link in seen:
