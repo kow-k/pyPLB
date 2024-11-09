@@ -359,7 +359,7 @@ elif build_lattice_stepwise:
         gen_zscores_from_sources (M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
         for node, zscore in M.source_zscores.items():
             print(f"#node {node} has z-score {zscore: .3f}")
-        
+
         ##
         print(f"##Results")
         M.draw_diagrams (layout = layout, generalized = generalized, auto_fig_sizing = auto_fig_sizing, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lowerbound = zscore_lowerbound, zscore_upperbound = zscore_upperbound, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
