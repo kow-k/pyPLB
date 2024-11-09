@@ -82,7 +82,7 @@ def classify_relations (R, L, check: bool = False):
                         if check:
                             print(f"#is-a:F[4]; {l_form} ~~ {r_form}")
                         continue
-                else:
+                else: # cases where r is longer than l
                     if check:
                         print(f"#is-a:F[5]; {l_form} ~~ {r_form}")
                     continue
@@ -454,36 +454,6 @@ def group_nodes_by_size (L: list, gap_mark: str, reverse: bool = False) -> dict:
         sized_dict[size] = [ p for p in L if len (p.form) == size ]
     ##
     return sized_dict
-
-##
-def mp_gen_links_main (links, link_souces, link_targets, x, check: bool = False):
-    "take arguments and updates"
-    #
-    r, l = x[0], x[1]
-    r_form, r_content = r.form, r.content
-    l_form, l_content = l.form, l.content
-    if check:
-        print(f"#linking r_form: {r_form}; r_content: {r_content}")
-    ## main
-    if len(r_form) == 0 or len(l_form):
-        pass
-    elif l_form == r_form:
-        pass
-    elif r.instantiates_or_not (l, check = check):
-        print(f"#instantiate {l.form} to {r.form}")
-        link = PatternLink ([l, r])
-        ##
-        if not link in links:
-            ## register for links
-            links.append (link)
-            ## register for link_sources, link_targets
-            try:
-                link_sources[l_form] += 1
-                link_targets[r_form] += 1
-            except KeyError:
-                link_sources[l_form] = 1
-                link_targets[r_form] = 1
-    ## result is None
 
 ##
 def get_rank_dists (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
