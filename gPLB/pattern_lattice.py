@@ -345,11 +345,11 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     #used_labels = [ as_label (x, sep = ",") for x in sorted (instances) ]
     used_labels = [ as_label (x, sep = ",") for x in instances ]
     label_count = len (used_labels)
-    #if label_sample_n is not None and label_count > label_sample_n:
-    #    new_labels = used_labels[:label_sample_n - 1]
-    #    new_labels.append("…")
-    #    new_labels.append(used_labels[-1])
-    #    used_labels = new_labels
+    if label_sample_n is not None and label_count > label_sample_n:
+        new_labels = used_labels[:label_sample_n - 1]
+        new_labels.append("…")
+        new_labels.append(used_labels[-1])
+        used_labels = new_labels
     print(f"#used_labels {label_count}: {used_labels}")
 
     ### set title
@@ -769,10 +769,10 @@ class PatternLattice():
         links =  []
         for rank in sorted (ranks, reverse = False):
             try:
-                L = ranked_nodes[rank]
+                L = simplify_list (ranked_nodes[rank])
                 if check:
                     print(f"#L rank {rank} nodes: {L}")
-                R = ranked_nodes[rank + 1]
+                R = simplify_list (ranked_nodes[rank + 1] )
                 if check:
                     print(f"#R rank {rank + 1} nodes: {R}")
                 ## make R reflexive

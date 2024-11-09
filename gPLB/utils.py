@@ -21,6 +21,7 @@ def simplify_list (A: list) -> list:
     return [ x for x in A if x is not None and len(x) > 0 and x not in C ]
 
 ## alises
+reduce_list         = simplify_list
 make_list_simplest  = simplify_list
 
 ##

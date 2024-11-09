@@ -11,7 +11,7 @@ developed by Kow Kuroda
 "Generalized" means that a pattern lattice build from [a, b, c] includes [_, a, b, c], [a, b, c, _] and [_, a, b, c, _]. This makes gPLB different from RubyPLB (rubyplb) developed by Yoichoro Hasebe and Kow Kuroda, available at <https://github.com/yohasebe/rubyplb>.
 
 created on 2024/09/24
-modified on 2024/09/25, 28, 29, 30; 10/01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 12, 15, 16, 17, 18, 19, 20, 21, 23, 24, 30, 31; 11/01, 06, 07, 08
+modified on 2024/09/25, 28, 29, 30; 10/01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 12, 15, 16, 17, 18, 19, 20, 21, 23, 24, 30, 31; 11/01, 06, 07, 08, 09
 
 modification history
 2024/10/11 fixed a bug in instantiates(), added make_R_reflexive
@@ -27,6 +27,7 @@ modification history
 2024/10/31 fixed a bug in multiparite layout; implemented content tracking on variables in a pattern
 2024/11/01 implemented upperbound of z-score pruning of lattice nodes
 2024/11/02 improved implementation of Pattern: .form and .content are tuples rather than lists. This change is intended to memory conservation.
+2024/11/01 finally fixed bugs introduced at merger_lattices.
 """
 
 #
