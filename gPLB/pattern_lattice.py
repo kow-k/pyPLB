@@ -43,11 +43,11 @@ def classify_relations (R, L, check: bool = False):
             ##
             if r_form == l_form:
                 if check:
-                    print(f"#is-a:F[0]; {l_form} ~~ {r_form}")
+                    print(f"#is-a:F0; {l_form} ~~ {r_form}")
                 continue
             ##
-            if l_size >= r_size and l_rank == 0 and r_rank == 1:
-                print(f"#is-a:T[0]; {l_form} <- {r_form}")
+            if l_size == r_size and l_rank == 0 and r_rank == 1:
+                print(f"#is-a:T0; {l_form} <- {r_form}")
                 link = PatternLink ((l, r))
                 if len(link) > 0 and not link in sub_links and not link in seen:
                     sub_links.append (link)
@@ -55,51 +55,58 @@ def classify_relations (R, L, check: bool = False):
             ##
             if abs(l_size - r_size) > 1:
                 if check:
-                    print(f"#is-a:F[1]; {l_form} ~~ {r_form}")
+                    print(f"#is-a:F1; {l_form} ~~ {r_form}")
                 continue
             elif l_size == r_size:
                 if l.count_gaps() == 1 and r.count_gaps() == 0:
                     if r.includes(l):
-                        print(f"#is-an instance: {l_form} <- {r_form}")
+                        print(f"#is-a:F:instance; {l_form} <- {r_form}")
                         link = PatternLink ((l, r))
                         if len(link) > 0 and not link in sub_links and not link in seen:
                             sub_links.append (link)
                             seen.append (link)
                     else:
                         if check:
-                            print(f"#is-a:F[2]; {l_form} ~~ {r_form}")
+                            print(f"#is-a:F2; {l_form} ~~ {r_form}")
                         continue
                 elif test_for_is_a_relation (r, l, check = False):
-                    print(f"#is-a:T[1]; {l_form} <- {r_form}")
+                    print(f"#is-a:T1; {l_form} <- {r_form}")
                     link = PatternLink ((l, r))
                     if len(link) > 0 and not link in sub_links and not link in seen:
                         sub_links.append(link)
                         seen.append (link)
                 else: # most of the cases
                     if check:
-                        print(f"#is-a:F[3]; {l_form} ~~ {r_form}")
+                        print(f"#is-a:F3; {l_form} ~~ {r_form}")
                     continue
             else:
                 if l_size == r_size + 1:
+                    if l_rank == 0 and r_rank == 0:
+                        print(f"#is-a:T2; {l_form} <- {r_form}")
+                        link = PatternLink ((l, r))
+                        if len(link) > 0 and not link in sub_links and not link in seen:
+                            sub_links.append(link)
+                            seen.append (link)
                     if (l_form[1:] == r_form and r_form[-1] != gap_mark ) or (l_form[:-1] == r_form and r_form[0] != gap_mark):
-                        print(f"#is-a:T[2]; {l_form} <- {r_form}")
+                        print(f"#is-a:T3; {l_form} <- {r_form}")
                         link = PatternLink ((l, r))
                         if len(link) > 0 and not link in sub_links and not link in seen:
                             sub_links.append(link)
                             seen.append (link)
                     elif l.get_substance() == r.get_substance():
-                        print(f"#is-a:T[3]; {l_form} <- {r_form}")
+                        ## This risks overlinking
+                        print(f"#is-a:T4; {l_form} <- {r_form}")
                         link = PatternLink ((l, r))
                         if len(link) > 0 and not link in sub_links and not link in seen:
                             sub_links.append(link)
                             seen.append (link)
                     else:
                         if check:
-                            print(f"#is-a:F[4]; {l_form} ~~ {r_form}")
+                            print(f"#is-a:F4; {l_form} ~~ {r_form}")
                         continue
-                else: # cases where r is longer than l
+                else: # cases where r is longer than l by one segment
                     if check:
-                        print(f"#is-a:F[5]; {l_form} ~~ {r_form}")
+                        print(f"#is-a:F5; {l_form} ~~ {r_form}")
                     continue
     ##
     return sub_links
@@ -705,7 +712,6 @@ class PatternLattice():
         out = f"{type(self).__name__} ({self.nodes!r})\n"
         out += f"{type(self).__name__} ({self.source_zscores!r})\n"
         return out
-
 
     ##
     def draw_diagrams (self, generalized: bool, zscores_from_targets: bool, layout: str = None, auto_fig_sizing: bool = False, zscore_lowerbound: float = None, zscore_upperbound: float = None, use_robust_zscore: bool = False, scale_factor: float = 3, fig_size: tuple = None, label_size: int = None, label_sample_n: int = None, node_size: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
