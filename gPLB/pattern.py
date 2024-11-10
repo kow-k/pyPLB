@@ -86,9 +86,10 @@ def check_instantiation (self, other, check: bool = False):
     R_form     = self.form
     L_form     = other.form
     ## filter invalid cases
-    if abs (len (R.get_substance()) - len(L.get_substance())) > 1:
+    ## Crucial for generating hierarchical organization!
+    if abs(R.get_substance_size() - L.get_substance_size()) > 1:
         if check:
-            print(f"#is-a:F[3]; {L_form} ~ {R_form}")
+            print(f"#is-a:F[0]; {L_form} ~ {R_form}")
         return False
     ##
     for i, r_seg in enumerate(R_form):
@@ -98,17 +99,17 @@ def check_instantiation (self, other, check: bool = False):
         else: # l_seg != r_seg
             if l_seg != gap_mark:
                 if check:
-                    print(f"#is-a:F[4]; {L_form} ~ {R_form}")
+                    print(f"#is-a:F[1]; {L_form} ~ {R_form}")
                 return False
             elif l_seg != r_seg:
                 if check:
-                    print(f"#is-a:F[5]; {L_form} ~ {R_form}")
+                    print(f"#is-a:F[2]; {L_form} ~ {R_form}")
                 False
             else:
                 pass
     ##
     if check:
-        print(f"#is-a:T; {L_form} ~ {R_form}")
+        print(f"#is-a:T[1]; {L_form} <- {R_form}")
     ##
     #yield True # offensive??
     return True

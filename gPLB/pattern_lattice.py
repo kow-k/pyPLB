@@ -25,6 +25,71 @@ from collections import defaultdict
 ### Functions
 
 ##
+def classify_relationsX (R, L, check: bool = False):
+
+    sub_links = [ ]
+    seen      = [ ]
+    def register_link (link, sub_links = sub_links, seen = seen):
+        if len(link) > 0 and not link in sub_links and not link in seen:
+            sub_links.append (link)
+            seen.append (link)
+    ##
+    for r in sorted (R, key = lambda x: len(x)):
+        r_form = r.form
+        gap_mark = r.gap_mark
+        r_size = len(r_form)
+        r_rank = get_rank_of_list (r_form, gap_mark)
+        for l in sorted (L, key = lambda x: len(x)):
+            l_form = l.form
+            l_size = len(l_form)
+            l_rank = get_rank_of_list (l_form, gap_mark)
+            ##
+            if abs(l_size - r_size) > 1:
+                if check:
+                    print(f"#is-a:F0; {l.form} ~ {r.form}")
+                continue
+            ##
+            elif l_size == r_size + 1:
+                if l_form[:-1] == r_form or l_form[1:] == r_form:
+                    print(f"#is-a:T1; {l.form} <- {r.form}")
+                    link = PatternLink ((l, r))
+                    register_link (link)
+                else:
+                    if check:
+                        print(f"#is-a:F1; {l.form} <- {r.form}")
+                    continue
+            ##
+            elif l_size == r_size:
+                if r.form == l.form:
+                    if check:
+                        print(f"#is-a:F2; {l.form} ~ {r.form}")
+                    continue
+                if r.count_gaps() == 0 and l.count_gaps() == 1:
+                    if r.includes(l):
+                        print(f"#is-a:T0:instance' {l.form} <- {r.form}")
+                        link = PatternLink ((l, r))
+                        register_link (link)
+                    else:
+                        if check:
+                            print(f"#is-a:F3; {l.form} ~ {r.form}")
+                        continue
+                elif test_for_is_a_relation (r, l, check = False):
+                    print(f"#is-a:T2; {l.form} <- {r.form}")
+                    link = PatternLink ((l, r))
+                    register_link (link)
+                else:
+                    if check:
+                        print(f"#is-a:F3; {l.form} ~ {r.form}")
+                    continue
+            ##
+            else:
+                if check:
+                    print(f"#is-a:F4; {l.form} ~ {r.form}")
+                continue
+    ##
+    return sub_links
+
+##
 def classify_relations (R, L, check: bool = False):
     """
     takes two Patterns, classify their relation and returns the list of is-a cases.
@@ -43,13 +108,13 @@ def classify_relations (R, L, check: bool = False):
 
     ## functions
     def register_link (link, sub_links = sub_links, seen = seen):
-        if len(link) > 0 and not link in sub_links and not link in seen:
+        if len (link) > 0 and not link in sub_links and not link in seen:
             sub_links.append (link)
             seen.append (link)
 
     ## main outer
-    for r in sorted (R, key = lambda x: len(x), reverse = True):
-        for l in sorted (L, key = lambda x: len(x), reverse = True):
+    for r in sorted (R, key = lambda x: len(x), reverse = False):
+        for l in sorted (L, key = lambda x: len(x), reverse = False):
             l_form, r_form = l.form, r.form
             l_size, r_size = len(l.form), len(r.form)
             l_rank, r_rank = l.get_rank(), r.get_rank()
@@ -94,11 +159,11 @@ def classify_relations (R, L, check: bool = False):
                         continue
             ## cases where l is one segment longer than r
             elif l_size == r_size + 1:
-                ## The following is ineffective, but why???
-                if l_rank == 0 and r_rank == 0:
-                    print(f"#is-a:T0; {l_form} <- {r_form}")
-                    link = PatternLink ((l, r))
-                    register_link (link)
+                ## The following code is covered by T5
+                #if l_rank == 0 and r_rank == 0:
+                #    print(f"#is-a:T0; {l_form} <- {r_form}")
+                #    link = PatternLink ((l, r))
+                #    register_link (link)
                 ##
                 if (l_form[1:] == r_form and r_form[-1] != gap_mark ) or (l_form[:-1] == r_form and r_form[0] != gap_mark):
                     print(f"#is-a:T4; {l_form} <- {r_form}")
@@ -106,15 +171,7 @@ def classify_relations (R, L, check: bool = False):
                     register_link (link)
                 ##
                 elif l.get_substance() == r.get_substance():
-                    ## This risks overlinking
-                    #if r_form[0] != gap_mark or r_form[-1] != gap_mark:
-                    #    print(f"#is-a:T5; {l_form} <- {r_form}")
-                    #    link = PatternLink ((l, r))
-                    #    register_link (link)
-                    #else:
-                    #    print(f"#is-a:T6; {l_form} <- {r_form}")
-                    #    link = PatternLink ((l, r))
-                    #    register_link (link)
+                    ## This risks overlinking but ordering is crucial
                     print(f"#is-a:T5; {l_form} <- {r_form}")
                     link = PatternLink ((l, r))
                     register_link (link)
@@ -846,7 +903,7 @@ class PatternLattice():
         ##
         ranks = ranked_nodes.keys()
         links =  [ ]
-        for rank in sorted (ranks, reverse = True):
+        for rank in sorted (ranks, reverse = False):
             try:
                 #L = ranked_nodes[rank]
                 L = simplify_list (ranked_nodes[rank])
@@ -859,19 +916,19 @@ class PatternLattice():
                 ## make R reflexive
                 if reflexive:
                     supplement = [ ]
-                    #for node in L:
-                    #    if len(node) > 0 and node not in R:
-                    #        supplement.append (node)
-                    #R.extend (supplement)
-                    for node in R:
-                        if len(node) > 0 and node not in L:
+                    for node in L:
+                        if len(node) > 0 and node not in supplement:
                             supplement.append (node)
-                    L.extend (supplement)
+                    R.extend (supplement)
+                    #for node in R:
+                    #    if len(node) > 0 and node not in supplement:
+                    #        supplement.append (node)
+                    #L.extend (supplement)
                 ## main
                 sub_links = classify_relations (R, L, check = True)
                 links.extend (sub_links)
             except KeyError:
-                pass
+               pass
         ##
         #supplement_links = list((gap_mark,)*i for i in range(max(ranks) + 1))
         #return links + supplement_links
@@ -886,7 +943,7 @@ class PatternLattice():
         ##
         link_sources, link_targets = defaultdict(int), defaultdict(int)
         seen = [ ]
-        for link in sorted (self.links, key = lambda x: len(x), reverse = True):
+        for link in sorted (self.links, key = lambda x: len(x), reverse = False):
             if not link in seen:
                 l_form, r_form = link.left.form, link.right.form
                 link_sources[l_form] += 1
