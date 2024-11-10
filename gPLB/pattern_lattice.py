@@ -127,15 +127,14 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     else:
         G = nx.Graph() # does not accept connectionstyle specification
     ##
-    node_dict = { }
-    instances = [ ] # register instances
-    node_counts_by_layers = [ ]
-    ##
     try:
         rank_max = max(int(x[0]) for x in list(D))
     except ValueError:
         rank_max = 3
     ##
+    node_dict = { }
+    instances = [ ] # register instances
+    node_counts_by_layers = [ ]
     pruned_node_count = 0
     for rank, links in sorted (D, reverse = True): # be careful on list up direction
         L = [ ]
@@ -147,6 +146,12 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
             ## process nodes
             gap_mark      = link.gap_mark
             node1, node2  = link.form_paired
+
+            ## register instances
+            if count_items (node1, gap_mark) == 0 and node1 not in instances:
+                instances.append (node1)
+            if count_items (node2, gap_mark) == 0 and node2 not in instances:
+                instances.append (node2)
 
             ## assign z-scores
             try:
@@ -254,10 +259,6 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
                     #edge = (node2, node1)
                 if edge and not edge in E:
                     E.append (edge)
-            ## register instance nodes
-            if count_items (node2, gap_mark) == 0 and node2 not in instances:
-                instances.append (node2)
-
 
         ## populates nodes for G
         ## forward rank scan = rank increments
@@ -429,27 +430,27 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     )
 
     ## set labels used in title
-    #used_labels = [ as_label (x, sep = ",") for x in sorted (instances) ]
-    used_labels = [ as_label (x, sep = ",") for x in instances ]
-    label_count = len (used_labels)
+    #instance_labels = [ as_label (x, sep = ",") for x in sorted (instances) ]
+    instance_labels = [ as_label (x, sep = ",") for x in instances ]
+    label_count = len (instance_labels)
     if label_sample_n is not None and label_count > label_sample_n:
-        new_labels = used_labels[:label_sample_n - 1]
-        new_labels.append("…")
-        new_labels.append(used_labels[-1])
-        used_labels = new_labels
-    print(f"#used_labels {label_count}: {used_labels}")
+        new_instance_labels = instance_labels[:label_sample_n - 1]
+        new_instance_labels.append("…")
+        new_instance_labels.append(used_labels[-1])
+        instance_labels = new_instance_labels
+    print(f"#instance_labels {label_count}: {instance_labels}")
 
     ### set title
     if generalized:
         if use_robust_zscore:
-            title_val = f"gPatternLattice (layout: {layout_name}; robust z-scores: {zscore_lowerbound} – {zscore_upperbound}) built from\n{used_labels} ({label_count} in all)"
+            title_val = f"gPatternLattice (layout: {layout_name}; robust z-scores: {zscore_lowerbound} – {zscore_upperbound}) built from\n{instance_labels} ({label_count} in all)"
         else:
-            title_val = f"gPatternLattice (layout: {layout_name}; normal z-scores: {zscore_lowerbound} – {zscore_upperbound}) built from\n{used_labels} ({label_count} in all)"
+            title_val = f"gPatternLattice (layout: {layout_name}; normal z-scores: {zscore_lowerbound} – {zscore_upperbound}) built from\n{instance_labels} ({label_count} in all)"
     else:
         if use_robust_zscore:
-            title_val = f"PatternLattice (layout: {layout_name}; robust z-scores: {zscore_lowerbound} – {zscore_upperbound}) built from\n{used_labels} ({label_count} in all)"
+            title_val = f"PatternLattice (layout: {layout_name}; robust z-scores: {zscore_lowerbound} – {zscore_upperbound}) built from\n{instance_labels} ({label_count} in all)"
         else:
-            title_val = f"PatternLattice (layout: {layout_name}; normal z-scores: {zscore_lowerbound} – {zscore_upperbound}) built from\n{used_labels} ({label_count} in all)"
+            title_val = f"PatternLattice (layout: {layout_name}; normal z-scores: {zscore_lowerbound} – {zscore_upperbound}) built from\n{instance_labels} ({label_count} in all)"
     plt.title(title_val)
     ##
     plt.show()
