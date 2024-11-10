@@ -549,6 +549,21 @@ def make_ranked_dict (L: list, gap_mark: str) -> dict:
 ## alises
 group_nodes_by_rank = make_ranked_dict
 
+#make_links_ranked   = make_ranked_dict
+## The following is needed independently of make_ranked_dict(..)
+def make_links_ranked (L: list, check: bool = False) -> list:
+    "takes a list of PatternLinks and returns a dictionary of {rank: [link1, link2, ...]}"
+    ranked_links = {}
+    for link in L:
+        rank = link.get_link_rank ()
+        try:
+            if not link in ranked_links[rank]:
+                ranked_links[rank].append(link)
+        except KeyError:
+            ranked_links[rank] = [link]
+    ##
+    return ranked_links
+
 ##
 def group_nodes_by_size (L: list, gap_mark: str, reverse: bool = False) -> dict:
     "takes a list of Patterns and returns a dict whose keys are sizes of them"
@@ -580,7 +595,6 @@ def get_rank_dists (link_dict: dict, ranked_links: dict, check: bool = False) ->
         rank_dists[rank] = stats
     ##
     return rank_dists
-
 
 ##
 def merge_patterns_and_filter (A, B, check = False):
@@ -793,39 +807,6 @@ class PatternLattice():
         return out
 
     ##
-    def draw_diagrams (self, generalized: bool, zscores_from_targets: bool, layout: str = None, auto_fig_sizing: bool = False, zscore_lowerbound: float = None, zscore_upperbound: float = None, use_robust_zscore: bool = False, scale_factor: float = 3, fig_size: tuple = None, label_size: int = None, label_sample_n: int = None, node_size: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
-        """
-        draw a lattice digrams from a given PatternLattice L by extracting L.links
-        """
-        ##
-        #generalized = self.generalized
-        links       = self.links
-        if check:
-            print(f"#links: {links}")
-        ##
-        ranked_links = make_PatternLinks_ranked (links)
-        if check:
-            for rank, links in ranked_links.items():
-                print(f"#links at rank {rank}:\n{links}")
-
-        ## handle z-scores
-        #zscores = self.source_zscores
-        if zscores_from_targets:
-            zscores = self.target_zscores
-            #zscores = self.source_zscores
-        else:
-            zscores = self.source_zscores
-        ##
-        if check:
-            i = 0
-            for node, v in zscores.items():
-                i += 1
-                print(f"node {i:4d} {node} has z-score {v:.4f}")
-
-        ## draw PatternLattice
-        draw_network (ranked_links.items(), generalized = generalized, layout = layout, fig_size = fig_size, auto_fig_sizing = auto_fig_sizing, node_size = node_size, scale_factor = scale_factor, label_sample_n = label_sample_n, font_name = font_name, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lowerbound = zscore_lowerbound, zscore_upperbound = zscore_upperbound, check = check)
-
-    ##
     def merge_lattices (self, other, **params):
         """
         take two PatternLattices and merge them into one.
@@ -892,7 +873,7 @@ class PatternLattice():
         return rank_groups
 
     ## generate links
-    def gen_links (self, reflexive: bool = True, gap_mark: str = "_", check: bool = False):
+    def gen_links (self, reflexive: bool = True, check: bool = False):
         """
         takes a PatternLattice P, and generates data for for P.links
         """
@@ -901,8 +882,8 @@ class PatternLattice():
         if len (ranked_nodes) == 0:
             ranked_nodes = make_ranked_dict (self.nodes)
         ##
-        ranks = ranked_nodes.keys()
         links =  [ ]
+        ranks = ranked_nodes.keys()
         for rank in sorted (ranks, reverse = False):
             try:
                 #L = ranked_nodes[rank]
@@ -917,11 +898,11 @@ class PatternLattice():
                 if reflexive:
                     supplement = [ ]
                     for node in L:
-                        if len(node) > 0 and node not in supplement:
+                        if len(node) > 0 and node not in R:
                             supplement.append (node)
                     R.extend (supplement)
                     #for node in R:
-                    #    if len(node) > 0 and node not in supplement:
+                    #    if len(node) > 0 and node not in L:
                     #        supplement.append (node)
                     #L.extend (supplement)
                 ## main
@@ -965,5 +946,41 @@ class PatternLattice():
         self.link_sources, self.link_targets = self.get_link_stats (check = check)
         ## return result
         return self
+
+    ##
+    def draw_diagrams (self, generalized: bool, zscores_from_targets: bool, layout: str = None, auto_fig_sizing: bool = False, zscore_lowerbound: float = None, zscore_upperbound: float = None, use_robust_zscore: bool = False, scale_factor: float = 3, fig_size: tuple = None, label_size: int = None, label_sample_n: int = None, node_size: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
+        """
+        draw a lattice digrams from a given PatternLattice L by extracting L.links
+        """
+        ##
+        #generalized = self.generalized
+        links       = self.links
+        if check:
+            print(f"#links: {links}")
+        ##
+        sample_pattern = self.nodes[0]
+        gap_mark = sample_pattern.gap_mark
+        ranked_links = make_links_ranked (links)
+        if check:
+            for rank, links in ranked_links.items():
+                print(f"#links at rank {rank}:\n{links}")
+
+        ## handle z-scores
+        #zscores = self.source_zscores
+        if zscores_from_targets:
+            zscores = self.target_zscores
+            #zscores = self.source_zscores
+        else:
+            zscores = self.source_zscores
+        ##
+        if check:
+            i = 0
+            for node, v in zscores.items():
+                i += 1
+                print(f"node {i:4d} {node} has z-score {v:.4f}")
+
+        ## draw PatternLattice
+        draw_network (ranked_links.items(), generalized = generalized, layout = layout, fig_size = fig_size, auto_fig_sizing = auto_fig_sizing, node_size = node_size, scale_factor = scale_factor, label_sample_n = label_sample_n, font_name = font_name, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lowerbound = zscore_lowerbound, zscore_upperbound = zscore_upperbound, check = check)
+
 
 ### end of file

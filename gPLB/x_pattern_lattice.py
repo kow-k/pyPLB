@@ -1,5 +1,8 @@
 ## Functions
 
+
+
+##
 def gen_links_outer (l, r, check: bool = False) -> tuple:
     "takes a link node of a pattern at left and another at right, generates links, link_sources, and link_targets"
     l_form, l_content = l.form, l.content

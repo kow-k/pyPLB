@@ -335,13 +335,13 @@ elif build_lattice_stepwise:
 
         ## check nodes in M
         print(f"generated merged lattice with {len(M.nodes)} nodes")
-        if detailed:
-            for i, p in enumerate(M.nodes):
-                print(f"#merged {i+1}: {p}")
+        for i, p in enumerate(M.nodes):
+            print(f"#merged {i+1}: {p}")
 
         ## genenrate links in delay
-        if not gen_links_internally and len(M.links) > 0:
-            M = M.update_links (reflexive = reflexive, check = False) ## Crucially
+        if len(M.links) == 0 and not gen_links_internally:
+            ## Don't do: M = M.update(...)
+            M.update_links (reflexive = reflexive, check = False) ## Crucially
 
         ## checking links in M
         print(f"##Links")
@@ -369,9 +369,10 @@ else:
     M = functools.reduce (lambda La, Lb: La.merge_lattices (Lb, gen_links_internally = gen_links_internally, use_multiprocess = use_mp, generalized = generalized, reflexive = reflexive, reductive = True, check = False), L)
 
     # The following process was isolated for memory conservation
-    if not gen_links_internally and len(M.links) == 0:
+    if len(M.links) == 0 and not gen_links_internally:
         print(f"##Generating links independently")
-        M = M.update_links (reflexive = reflexive, check = False)
+        ## Don't do: M = M.update(...)
+        M.update_links (reflexive = reflexive, check = False)
 
     ##
     print(f"##Results")

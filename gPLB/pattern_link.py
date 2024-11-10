@@ -9,20 +9,6 @@ except ImportError:
     from pattern import *
 
 ## Functions
-##
-def make_PatternLinks_ranked (L, check: bool = False):
-    "takes a lis to PatternLinks and returns a dictionary of {rank: [link1, link2, ...]}"
-    ranked_links = {}
-    for link in L:
-        rank = link.get_link_rank()
-        try:
-            if not link in ranked_links[rank]:
-                ranked_links[rank].append(link)
-        except KeyError:
-            ranked_links[rank] = [link]
-    ##
-    return ranked_links
-
 ### Classes
 ##
 class PatternLink:
@@ -68,17 +54,18 @@ class PatternLink:
             yield x
 
     ##
-    def get_link_rank (self) -> int:
+    def get_link_rank (self: object) -> int:
         "takes a PatternLink and returns the rank of it"
         left, right  = self.left, self.right
         gap_mark     = self.gap_mark
         #assert len(left) == len(right)
-        assert abs(len(left) - len(right)) <= 1
-        form = left.form
-        #form = right.form
-        return len([ x for x in form if x != gap_mark ])
-        ## The following turned out to be offensive.
-        #return min(count_items (left.form, gap_mark), count_items (right.form, gap_mark))
+        #assert abs(len(left) - len(right)) <= 1
+        #form = left.form
+        #return len([ x for x in form if x != gap_mark ])
+        l_size = len ([ x for x in left.form if x != gap_mark ])
+        r_size = len ([ x for x in right.form if x != gap_mark ])
+        #return min (l_size, r_size) # produces null merger
+        return max (l_size, r_size)
 
     ##
     def pprint (self, indicator = None, link_type = None, condition = None , paired: bool = False, pair_mark: str = "//", check: bool = False) -> None:
