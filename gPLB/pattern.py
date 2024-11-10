@@ -233,7 +233,7 @@ class Pattern:
     def get_substance (self):
         "takes a pattern and returns the list of non-gap elements in it"
         #return [ x for x in self.form if x != self.gap_mark]
-        return tuple ([ x for x in self.form if x != self.gap_mark])
+        return tuple ([ x for x in self.form if x != self.gap_mark ])
 
     ##
     def get_substance_size (self):
@@ -243,6 +243,19 @@ class Pattern:
 
     ## alias
     get_rank = get_substance_size
+
+    ##
+    def get_gaps (self):
+        "takes a pattern and returns the list of gaps"
+        return [ x for x in self.form if x == self.gap_mark ]
+
+    ##
+    def get_gap_size (self):
+        "takes a pattern and returns the number of gap_marks in it"
+        return len (self.get_gaps())
+
+    ##
+    count_gaps = get_gap_size
 
     ##
     def includes (self, other, check: bool = False):
@@ -322,19 +335,6 @@ class Pattern:
         #self.paired = [ (x, y) for x, y in zip (self.form, self.content) ]
         self.paired = tuple( [ (x, y) for x, y in zip (self.form, self.content) ] )
         return self
-
-    ##
-    def get_gaps(self):
-        "takes a pattern and returns the list of gaps"
-        return [ x for x in self.form if x == self.gap_mark ]
-
-    ##
-    def get_gap_size(self):
-        "takes a pattern and returns the number of gap_marks in it"
-        return len(self.get_gaps())
-    
-    ##
-    count_gaps = get_gap_size
 
     ##
     def create_gapped_versions (self: list, check: bool = False) -> list:

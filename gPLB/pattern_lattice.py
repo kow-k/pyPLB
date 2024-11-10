@@ -31,82 +31,106 @@ def classify_relations (R, L, check: bool = False):
 
     in logging, "is-a:Ti" means is-a relation is True of case i; "is-a:Fi" means is-a relation is False of case i;
     """
+
+    ## preclusion
     if len(R) == 0 or len(L) == 0:
         return [ ]
-    ##
+
+    ## variables
     gap_mark = R[0].gap_mark
     sub_links = [ ]
     seen = [ ]
+
+    ## functions
     def register_link (link, sub_links = sub_links, seen = seen):
         if len(link) > 0 and not link in sub_links and not link in seen:
             sub_links.append (link)
             seen.append (link)
-    ##
-    for r in sorted (R, key = lambda x: len(x)):
-        for l in sorted (L, key = lambda x: len(x)):
+
+    ## main outer
+    for r in sorted (R, key = lambda x: len(x), reverse = True):
+        for l in sorted (L, key = lambda x: len(x), reverse = True):
             l_form, r_form = l.form, r.form
             l_size, r_size = len(l.form), len(r.form)
             l_rank, r_rank = l.get_rank(), r.get_rank()
-            ##
-            if r_form == l_form:
+            ## main
+            ## false case 0 [bulky]
+            if abs(l_size - r_size) > 1:
                 if check:
                     print(f"#is-a:F0; {l_form} ~~ {r_form}")
                 continue
-            ##
-            if l_size == r_size and l_rank == 0 and r_rank == 1:
-                print(f"#is-a:T1; {l_form} <- {r_form}")
-                link = PatternLink ((l, r))
-                register_link (link)
-            ##
-            if l_size - 1 == r_size and l_rank == 0 and r_rank == 0:
-                print(f"#is-a:T0; {l_form} <- {r_form}")
-                link = PatternLink ((l, r))
-                register_link (link)
-            ##
-            if abs(l_size - r_size) > 1:
-                if check:
-                    print(f"#is-a:F1; {l_form} ~~ {r_form}")
-                continue
+            ## cases where l_size == r_size
             elif l_size == r_size:
-                if l.count_gaps() == 1 and r.count_gaps() == 0:
-                    if r.includes(l):
-                        print(f"#is-a:F:instance; {l_form} <- {r_form}")
+                ## false case 1
+                if r_form == l_form:
+                    if check:
+                        print(f"#is-a:F1; {l_form} ~~ {r_form}")
+                    continue
+                ## cases where l_form != r_form
+                else:
+                    ## true cases where r is a one-segment elaboration
+                    if l_rank == 0 and r_rank == 1:
+                        print(f"#is-a:T1; {l_form} <- {r_form}")
                         link = PatternLink ((l, r))
                         register_link (link)
-                    else:
-                        if check:
-                            print(f"#is-a:F2; {l_form} ~~ {r_form}")
-                        continue
-                elif test_for_is_a_relation (r, l, check = False):
-                    print(f"#is-a:T2; {l_form} <- {r_form}")
-                    link = PatternLink ((l, r))
-                    register_link (link)
-                else: # most of the cases
-                    if check:
-                        print(f"#is-a:F3; {l_form} ~~ {r_form}")
-                    continue
-            else:
-                if l_size == r_size + 1:
-                    if l_rank == 0 and r_rank == 0:
+                    ## true cases where
+                    if l.count_gaps() == 1 and r.count_gaps() == 0:
+                        if r.includes(l):
+                            print(f"#is-a:T2:instance; {l_form} <- {r_form}")
+                            link = PatternLink ((l, r))
+                            register_link (link)
+                        else: # false case 2
+                            if check:
+                                print(f"#is-a:F2; {l_form} ~~ {r_form}")
+                            continue
+                    ## true cases that need further checking
+                    elif test_for_is_a_relation (r, l, check = False):
                         print(f"#is-a:T3; {l_form} <- {r_form}")
                         link = PatternLink ((l, r))
                         register_link (link)
-                    if (l_form[1:] == r_form and r_form[-1] != gap_mark ) or (l_form[:-1] == r_form and r_form[0] != gap_mark):
-                        print(f"#is-a:T4; {l_form} <- {r_form}")
-                        link = PatternLink ((l, r))
-                        register_link (link)
-                    elif l.get_substance() == r.get_substance():
-                        ## This risks overlinking
-                        print(f"#is-a:T5; {l_form} <- {r_form}")
-                        link = PatternLink ((l, r))
-                        register_link (link)
-                    else:
+                    else: # most of the cases
                         if check:
-                            print(f"#is-a:F4; {l_form} ~~ {r_form}")
+                            print(f"#is-a:F3; {l_form} ~~ {r_form}")
                         continue
-                else: # cases where r is longer than l by one segment
+            ## cases where l is one segment longer than r
+            elif l_size == r_size + 1:
+                ## The following is ineffective, but why???
+                if l_rank == 0 and r_rank == 0:
+                    print(f"#is-a:T0; {l_form} <- {r_form}")
+                    link = PatternLink ((l, r))
+                    register_link (link)
+                ##
+                if (l_form[1:] == r_form and r_form[-1] != gap_mark ) or (l_form[:-1] == r_form and r_form[0] != gap_mark):
+                    print(f"#is-a:T4; {l_form} <- {r_form}")
+                    link = PatternLink ((l, r))
+                    register_link (link)
+                ##
+                elif l.get_substance() == r.get_substance():
+                    ## This risks overlinking
+                    #if r_form[0] != gap_mark or r_form[-1] != gap_mark:
+                    #    print(f"#is-a:T5; {l_form} <- {r_form}")
+                    #    link = PatternLink ((l, r))
+                    #    register_link (link)
+                    #else:
+                    #    print(f"#is-a:T6; {l_form} <- {r_form}")
+                    #    link = PatternLink ((l, r))
+                    #    register_link (link)
+                    print(f"#is-a:T5; {l_form} <- {r_form}")
+                    link = PatternLink ((l, r))
+                    register_link (link)
+
+                ## the other cases
+                else:
                     if check:
-                        print(f"#is-a:F5; {l_form} ~~ {r_form}")
+                        print(f"#is-a:F6; {l_form} ~~ {r_form}")
+                    continue
+            else: # all other fail-safe cases
+                if l.get_gap_size() == l_size and r.get_gap_size() == r_size:
+                    if check:
+                        print(f"#is-a:F7; {l_form} <- {r_form}")
+                else:
+                    if check:
+                        print(f"#is-a:F8; {l_form} ~~ {r_form}")
                     continue
     ##
     return sub_links
@@ -680,11 +704,8 @@ class PatternLattice():
         ##
         self.origin       = pattern
         self.generalized  = generalized
-        if not pattern.gap_mark is None or not pattern.gap_mark == "":
-            self.gap_mark = pattern.gap_mark
-        else:
-            raise "Error: gap_mark is missing"
         self.nodes        = pattern.build_lattice_nodes (generalized = generalized, check = check)
+        self.gap_mark = self.nodes[0].gap_mark
         self.ranked_nodes = self.group_nodes_by_rank (check = check)
         ## old code
         #self.links, self.link_sources, self.link_targets = self.gen_links (reflexive = reflexive, check = check)
@@ -814,7 +835,7 @@ class PatternLattice():
         return rank_groups
 
     ## generate links
-    def gen_links (self, reflexive: bool = True, check: bool = False):
+    def gen_links (self, reflexive: bool = True, gap_mark: str = "_", check: bool = False):
         """
         takes a PatternLattice P, and generates data for for P.links
         """
@@ -825,7 +846,7 @@ class PatternLattice():
         ##
         ranks = ranked_nodes.keys()
         links =  [ ]
-        for rank in sorted (ranks, reverse = False):
+        for rank in sorted (ranks, reverse = True):
             try:
                 #L = ranked_nodes[rank]
                 L = simplify_list (ranked_nodes[rank])
@@ -852,6 +873,8 @@ class PatternLattice():
             except KeyError:
                 pass
         ##
+        #supplement_links = list((gap_mark,)*i for i in range(max(ranks) + 1))
+        #return links + supplement_links
         return links
 
     ##
