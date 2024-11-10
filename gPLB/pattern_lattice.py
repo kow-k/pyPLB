@@ -517,7 +517,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     if label_sample_n is not None and label_count > label_sample_n:
         new_instance_labels = instance_labels[:label_sample_n - 1]
         new_instance_labels.append("…")
-        new_instance_labels.append(used_labels[-1])
+        new_instance_labels.append(instance_labels[-1])
         instance_labels = new_instance_labels
     print(f"#instance_labels {label_count}: {instance_labels}")
 
@@ -676,7 +676,7 @@ def calc_zscore_old (value: float, average_val: float, stdev_val: float) -> floa
         return (value - average_val) / stdev_val
 
 ##
-def normalize_score (x: float, use_robust_zscore: bool = False, min_val: float = -4, max_val: float = 5) -> float:
+def normalize_score (x: float, use_robust_zscore: bool = False, min_val: float = -3, max_val: float = 4) -> float:
     "takes a value in the range of min, max and returns its normalized value"
     ##
     import matplotlib.colors as colors
