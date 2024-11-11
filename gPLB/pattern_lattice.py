@@ -780,7 +780,8 @@ class PatternLattice():
         self.ranked_nodes = self.group_nodes_by_rank (check = check)
         ## old code
         #self.links, self.link_sources, self.link_targets = self.gen_links (reflexive = reflexive, check = check)
-        self.links = self.gen_links (reflexive = reflexive, check = check)
+        self.links          = self.gen_links (reflexive = reflexive, check = check)
+        self.ranked_links   = make_links_ranked (self.links, check = check)
         self.link_sources, self.link_targets = self.get_link_stats (check = check)
         self.source_zscores = {}
         self.target_zscores = {}

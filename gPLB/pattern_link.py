@@ -80,18 +80,18 @@ class PatternLink:
         p, q = self.left, self.right
         ##
         if indicator:
-            p_index = f"#link {indicator:3d}: "
+            p_index = f"link {indicator:3d}: "
         else:
-            p_index = "#"
+            p_index = ""
         ##
         if link_type is None:
             link_type = self.link_type
         if link_type in [ "instantiates", "instantiation", "is-a", "instance-of" ]:
-            arrow = "-->"
+            arrow = "->"
         elif link_type in [ "schematizes", "schematization", "part-of", "has-a" ]:
-            arrow = "<--"
+            arrow = "<-"
         else:
-            arrow = "<-->"
+            arrow = "--"
         ##
         if paired:
             out = (f"{p_index}{p.form} {arrow} {q.form} {pair_mark} {p.content} {arrow} {q.content}")
