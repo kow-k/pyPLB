@@ -371,7 +371,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
             z_value = zscores[node]
             if check:
                 print(f"#z_value: {z_value: 0.4f}")
-            z_normalized = normalize_score(z_value, use_robust_zscore = use_robust_zscore)
+            z_normalized = normalize_zscore(z_value, use_robust_zscore = use_robust_zscore)
             if check:
                 print(f"#z_normalized: {z_normalized: 0.4f}")
             values_for_color.append (z_normalized)
@@ -690,7 +690,7 @@ def calc_zscore_old (value: float, average_val: float, stdev_val: float) -> floa
         return (value - average_val) / stdev_val
 
 ##
-def normalize_score (x: float, use_robust_zscore: bool = False, min_val: float = -3, max_val: float = 4) -> float:
+def normalize_zscore (x: float, use_robust_zscore: bool = False, min_val: float = -2, max_val: float = 2) -> float:
     "takes a value in the range of min, max and returns its normalized value"
     ##
     import matplotlib.colors as colors

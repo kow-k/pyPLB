@@ -11,7 +11,7 @@ developed by Kow Kuroda
 "Generalized" means that a pattern lattice build from [a, b, c] includes [_, a, b, c], [a, b, c, _] and [_, a, b, c, _]. This makes gPLB different from RubyPLB (rubyplb) developed by Yoichoro Hasebe and Kow Kuroda, available at <https://github.com/yohasebe/rubyplb>.
 
 created on 2024/09/24
-modified on 2024/09/25, 28, 29, 30; 10/01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 12, 15, 16, 17, 18, 19, 20, 21, 23, 24, 30, 31; 11/01, 06, 07, 08, 09
+modified on 2024/09/25, 28, 29, 30; 10/01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 12, 15, 16, 17, 18, 19, 20, 21, 23, 24, 30, 31; 11/01, 06, 07, 08, 09, 10, 11
 
 modification history
 2024/10/11 fixed a bug in instantiates(), added make_R_reflexive
@@ -326,6 +326,7 @@ if simplified:
 
 elif build_lattice_stepwise:
     gen_links_internally = True
+    print(f"##Mergig PatternLattices ...")
     for i, patlat in enumerate (L):
         print(f"#processing pattern lattice {i+1}")
         if i == 0:
@@ -334,18 +335,18 @@ elif build_lattice_stepwise:
             M = M.merge_lattices (patlat, gen_links_internally = gen_links_internally, use_multiprocess = use_mp, generalized = generalized, reflexive = reflexive, reductive = True, show_steps = True, check = False)
 
         ## check nodes in M
-        print(f"generated merged lattice with {len(M.nodes)} nodes")
+        print(f"merged lattice with {len(M.nodes)} nodes")
         for i, p in enumerate(M.nodes):
-            print(f"#merged {i+1}: {p}")
+            print(f"#node {i}: {p}")
 
         ## genenrate links in delay
         if len(M.links) == 0 and not gen_links_internally:
             ## Don't do: M = M.update(...)
             M.update_links (reflexive = reflexive, check = False) ## Crucially
+        print(f"#generated {len(M.links)} links")
 
         ## checking links in M
         print(f"##Links")
-        print(f"#generated {len(M.links)} links")
         for i, link in enumerate(M.links):
             link.pprint (indicator = i, paired = True, link_type = "instantiates", check = False)
 
@@ -378,27 +379,26 @@ else:
     print(f"##Results")
 
     ## check nodes in M
-    print(f"generated {len(M.nodes)} merged Patterns")
-    if verbose:
-        for i, p in enumerate(M.nodes):
-            print(f"#merged {i+1}: {p}")
+    print(f"#Merger has {len(M.nodes)} nodes")
+    for i, p in enumerate(M.nodes):
+        print(f"#node {i}: {p}")
 
-    ## checking links in M
-    print(f"##Links")
-    print(f"#generated {len(M.links)} links")
+    ## check links in M
+    print(f"#Merger has {len(M.links)} links")
     for i, link in enumerate(M.links):
         link.pprint (indicator = i, paired = True, link_type = "instantiates", check = False)
 
     ## get z-scores from link targets
+    print(f"##Calculating z-scores ...")
     gen_zscores_from_targets (M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
     if print_link_targets:
         for node, zscore in M.source_zscores.items():
-            print(f"#node {node} has z-score {zscore: .3f}")
+            print(f"#node {node} has z-score {zscore: .3f} [n: {M.link_targets[node]:2d}]")
 
     ## get z-scores from link sources
     gen_zscores_from_sources (M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
     for node, zscore in M.source_zscores.items():
-        print(f"#node {node} has z-score {zscore: .3f}")
+        print(f"#node {node} has z-score {zscore: .3f} (n: {M.link_sources[node]:2d})")
 
     ## draw diagram of M
     print(f"##Drawing a diagram from the merged lattice")
