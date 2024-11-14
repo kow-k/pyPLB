@@ -207,6 +207,9 @@ class Pattern:
         "defines the response to __setitem__, i.e., x[y] operator"
         self.paired[position] = value
         return self
+    ##
+    def separate_print (self, separator: str = " // "):
+        return f"{type(self).__name__} ({self.form!r}{separator}{self.content!r})"
 
     ##
     def get_form (self):
@@ -270,7 +273,18 @@ class Pattern:
                 return False
         ##
         return True
-
+    
+    ##
+    def group_patterns_by_size (self: object, reverse: bool = False) -> dict:
+        "takes a list of Patterns and returns a dict whose keys are sizes of them"
+        ##
+        L = self.nodes
+        sized_dict = {}
+        for size in sorted (set ([ len(p.form) for p in L ]), reverse = reverse):
+            sized_dict[size] = [ p for p in L if len (p.form) == size ]
+        ##
+        return sized_dict
+    
     ##
     def has_compatible_content (R, L: list, check: bool = False) -> bool:
         "tests if a pair of Patterns has compatible contents"

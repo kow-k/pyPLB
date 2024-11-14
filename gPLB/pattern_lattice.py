@@ -14,18 +14,130 @@ try:
 except ImportError:
     from pattern_link import *
 
-## additional imports
-#from numba import jit # incompatible with PatternLattice class
-#import itertools
-#import numpy as np
-#import scipy.stats as stats
-#import multiprocessing as mp
-from collections import defaultdict
-
 ### Functions
+##
+def as_tuple (L: list) -> tuple:
+    "convert a list into a tuple"
+    #return (*L,)
+    return tuple(L)
 
 ##
-def classify_relationsX (R, L, check: bool = False):
+def as_label (T: (list, tuple), sep: str = "", add_sep_at_end: bool = False) -> str:
+    "convert a given tuple to a string by concatenating its elements"
+    result = ""
+    result = sep.join(T)
+    if add_sep_at_end:
+        result = result + sep
+    return result
+
+##
+def simplify_list (A: list) -> list:
+    C = []
+    return [ x for x in A if x is not None and len(x) > 0 and x not in C ]
+
+## alises
+reduce_list         = simplify_list
+make_list_simplest  = simplify_list
+
+##
+def make_simplest_merger (A: list, B: list) -> list:
+    "takes a list or a pair of lists and returns a unification of them without reduplication"
+    C = [ ]
+    for a in A:
+        try:
+            if len(a) > 0 and a not in C:
+                C.append(a)
+        except TypeError:
+            pass
+    for b in B:
+        try:
+            if len(b) > 0 and not b in C:
+                C.append (b)
+        except TypeError:
+            pass
+    ##
+    return C
+
+## aliases
+make_simplest_list  = make_simplest_merger 
+
+##
+def wrapped_make_simplest_list (*args):
+    import functools
+    return functools.reduce (make_simplest_list, args)
+
+##
+def count_items (L: list, item: str, check: bool = False) -> int:
+    "returns the number of items in the given list"
+    return len([ x for x in L if x == item ])
+
+##
+def get_rank_of_list (L: (list, tuple), gap_mark: str):
+    "takes a list and returns the count of its element which are not equal to gap_mark"
+    return len([ x for x in L if len(x) > 0 and x != gap_mark ])
+
+## parallel filter, or pfilter
+def mp_filter (boolean_func, L: list):
+    #from multiprocessing import Pool
+    import os
+    from multiprocess import Pool
+    cores = max(os.cpu_count(), 1)
+    with Pool (cores) as pool:
+        boolean_res = pool.map (boolean_func, L)
+        return [ x for x, b in zip (L, boolean_res) if b ]
+
+##
+def mp_test_for_membership (item, L: (list, tuple))-> bool:
+    "multiprocess-version of membership test: effective only with a large list"
+    import os
+    import multiprocess as mp
+    cores = max(os.cpu_count(), 1)
+    with mp.Pool(cores) as pool:
+        result = pool.map(lambda x: x == item, L)
+    if sum(filter(lambda x: x == True, result)) > 0:
+        return False
+    else:
+        return True
+
+##
+def attr_is_None_free (p, attr: str) -> bool:
+    "tests if pattern p has no None in attribute"
+    if p is None:
+        return False
+    L = eval(f"p.{attr}")
+    return len([ x for x in L if x is None ]) == 0
+
+##
+def form_is_None_free (p: list) -> bool:
+    "tests if pattern p has no None in form"
+    return attr_is_None_free (p, "form")
+
+##
+def content_is_None_free (p: list) -> bool:
+    "tests if pattern p has no None in content"
+    return attr_is_None_free (p, "content")
+
+##
+def pattern_is_None_free (p: list) -> bool:
+    "tests if pattern p has no None in form and no None in content"
+    if not form_is_None_free (p):
+        return False
+    if not content_is_None_free (p):
+        return False
+    ## other cases
+    return True
+
+#def pattern_is_None_free (p):
+#    "exists for compatibility check"
+#    pass
+
+##
+def classify_relations (R, L, check: bool = False):
+    """
+    takes two Patterns, classify their relation and returns the list of is-a cases.
+
+    in logging, "is-a:Ti" means is-a relation is True of case i; "is-a:Fi" means is-a relation is False of case i;
+    """
 
     sub_links = [ ]
     seen      = [ ]
@@ -90,12 +202,7 @@ def classify_relationsX (R, L, check: bool = False):
     return sub_links
 
 ##
-def classify_relations (R, L, check: bool = False):
-    """
-    takes two Patterns, classify their relation and returns the list of is-a cases.
-
-    in logging, "is-a:Ti" means is-a relation is True of case i; "is-a:Fi" means is-a relation is False of case i;
-    """
+def classify_relationsX (R, L, check: bool = False):
 
     ## preclusion
     if len(R) == 0 or len(L) == 0:
@@ -451,7 +558,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     else:
         if auto_fig_sizing:
             fig_size_local = \
-                (round(2.5 * len(D), 0),
+                (round(4 * len(D), 0),
                 round(2 * math.log (max_node_count_on_layer), 0))
         else:
             pass
@@ -547,7 +654,7 @@ def make_ranked_dict (L: list, gap_mark: str) -> dict:
     return ranked_dict
 
 ## alises
-group_nodes_by_rank = make_ranked_dict
+#group_nodes_by_rank = make_ranked_dict # Turned out truly offensive!
 
 #make_links_ranked   = make_ranked_dict
 ## The following is needed independently of make_ranked_dict(..)
@@ -565,14 +672,7 @@ def make_links_ranked (L: list, check: bool = False) -> list:
     return ranked_links
 
 ##
-def group_nodes_by_size (L: list, gap_mark: str, reverse: bool = False) -> dict:
-    "takes a list of Patterns and returns a dict whose keys are sizes of them"
-    ##
-    sized_dict = {}
-    for size in sorted (set ([ len(p.form) for p in L ]), reverse = reverse):
-        sized_dict[size] = [ p for p in L if len (p.form) == size ]
-    ##
-    return sized_dict
+
 
 ##
 def get_rank_dists (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
@@ -776,7 +876,7 @@ class PatternLattice():
         self.origin       = pattern
         self.generalized  = generalized
         self.nodes        = pattern.build_lattice_nodes (generalized = generalized, check = check)
-        self.gap_mark = self.nodes[0].gap_mark
+        self.gap_mark     = self.nodes[0].gap_mark
         self.ranked_nodes = self.group_nodes_by_rank (check = check)
         ## old code
         #self.links, self.link_sources, self.link_targets = self.gen_links (reflexive = reflexive, check = check)
@@ -808,73 +908,32 @@ class PatternLattice():
         return out
 
     ##
-    def merge_lattices (self, other, **params):
-        """
-        take two PatternLattices and merge them into one.
-        """
-        gen_links_internally = params['gen_links_internally']
-        generalized = params['generalized']
-        reductive   = params['reductive']
-        reflexive   = params['reflexive']
-        check       = params['check']
-
-        ## merger nodes of two pattern lattices given
-        main_nodes   = [ p for p in self.nodes if len(p) > 0 ]
-        nodes_to_add = [ p for p in other.nodes if len(p) > 0 ]
-        ##
-        gap_mark = main_nodes[0].gap_mark
-        ##
-        if reductive:
-            pool_nodes   = simplify_list (main_nodes)
-            nodes_to_add = simplify_list (nodes_to_add)
-        main_nodes = make_simplest_merger (main_nodes, nodes_to_add)
-
-        ## define a new pattern lattice and elaborates it
-        dummy_pattern = Pattern([], gap_mark = gap_mark, check = check)
-        merged = PatternLattice (dummy_pattern, generalized = generalized, reductive = reductive, check = check)
-        ##
-        merged.origin        = dummy_pattern
-        merged.nodes         = main_nodes
-        merged.ranked_nodes  = group_nodes_by_rank (merged.nodes, gap_mark = gap_mark)
-        merged.links         =  []
-        merged.link_source   =  []
-        merged.link_targets  =  []
-
-        ## generate links
-        if gen_links_internally:
-            merged = merged.update_links (reflexive = reflexive, check = check)
-        ##
-        if check:
-            print(f"#merged lattice: {merged}")
-        ##
-        return merged
-
-    ##
     def group_nodes_by_rank (self, check: bool = False) -> dict:
         "takes a list of patterns, P, and generates a dictionary of patterns grouped by their ranks"
-        from collections import defaultdict
         ##
+        from collections import defaultdict
         gap_mark  = self.gap_mark
-        N         = self.nodes
-        size      = len(N)
+        nodes     = self.nodes
+        size      = len(nodes)
         ## implementation using itertooks.groupby() failed
         rank_finder = lambda p: len([ x for x in p.form if x != gap_mark ])
         ## main
-        rank_groups = defaultdict(list) # dictionary
-        for pattern in sorted (N, key = rank_finder):
+        ranked_nodes = defaultdict(list) # dictionary
+        for pattern in sorted (nodes, key = rank_finder):
             pattern_rank = pattern.get_rank ()
             if check:
                 print(f"#rank: {pattern_rank}")
                 print(f"#ranked pattern: {pattern}")
             if pattern_rank <= size:
-                rank_groups[pattern_rank].append(pattern)
-            if check:
-                print(f"#rank_groups: {rank_groups}")
+                ranked_nodes[pattern_rank].append(pattern)
         ##
-        return rank_groups
+        if check:
+            print(f"#ranked_nodes: {ranked_nodes}")
+        return ranked_nodes
+
 
     ## generate links
-    def gen_links (self, reflexive: bool = True, check: bool = False):
+    def gen_links (self, reflexive: bool = True, use_multiprocess: bool = False, check: bool = False):
         """
         takes a PatternLattice P, and generates data for for P.links
         """
@@ -886,12 +945,11 @@ class PatternLattice():
         links =  [ ]
         ranks = ranked_nodes.keys()
         for rank in sorted (ranks, reverse = False):
+            selected_links = [ ]
             try:
-                #L = ranked_nodes[rank]
                 L = simplify_list (ranked_nodes[rank])
                 if check:
                     print(f"#L rank {rank} nodes: {L}")
-                #R = ranked_nodes[rank + 1]
                 R = simplify_list (ranked_nodes[rank + 1] )
                 if check:
                     print(f"#R rank {rank + 1} nodes: {R}")
@@ -902,19 +960,40 @@ class PatternLattice():
                         if len(node) > 0 and node not in R:
                             supplement.append (node)
                     R.extend (supplement)
-                    #for node in R:
-                    #    if len(node) > 0 and node not in L:
-                    #        supplement.append (node)
-                    #L.extend (supplement)
                 ## main
-                sub_links = classify_relations (R, L, check = True)
-                links.extend (sub_links)
+                if use_multiprocess:
+                    #selected_links = classify_relations (R, L, check = check)
+                    print(f"#running in multi-processing mode")
+                    import os
+                    import multiprocess as mp
+                    cores = max (os.cpu_count(), 1)
+                    with mp.Pool(cores) as pool:
+                        selected_nodes = pool.starmap (classify_relations, R, L)
+                        links.extend (selected_links)
+                else:
+                    selected_links = classify_relations (R, L, check = check)
+                    links.extend (selected_links)
             except KeyError:
                pass
         ##
         #supplement_links = list((gap_mark,)*i for i in range(max(ranks) + 1))
         #return links + supplement_links
         return links
+
+    ##
+    def update_links (self, reflexive: bool, use_multiprocess: bool = False, check: bool = False):
+        """
+        takes a PatternLattice P, and updates P.links, P.link_sources and P.link_targets.
+        """
+        ## update links
+        self.links  = self.gen_links (reflexive = reflexive, use_multiprocess = use_multiprocess, check = check)
+        ## update ranked_links
+        self.ranked_links  = make_links_ranked (self.links, check = check)
+        ## update link_sources, link_targets
+        self.link_sources, self.link_targets = self.get_link_stats (check = check)
+        ## return result
+        return self
+
 
     ##
     def get_link_stats (self, check: bool = False):
@@ -937,16 +1016,53 @@ class PatternLattice():
         return link_sources, link_targets
 
     ##
-    def update_links (self, reflexive: bool, check: bool = False):
+    def merge_lattices (self, other, **params):
         """
-        takes a PatternLattice P, and updates P.links, P.link_sources and P.link_targets.
+        take two PatternLattices and merge them into one.
         """
-        ## update links
-        self.links  = self.gen_links (reflexive = reflexive, check = check)
-        ## update link_sources, link_targets
-        self.link_sources, self.link_targets = self.get_link_stats (check = check)
-        ## return result
-        return self
+        gen_links_internally = params['gen_links_internally']
+        generalized       = params['generalized']
+        reductive         = params['reductive']
+        reflexive         = params['reflexive']
+        use_multiprocess  = params['use_multiprocess']
+        check             = params['check']
+
+        ## merger nodes of two pattern lattices given
+        main_nodes   = [ p for p in self.nodes if len(p) > 0 ]
+        nodes_to_add = [ p for p in other.nodes if len(p) > 0 ]
+        ##
+        gap_mark = main_nodes[0].gap_mark
+        ##
+        if reductive:
+            pool_nodes   = simplify_list (main_nodes)
+            nodes_to_add = simplify_list (nodes_to_add)
+        ##
+        main_nodes = make_simplest_merger (main_nodes, nodes_to_add)
+        if check:
+            for i, node in enumerate(main_nodes):
+                print(f"#main_node {i}: {node.separated_print()}")
+
+        ## define a new pattern lattice and elaborates it
+        dummy_pattern = Pattern([], gap_mark = gap_mark, check = check)
+        merged = PatternLattice (dummy_pattern, generalized = generalized, reductive = reductive, check = check)
+        ##
+        merged.origin        = dummy_pattern
+        merged.nodes         = main_nodes
+        ## The following was a seriously elusive bug
+        #merged.ranked_nodes  = group_nodes_by_rank (merged.nodes, gap_mark = gap_mark)
+        merged.ranked_nodes  = merged.group_nodes_by_rank (check = check)
+        merged.links         =  []
+        merged.link_source   =  []
+        merged.link_targets  =  []
+
+        ## generate links
+        if gen_links_internally:
+            merged = merged.update_links (reflexive = reflexive, use_multiprocess = use_multiprocess, check = check)
+        ##
+        if check:
+            print(f"#merged lattice: {merged}")
+        ##
+        return merged
 
     ##
     def draw_diagrams (self, generalized: bool, zscores_from_targets: bool, layout: str = None, auto_fig_sizing: bool = False, zscore_lowerbound: float = None, zscore_upperbound: float = None, use_robust_zscore: bool = False, scale_factor: float = 3, fig_size: tuple = None, label_size: int = None, label_sample_n: int = None, node_size: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:

@@ -43,6 +43,7 @@ class PatternLink:
         #assert len(self.left) >= len(self.right) # offensive
         assert abs(len(self.left) - len(self.right)) < 2
         return max(len(self.left), len(self.right))
+        #return min(len(self.left), len(self.right))
 
     ##
     def __repr__ (self):
