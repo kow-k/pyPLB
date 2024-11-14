@@ -1,0 +1,23 @@
+#i, n
+#i, n, g
+p, i, n
+#p, i, n, k
+#p, i, n, g
+s, i, n
+#s, i, n, k
+#s, i, n, g
+k, i, n
+#k, i, n, g
+#k, i, n, k
+w, i, n
+#w, i, n, k
+#w, i, n, g
+#f, u, n
+#f, u, n, k
+#p, u, n
+#p, u, n, k
+#d, u, n, k
+#f, a, n
+#f, a, n, g
+#b, u, d
+#m, u, d
