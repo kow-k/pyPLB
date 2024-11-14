@@ -339,7 +339,7 @@ elif build_lattice_stepwise:
         ## check nodes in M
         print(f"merged lattice with {len(M.nodes)} nodes")
         for i, p in enumerate(M.nodes):
-            print(f"#node {i}: {p}")
+            print(f"#node {i:3d}: {p.separate_print()}")
 
         ## genenrate links in delay
         if len(M.links) == 0 and not gen_links_internally:
