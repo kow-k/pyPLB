@@ -322,7 +322,7 @@ if simplified:
     if verbose:
         print(f"#La: {La}")
         print(f"#Lb: {Lb}")
-    M = La.merge_lattices (Lb, show_steps = True, check = False)
+    M = La.merge_lattices (Lb, use_mp = use_mp, show_steps = True, check = False)
 
 elif build_lattice_stepwise:
     gen_links_internally = True
@@ -332,7 +332,7 @@ elif build_lattice_stepwise:
         if i == 0:
             M = patlat
         else: ## merger
-            M = M.merge_lattices (patlat, gen_links_internally = gen_links_internally, use_multiprocess = use_mp, generalized = generalized, reflexive = reflexive, reductive = True, show_steps = True, check = False)
+            M = M.merge_lattices (patlat, gen_links_internally = gen_links_internally, use_mp = use_mp, generalized = generalized, reflexive = reflexive, reductive = True, show_steps = True, check = False)
             ## delete the original
             patplat = None
 
@@ -369,13 +369,13 @@ elif build_lattice_stepwise:
 
 else:
     gen_links_internally = False
-    M = functools.reduce (lambda La, Lb: La.merge_lattices (Lb, gen_links_internally = gen_links_internally, use_multiprocess = use_mp, generalized = generalized, reflexive = reflexive, reductive = True, check = False), L)
+    M = functools.reduce (lambda La, Lb: La.merge_lattices (Lb, gen_links_internally = gen_links_internally, use_mp = use_mp, generalized = generalized, reflexive = reflexive, reductive = True, check = False), L)
 
     # The following process was isolated for memory conservation
     if len(M.links) == 0 and not gen_links_internally:
         print(f"##Generating links independently")
         ## Don't do: M = M.update(...)
-        M.update_links (reflexive = reflexive, check = False)
+        M.update_links (reflexive = reflexive, use_mp = use_mp, check = False)
 
     ##
     print(f"##Results")
