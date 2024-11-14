@@ -41,7 +41,7 @@ class PatternLink:
     def __len__ (self):
         #assert len(self.left) == len(self.right)
         #assert len(self.left) >= len(self.right) # offensive
-        assert abs(len(self.left) - len(self.right)) < 2
+        #assert abs(len(self.left) - len(self.right)) < 2 # slows down
         return max(len(self.left), len(self.right))
         #return min(len(self.left), len(self.right))
 

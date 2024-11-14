@@ -894,7 +894,6 @@ class PatternLattice():
     def __repr__(self):
         return f"{type(self).__name__} ({self.nodes!r})"
 
-
     ##
     def __iter__(self):
         for x in self.nodes:
@@ -960,18 +959,8 @@ class PatternLattice():
                             supplement.append (node)
                     R.extend (supplement)
                 ## main
-                if use_mp:
-                    #selected_links = classify_relations (R, L, check = check)
-                    print(f"#running in multi-processing mode")
-                    import os
-                    import multiprocess as mp
-                    cores = max (os.cpu_count(), 1)
-                    with mp.Pool(cores) as pool:
-                        selected_nodes = pool.starmap (classify_relations, R, L)
-                        links.extend (selected_links)
-                else:
-                    selected_links = classify_relations (R, L, check = check)
-                    links.extend (selected_links)
+                selected_links = classify_relations (R, L, check = check)
+                links.extend (selected_links)
             except KeyError:
                pass
         ##
