@@ -59,7 +59,7 @@ def make_simplest_merger (A: list, B: list) -> list:
     return C
 
 ## aliases
-make_simplest_list  = make_simplest_merger 
+make_simplest_list  = make_simplest_merger
 
 ##
 def wrapped_make_simplest_list (*args):
@@ -558,7 +558,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     else:
         if auto_fig_sizing:
             fig_size_local = \
-                (round(4 * len(D), 0),
+                (round(3 * len(D), 0),
                 round(2 * math.log (max_node_count_on_layer), 0))
         else:
             pass
@@ -933,7 +933,7 @@ class PatternLattice():
 
 
     ## generate links
-    def gen_links (self, reflexive: bool = True, use_multiprocess: bool = False, check: bool = False):
+    def gen_links (self, reflexive: bool = True, use_mp: bool = False, check: bool = False):
         """
         takes a PatternLattice P, and generates data for for P.links
         """
@@ -961,7 +961,7 @@ class PatternLattice():
                             supplement.append (node)
                     R.extend (supplement)
                 ## main
-                if use_multiprocess:
+                if use_mp:
                     #selected_links = classify_relations (R, L, check = check)
                     print(f"#running in multi-processing mode")
                     import os
@@ -981,12 +981,12 @@ class PatternLattice():
         return links
 
     ##
-    def update_links (self, reflexive: bool, use_multiprocess: bool = False, check: bool = False):
+    def update_links (self, reflexive: bool, use_mp: bool = False, check: bool = False):
         """
         takes a PatternLattice P, and updates P.links, P.link_sources and P.link_targets.
         """
         ## update links
-        self.links  = self.gen_links (reflexive = reflexive, use_multiprocess = use_multiprocess, check = check)
+        self.links  = self.gen_links (reflexive = reflexive, use_mp = use_mp, check = check)
         ## update ranked_links
         self.ranked_links  = make_links_ranked (self.links, check = check)
         ## update link_sources, link_targets
@@ -1021,11 +1021,11 @@ class PatternLattice():
         take two PatternLattices and merge them into one.
         """
         gen_links_internally = params['gen_links_internally']
-        generalized       = params['generalized']
-        reductive         = params['reductive']
-        reflexive         = params['reflexive']
-        use_multiprocess  = params['use_multiprocess']
-        check             = params['check']
+        generalized          = params['generalized']
+        reductive            = params['reductive']
+        reflexive            = params['reflexive']
+        use_mp               = params['use_mp']
+        check                = params['check']
 
         ## merger nodes of two pattern lattices given
         main_nodes   = [ p for p in self.nodes if len(p) > 0 ]
@@ -1057,7 +1057,7 @@ class PatternLattice():
 
         ## generate links
         if gen_links_internally:
-            merged = merged.update_links (reflexive = reflexive, use_multiprocess = use_multiprocess, check = check)
+            merged = merged.update_links (reflexive = reflexive, use_mp = use_mp, check = check)
         ##
         if check:
             print(f"#merged lattice: {merged}")
