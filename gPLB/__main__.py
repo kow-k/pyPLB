@@ -333,6 +333,8 @@ elif build_lattice_stepwise:
             M = patlat
         else: ## merger
             M = M.merge_lattices (patlat, gen_links_internally = gen_links_internally, use_multiprocess = use_mp, generalized = generalized, reflexive = reflexive, reductive = True, show_steps = True, check = False)
+            ## delete the original
+            patplat = None
 
         ## check nodes in M
         print(f"merged lattice with {len(M.nodes)} nodes")
