@@ -38,18 +38,18 @@ gPLB implements _content tracking_, through which contents of variables, symboli
 ## gPLB (a package including a runnable script)
 [gPLB](gPLB) is a package that can be run as a script. To run it, issue the following command in the terminal:
 
-```python gPLB <file>```
+```python gPLB [OPTIONS] <file>```
 
 where `<file>` is an input file in .csv format. Crucial options are:
 
 - -n [int] sets the number of instances to handle using random sampling.
-- -m [int] sets the maximum number of segments in an instance.
+- -m [int] sets the maximum number of segments in each instance.
 - -f [str] sets the field separator (defaults to ",") to the one you choose.
 - -g [str] sets the gap_mark (defaults to "\_") to the one you choose.
 - -G [flag] produces the ungeneralized version of Pattern Lattice instead of the generalized version (default).
 - -z, -zl [float] sets the lower limit of z-score to prune the unwanted nodes. This is truly useful when a Pattern Lattice grows a big and complex.
 - -zu [float] sets the upper limit of z-score to prune the unwanted nodes. This is truly useful when a Pattern Lattice grows a big and complex.
-- -Z [flag] flag to use robust (i.e., median-based) z-score instead of normal (mean-based) z-score.
+- -Z [flag] flag to use robust (i.e., median-based) z-score instead of normal (i.e., mean-based) z-score.
 - -L [str] selects graph layout. Default is 'Multi_partite', a (clumsy) NetworkX-based simulation of RubyPLB output, but other graph layouts like Graphviz [-L G], ARF [-L ARF], Fruchterman-Reingold [-L FR], Kamada-Kawai [-L KK], Spring [-L Sp], Shell [-L Sh], Circular [-L C], etc., are available, using layout options offered by NetworkX. Some layouts give a better description of the structure of the (generalized) Pattern Lattice networks.
 - -D [flag] flag to draw diagrams without specifying layout.
 - -A [flag] sets on automatic figure sizing to produce a better diagram. Useful at running on terminal rather than in Jupyter Notebook.
