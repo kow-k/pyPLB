@@ -47,7 +47,7 @@ class PatternLink:
 
     ##
     def __repr__ (self):
-        return f"{type(self).__name__} (\nL: {self.left};\nR: {self.right};\ntype: {self.link_type})"
+        return f"{type(self).__name__} (l: {self.left}; r: {self.right};\ntype: {self.link_type})"
 
     ##
     def __iter__ (self):
