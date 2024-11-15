@@ -15,121 +15,6 @@ except ImportError:
     from pattern_link import *
 
 ### Functions
-##
-def as_tuple (L: list) -> tuple:
-    "convert a list into a tuple"
-    #return (*L,)
-    return tuple(L)
-
-##
-def as_label (T: (list, tuple), sep: str = "", add_sep_at_end: bool = False) -> str:
-    "convert a given tuple to a string by concatenating its elements"
-    result = ""
-    result = sep.join(T)
-    if add_sep_at_end:
-        result = result + sep
-    return result
-
-##
-def simplify_list (A: list) -> list:
-    C = []
-    return [ x for x in A if x is not None and len(x) > 0 and x not in C ]
-
-## alises
-reduce_list         = simplify_list
-make_list_simplest  = simplify_list
-
-##
-def make_simplest_merger (A: list, B: list) -> list:
-    "takes a list or a pair of lists and returns a unification of them without reduplication"
-    C = [ ]
-    for a in A:
-        try:
-            if len(a) > 0 and a not in C:
-                C.append(a)
-        except TypeError:
-            pass
-    for b in B:
-        try:
-            if len(b) > 0 and not b in C:
-                C.append (b)
-        except TypeError:
-            pass
-    ##
-    return C
-
-## aliases
-make_simplest_list  = make_simplest_merger
-
-##
-def wrapped_make_simplest_list (*args):
-    import functools
-    return functools.reduce (make_simplest_list, args)
-
-##
-def count_items (L: list, item: str, check: bool = False) -> int:
-    "returns the number of items in the given list"
-    return len([ x for x in L if x == item ])
-
-##
-def get_rank_of_list (L: (list, tuple), gap_mark: str):
-    "takes a list and returns the count of its element which are not equal to gap_mark"
-    return len([ x for x in L if len(x) > 0 and x != gap_mark ])
-
-## parallel filter, or pfilter
-def mp_filter (boolean_func, L: list):
-    #from multiprocessing import Pool
-    import os
-    from multiprocess import Pool
-    cores = max(os.cpu_count(), 1)
-    with Pool (cores) as pool:
-        boolean_res = pool.map (boolean_func, L)
-        return [ x for x, b in zip (L, boolean_res) if b ]
-
-##
-def mp_test_for_membership (item, L: (list, tuple))-> bool:
-    "multiprocess-version of membership test: effective only with a large list"
-    import os
-    import multiprocess as mp
-    cores = max(os.cpu_count(), 1)
-    with mp.Pool(cores) as pool:
-        result = pool.map(lambda x: x == item, L)
-    if sum(filter(lambda x: x == True, result)) > 0:
-        return False
-    else:
-        return True
-
-##
-def attr_is_None_free (p, attr: str) -> bool:
-    "tests if pattern p has no None in attribute"
-    if p is None:
-        return False
-    L = eval(f"p.{attr}")
-    return len([ x for x in L if x is None ]) == 0
-
-##
-def form_is_None_free (p: list) -> bool:
-    "tests if pattern p has no None in form"
-    return attr_is_None_free (p, "form")
-
-##
-def content_is_None_free (p: list) -> bool:
-    "tests if pattern p has no None in content"
-    return attr_is_None_free (p, "content")
-
-##
-def pattern_is_None_free (p: list) -> bool:
-    "tests if pattern p has no None in form and no None in content"
-    if not form_is_None_free (p):
-        return False
-    if not content_is_None_free (p):
-        return False
-    ## other cases
-    return True
-
-#def pattern_is_None_free (p):
-#    "exists for compatibility check"
-#    pass
 
 ##
 def classify_relations (R, L, check: bool = False):
@@ -147,11 +32,11 @@ def classify_relations (R, L, check: bool = False):
             seen.append (link)
     ##
     for r in sorted (R, key = lambda x: len(x)):
-        r_form = r.form
-        gap_mark = r.gap_mark
-        r_size = len(r_form)
-        r_rank = get_rank_of_list (r_form, gap_mark)
         for l in sorted (L, key = lambda x: len(x)):
+            gap_mark = r.gap_mark
+            r_form = r.form
+            r_size = len(r_form)
+            r_rank = get_rank_of_list (r_form, gap_mark)
             l_form = l.form
             l_size = len(l_form)
             l_rank = get_rank_of_list (l_form, gap_mark)
@@ -202,102 +87,93 @@ def classify_relations (R, L, check: bool = False):
     return sub_links
 
 ##
-def classify_relationsX (R, L, check: bool = False):
+def classify_relations_mp (R, L, use_map: bool = True, check: bool = False):
+    """
+    takes two Patterns, classify their relation and returns the list of is-a cases.
 
-    ## preclusion
-    if len(R) == 0 or len(L) == 0:
-        return [ ]
-
-    ## variables
-    gap_mark = R[0].gap_mark
+    in logging, "is-a:Ti" means is-a relation is True of case i; "is-a:Fi" means is-a relation is False of case i;
+    """
+    import itertools
+    P = itertools.product (sorted (R, key = lambda x: len(x)), sorted (L, key = lambda x: len(x)))
+    if use_map:
+        Px = mp_filter (lambda x: test_pairs, P)
+    else:
+        tested = map (lambda x: test_pairs(x), P)
+        if check:
+            print(f"#tested: {tested}")
+        Px = [ p for p, t in zip (P, tested) if t == True ]
+    if check:
+        print(f"#Px: {Px}")
+    ##
     sub_links = [ ]
-    seen = [ ]
-
-    ## functions
-    def register_link (link, sub_links = sub_links, seen = seen):
-        if len (link) > 0 and not link in sub_links and not link in seen:
+    seen      = [ ]
+    for pair in Px:
+        link = PatternLink (pair)
+        if not link in sub_links and not link in seen:
             sub_links.append (link)
             seen.append (link)
-
-    ## main outer
-    for r in sorted (R, key = lambda x: len(x), reverse = False):
-        for l in sorted (L, key = lambda x: len(x), reverse = False):
-            l_form, r_form = l.form, r.form
-            l_size, r_size = len(l.form), len(r.form)
-            l_rank, r_rank = l.get_rank(), r.get_rank()
-            ## main
-            ## false case 0 [bulky]
-            if abs(l_size - r_size) > 1:
-                if check:
-                    print(f"#is-a:F0; {l_form} ~~ {r_form}")
-                continue
-            ## cases where l_size == r_size
-            elif l_size == r_size:
-                ## false case 1
-                if r_form == l_form:
-                    if check:
-                        print(f"#is-a:F1; {l_form} ~~ {r_form}")
-                    continue
-                ## cases where l_form != r_form
-                else:
-                    ## true cases where r is a one-segment elaboration
-                    if l_rank == 0 and r_rank == 1:
-                        print(f"#is-a:T1; {l_form} <- {r_form}")
-                        link = PatternLink ((l, r))
-                        register_link (link)
-                    ## true cases where
-                    if l.count_gaps() == 1 and r.count_gaps() == 0:
-                        if r.includes(l):
-                            print(f"#is-a:T2:instance; {l_form} <- {r_form}")
-                            link = PatternLink ((l, r))
-                            register_link (link)
-                        else: # false case 2
-                            if check:
-                                print(f"#is-a:F2; {l_form} ~~ {r_form}")
-                            continue
-                    ## true cases that need further checking
-                    elif test_for_is_a_relation (r, l, check = False):
-                        print(f"#is-a:T3; {l_form} <- {r_form}")
-                        link = PatternLink ((l, r))
-                        register_link (link)
-                    else: # most of the cases
-                        if check:
-                            print(f"#is-a:F3; {l_form} ~~ {r_form}")
-                        continue
-            ## cases where l is one segment longer than r
-            elif l_size == r_size + 1:
-                ## The following code is covered by T5
-                #if l_rank == 0 and r_rank == 0:
-                #    print(f"#is-a:T0; {l_form} <- {r_form}")
-                #    link = PatternLink ((l, r))
-                #    register_link (link)
-                ##
-                if (l_form[1:] == r_form and r_form[-1] != gap_mark ) or (l_form[:-1] == r_form and r_form[0] != gap_mark):
-                    print(f"#is-a:T4; {l_form} <- {r_form}")
-                    link = PatternLink ((l, r))
-                    register_link (link)
-                ##
-                elif l.get_substance() == r.get_substance():
-                    ## This risks overlinking but ordering is crucial
-                    print(f"#is-a:T5; {l_form} <- {r_form}")
-                    link = PatternLink ((l, r))
-                    register_link (link)
-
-                ## the other cases
-                else:
-                    if check:
-                        print(f"#is-a:F6; {l_form} ~~ {r_form}")
-                    continue
-            else: # all other fail-safe cases
-                if l.get_gap_size() == l_size and r.get_gap_size() == r_size:
-                    if check:
-                        print(f"#is-a:F7; {l_form} <- {r_form}")
-                else:
-                    if check:
-                        print(f"#is-a:F8; {l_form} ~~ {r_form}")
-                    continue
     ##
+    for i, link in enumerate(sub_links):
+        print(f"#sub_link {i}: {link}")
     return sub_links
+
+##
+def test_pairs (X, check: bool = True):
+    ##
+    r, l = X[0], X[1]
+    ##
+    gap_mark = r.gap_mark
+    r_form = r.form
+    r_size = len(r_form)
+    r_rank = get_rank_of_list (r_form, gap_mark)
+    l_form = l.form
+    l_size = len(l_form)
+    l_rank = get_rank_of_list (l_form, gap_mark)
+    ##
+    if abs(l_size - r_size) > 1:
+        if check:
+            print(f"#is-a:F0; {l.form} ~~ {r.form}")
+        return False
+    ##
+    elif l_size == r_size + 1:
+        if l_form[:-1] == r_form or l_form[1:] == r_form:
+            print(f"#is-a:T1; {l.form} <- {r.form}")
+            return True
+        else:
+            if check:
+                print(f"#is-a:F1; {l.form} <- {r.form}")
+            return False
+    ##
+    elif l_size == r_size:
+        if r.form == l.form:
+            if check:
+                print(f"#is-a:F2; {l.form} ~~ {r.form}")
+            return False
+        if r.count_gaps() == 0 and l.count_gaps() == 1:
+            if r.includes(l):
+                print(f"#is-a:T0:instance' {l.form} <- {r.form}")
+                return True
+            else:
+                if check:
+                    print(f"#is-a:F3; {l.form} ~~ {r.form}")
+                return False
+        elif test_for_is_a_relation (r, l, check = False):
+            print(f"#is-a:T2; {l.form} <- {r.form}")
+            return True
+        else:
+            if check:
+                print(f"#is-a:F3; {l.form} ~~ {r.form}")
+            return False
+    ##
+    else:
+        if check:
+            print(f"#is-a:F4; {l.form} ~~ {r.form}")
+        return False
+    
+    ## fail-safe
+    if check:
+        print(f"#is-a:F5; {l.form} ~~ {r.form}")
+    return False
 
 ##
 def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing: bool = False, label_size: int = None, label_sample_n: int = None, node_size: int = None, zscores: dict = None, use_robust_zscore: bool = False, zscore_lowerbound = None, zscore_upperbound = None, scale_factor: float = 3, font_name: str = None, generalized: bool = True, test: bool = False, use_pyGraphviz: bool = False, use_directed_graph: bool = True, reverse_direction: bool = False, check: bool = False) -> None:
@@ -669,9 +545,6 @@ def make_links_ranked (L: list, check: bool = False) -> list:
             ranked_links[rank] = [link]
     ##
     return ranked_links
-
-##
-
 
 ##
 def get_rank_dists (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
