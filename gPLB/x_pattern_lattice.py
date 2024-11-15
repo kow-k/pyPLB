@@ -1,5 +1,103 @@
 ## Functions
 
+##
+def classify_relationsX (R, L, check: bool = False):
+
+    ## preclusion
+    if len(R) == 0 or len(L) == 0:
+        return [ ]
+
+    ## variables
+    gap_mark = R[0].gap_mark
+    sub_links = [ ]
+    seen = [ ]
+
+    ## functions
+    def register_link (link, sub_links = sub_links, seen = seen):
+        if len (link) > 0 and not link in sub_links and not link in seen:
+            sub_links.append (link)
+            seen.append (link)
+
+    ## main outer
+    for r in sorted (R, key = lambda x: len(x), reverse = False):
+        for l in sorted (L, key = lambda x: len(x), reverse = False):
+            l_form, r_form = l.form, r.form
+            l_size, r_size = len(l.form), len(r.form)
+            l_rank, r_rank = l.get_rank(), r.get_rank()
+            ## main
+            ## false case 0 [bulky]
+            if abs(l_size - r_size) > 1:
+                if check:
+                    print(f"#is-a:F0; {l_form} ~~ {r_form}")
+                continue
+            ## cases where l_size == r_size
+            elif l_size == r_size:
+                ## false case 1
+                if r_form == l_form:
+                    if check:
+                        print(f"#is-a:F1; {l_form} ~~ {r_form}")
+                    continue
+                ## cases where l_form != r_form
+                else:
+                    ## true cases where r is a one-segment elaboration
+                    if l_rank == 0 and r_rank == 1:
+                        print(f"#is-a:T1; {l_form} <- {r_form}")
+                        link = PatternLink ((l, r))
+                        register_link (link)
+                    ## true cases where
+                    if l.count_gaps() == 1 and r.count_gaps() == 0:
+                        if r.includes(l):
+                            print(f"#is-a:T2:instance; {l_form} <- {r_form}")
+                            link = PatternLink ((l, r))
+                            register_link (link)
+                        else: # false case 2
+                            if check:
+                                print(f"#is-a:F2; {l_form} ~~ {r_form}")
+                            continue
+                    ## true cases that need further checking
+                    elif test_for_is_a_relation (r, l, check = False):
+                        print(f"#is-a:T3; {l_form} <- {r_form}")
+                        link = PatternLink ((l, r))
+                        register_link (link)
+                    else: # most of the cases
+                        if check:
+                            print(f"#is-a:F3; {l_form} ~~ {r_form}")
+                        continue
+            ## cases where l is one segment longer than r
+            elif l_size == r_size + 1:
+                ## The following code is covered by T5
+                #if l_rank == 0 and r_rank == 0:
+                #    print(f"#is-a:T0; {l_form} <- {r_form}")
+                #    link = PatternLink ((l, r))
+                #    register_link (link)
+                ##
+                if (l_form[1:] == r_form and r_form[-1] != gap_mark ) or (l_form[:-1] == r_form and r_form[0] != gap_mark):
+                    print(f"#is-a:T4; {l_form} <- {r_form}")
+                    link = PatternLink ((l, r))
+                    register_link (link)
+                ##
+                elif l.get_substance() == r.get_substance():
+                    ## This risks overlinking but ordering is crucial
+                    print(f"#is-a:T5; {l_form} <- {r_form}")
+                    link = PatternLink ((l, r))
+                    register_link (link)
+
+                ## the other cases
+                else:
+                    if check:
+                        print(f"#is-a:F6; {l_form} ~~ {r_form}")
+                    continue
+            else: # all other fail-safe cases
+                if l.get_gap_size() == l_size and r.get_gap_size() == r_size:
+                    if check:
+                        print(f"#is-a:F7; {l_form} <- {r_form}")
+                else:
+                    if check:
+                        print(f"#is-a:F8; {l_form} ~~ {r_form}")
+                    continue
+    ##
+    return sub_links
+
 
 
 ##
