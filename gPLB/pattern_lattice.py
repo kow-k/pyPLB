@@ -95,8 +95,8 @@ def classify_relations_mp (R, L, check: bool = False):
     #pairs = product (R2, L2) # cannot be reused
     import multiprocess as mp
     import os
-    pool = mp.Pool(max(os.cpu_count(), 1))
-    test_values = pool.starmap (test_for_ISA_relation, product (R2, L2))
+    with mp.Pool(max(os.cpu_count(), 1)) as pool:
+        test_values = pool.starmap (test_for_ISA_relation, product (R2, L2))
     print (f"test_values: {test_values}")
     ## remove duplicates
     #seen  = [ ]
