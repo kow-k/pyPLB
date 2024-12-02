@@ -74,7 +74,7 @@ def wrapped_merger_main (args):
     return merger_main (*args)
 
 ##
-def check_instantiation (self, other, check: bool = False):
+def check_for_instantiation (self, other, check: bool = False):
     "tests the instantiation of a pair of pattern with the equal size"
     R, L = self, other
     try:
@@ -115,7 +115,7 @@ def check_instantiation (self, other, check: bool = False):
     return True
 
 ## aliases
-test_for_is_a_relation = check_instantiation
+#test_for_is_a_relation = check_instantiation
 
 ##
 def test_completion (P: list, gap_mark: str, check: bool = False) -> bool:
@@ -162,6 +162,8 @@ class Pattern:
         # Multi-step returns get the judgement significantly faster
         #if self.form_hash != other.form_hash:
         #    return False
+        #if self is None or other is None:
+        #    return False
         if len (self.form) != len (other.form):
             return False
         if self.form != other.form:
@@ -185,7 +187,8 @@ class Pattern:
     ##
     def __lt__ (self, other):
         #return self.form < other.form
-        return len(self.form) < len(other.form)
+        #return len(self.form) < len(other.form)
+        return self.form < other.form # tricky
 
     ##
     def __iter__ (self):

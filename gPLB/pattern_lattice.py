@@ -16,6 +16,102 @@ except ImportError:
 
 ### Functions
 
+def test_for_ISA_relation (l: list, r: list, check: bool = False) -> list:
+    '''
+    tests if a given pair of Patterns is in IS-A relation
+    '''
+    gap_mark = r.gap_mark
+    r_form = r.form
+    r_size = len(r_form)
+    r_rank = get_rank_of_list (r_form, gap_mark)
+    l_form = l.form
+    l_size = len(l_form)
+    l_rank = get_rank_of_list (l_form, gap_mark)
+    ##
+    if abs(l_size - r_size) > 1:
+        if check:
+            print(f"#is-a:F0; {l.form} ~ {r.form}")
+        #continue
+        return False
+    ##
+    elif l_size == r_size + 1:
+        if l_form[:-1] == r_form or l_form[1:] == r_form:
+            print(f"#is-a:T1; {l.form} <- {r.form}")
+            return True
+        else:
+            if check:
+                print(f"#is-a:F1; {l.form} <- {r.form}")
+            return False
+    ##
+    elif l_size == r_size:
+        if r.form == l.form:
+            if check:
+                print(f"#is-a:F2; {l.form} ~ {r.form}")
+            return False
+        if r.count_gaps() == 0 and l.count_gaps() == 1:
+            if r.includes(l):
+                print(f"#is-a:T0:instance' {l.form} <- {r.form}")
+                return True
+            else:
+                if check:
+                    print(f"#is-a:F3; {l.form} ~ {r.form}")
+                return False
+        elif check_for_instantiation (r, l, check = False):
+            print(f"#is-a:T2; {l.form} <- {r.form}")
+            return True
+        else:
+            if check:
+                print(f"#is-a:F3; {l.form} ~ {r.form}")
+            return False
+    ##
+    else:
+        if check:
+            print(f"#is-a:F4; {l.form} ~ {r.form}")
+        return False
+
+##
+def classify_relations_mp (R, L, check: bool = False):
+    """
+    takes two Patterns, classify their relation and returns the list of is-a cases.
+
+    in logging, "is-a:Ti" means is-a relation is True of case i; "is-a:Fi" means is-a relation is False of case i;
+    """
+    ##
+    #if len(R) == 0 or len(L) == 0:
+    #    return []
+    ## generates a list of Boolean values
+    try:
+        gap_mark = R[0].left.gap_mark
+    except IndexError:
+        print(f"#R: {R}")
+        try:
+            gap_mark = L[0].left.gap_mark
+        except IndexError:
+            print(f"#L: {L}")
+    ##
+    from itertools import product
+    R2 = sorted (R, key = lambda x: len(x), reverse = False)
+    L2 = sorted (L, key = lambda x: len(x), reverse = False)
+    #pairs = product (R2, L2) # cannot be reused
+    import multiprocess as mp
+    import os
+    pool = mp.Pool(max(os.cpu_count(), 1))
+    test_values = pool.starmap (test_for_ISA_relation, product (R2, L2))
+    print (f"test_values: {test_values}")
+    ## remove duplicates
+    #seen  = [ ]
+    #links = [ ]
+    #for link in [ link for link, value in zip ([ PatternLink ((r, l)) for r, l in product (R2, L2) ], test_values) if value is True ]:
+    #    if not link in seen:
+    #        links.append(link)
+    raw_links = [ link for link, value in zip ([ PatternLink ((r, l)) for r, l in product (R2, L2) ], test_values) if value is True ]
+    print(f"raw_links: {raw_links}")
+    null_pat = Pattern ([], gap_mark = gap_mark)
+    links = sort_remove_duplicates (raw_links, PatternLink ((null_pat, null_pat)))
+    #print (links)
+    ##
+    return links
+
 ##
 def classify_relations (R, L, check: bool = False):
     """
@@ -70,7 +166,7 @@ def classify_relations (R, L, check: bool = False):
                         if check:
                             print(f"#is-a:F3; {l.form} ~ {r.form}")
                         continue
-                elif test_for_is_a_relation (r, l, check = False):
+                elif check_for_instantiation (r, l, check = False):
                     print(f"#is-a:T2; {l.form} <- {r.form}")
                     link = PatternLink ((l, r))
                     register_link (link)
@@ -86,97 +182,9 @@ def classify_relations (R, L, check: bool = False):
     ##
     return sub_links
 
-##
-def classify_relations_mp (R, L, use_map: bool = True, check: bool = False):
-    """
-    takes two Patterns, classify their relation and returns the list of is-a cases.
-
-    in logging, "is-a:Ti" means is-a relation is True of case i; "is-a:Fi" means is-a relation is False of case i;
-    """
-    import itertools
-    P = itertools.product (sorted (R, key = lambda x: len(x)), sorted (L, key = lambda x: len(x)))
-    if use_map:
-        Px = mp_filter (lambda x: test_pairs, P)
-    else:
-        tested = map (lambda x: test_pairs(x), P)
-        if check:
-            print(f"#tested: {tested}")
-        Px = [ p for p, t in zip (P, tested) if t == True ]
-    if check:
-        print(f"#Px: {Px}")
-    ##
-    sub_links = [ ]
-    seen      = [ ]
-    for pair in Px:
-        link = PatternLink (pair)
-        if not link in sub_links and not link in seen:
-            sub_links.append (link)
-            seen.append (link)
-    ##
-    for i, link in enumerate(sub_links):
-        print(f"#sub_link {i}: {link}")
-    return sub_links
 
 ##
-def test_pairs (X, check: bool = True):
-    ##
-    r, l = X[0], X[1]
-    ##
-    gap_mark = r.gap_mark
-    r_form = r.form
-    r_size = len(r_form)
-    r_rank = get_rank_of_list (r_form, gap_mark)
-    l_form = l.form
-    l_size = len(l_form)
-    l_rank = get_rank_of_list (l_form, gap_mark)
-    ##
-    if abs(l_size - r_size) > 1:
-        if check:
-            print(f"#is-a:F0; {l.form} ~~ {r.form}")
-        return False
-    ##
-    elif l_size == r_size + 1:
-        if l_form[:-1] == r_form or l_form[1:] == r_form:
-            print(f"#is-a:T1; {l.form} <- {r.form}")
-            return True
-        else:
-            if check:
-                print(f"#is-a:F1; {l.form} <- {r.form}")
-            return False
-    ##
-    elif l_size == r_size:
-        if r.form == l.form:
-            if check:
-                print(f"#is-a:F2; {l.form} ~~ {r.form}")
-            return False
-        if r.count_gaps() == 0 and l.count_gaps() == 1:
-            if r.includes(l):
-                print(f"#is-a:T0:instance' {l.form} <- {r.form}")
-                return True
-            else:
-                if check:
-                    print(f"#is-a:F3; {l.form} ~~ {r.form}")
-                return False
-        elif test_for_is_a_relation (r, l, check = False):
-            print(f"#is-a:T2; {l.form} <- {r.form}")
-            return True
-        else:
-            if check:
-                print(f"#is-a:F3; {l.form} ~~ {r.form}")
-            return False
-    ##
-    else:
-        if check:
-            print(f"#is-a:F4; {l.form} ~~ {r.form}")
-        return False
-    
-    ## fail-safe
-    if check:
-        print(f"#is-a:F5; {l.form} ~~ {r.form}")
-    return False
-
-##
-def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing: bool = False, label_size: int = None, label_sample_n: int = None, node_size: int = None, zscores: dict = None, use_robust_zscore: bool = False, zscore_lowerbound = None, zscore_upperbound = None, scale_factor: float = 3, font_name: str = None, generalized: bool = True, test: bool = False, use_pyGraphviz: bool = False, use_directed_graph: bool = True, reverse_direction: bool = False, check: bool = False) -> None:
+def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing: bool = False, label_size: int = None, label_sample_n: int = None, node_size: int = None, zscores: dict = None, use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, scale_factor: float = 3, font_name: str = None, generalized: bool = True, test: bool = False, use_pyGraphviz: bool = False, use_directed_graph: bool = True, reverse_direction: bool = False, check: bool = False) -> None:
     "draw layered graph under multi-partite setting"
     ##
     import networkx as nx
@@ -201,17 +209,17 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     node_counts_by_layers = [ ]
     pruned_node_count = 0
     for rank, links in sorted (D, reverse = True): # be careful on list up direction
-        L = [ ]
-        R, E = [ ], [ ]
+        L, R, E = [], [], []
         for link in links:
             if check:
                 print(f"#adding link at rank {rank}: {link}")
-
             ## process nodes
             gap_mark      = link.gap_mark
             node1, node2  = link.form_paired
+            node1_rank    = get_rank_of_list (node1, gap_mark)
+            node2_rank    = get_rank_of_list (node2, gap_mark)
 
-            ## register instances
+            ## register node for instances
             if count_items (node1, gap_mark) == 0 and node1 not in instances:
                 instances.append (node1)
             if count_items (node2, gap_mark) == 0 and node2 not in instances:
@@ -229,23 +237,24 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
 
             ## add nodes
             ## when lowerbound and upperbound z-score pruning is applied
-            if zscore_upperbound is not None and zscore_lowerbound is not None: # z-score pruning applied
+            if zscore_ub is not None and zscore_lb is not None: # z-score pruning applied
                 ## node1
-                if node1_zscore >= zscore_lowerbound and node1_zscore <= zscore_upperbound and not node1 in L:
+                if node1_zscore >= zscore_lb and node1_zscore <= zscore_ub and node1_rank == rank and not node1 in L:
                     L.append (node1)
                 else:
                     print(f"pruned node {node1} with z-score {node1_zscore: 0.4f}")
                     pruned_node_count += 1
                 ## node2
-                if node2_zscore >= zscore_lowerbound and node2_zscore <= zscore_upperbound and get_rank_of_list (node2, gap_mark) == rank and not node2 in R:
-                    R.append (node2)
-                elif node2_zscore >= zscore_lowerbound and node2_zscore <= zscore_upperbound and not node2 in L:
-                    R.append (node2)
+                if node2_zscore >= zscore_lb and node2_zscore <= zscore_ub:
+                    if node2_rank == rank + 1 and not node2 in R:
+                        R.append (node2)
+                    elif not node2 in L:
+                        L.append (node2)
                 else:
                     print(f"pruned node {node2} with z-score {node2_zscore: 0.4f}")
                     pruned_node_count += 1
                 ## process edges
-                if node1_zscore >= zscore_lowerbound and node1_zscore <= zscore_upperbound and node2_zscore >= zscore_lowerbound and node2_zscore <= zscore_upperbound:
+                if node1_zscore >= zscore_lb and node1_zscore <= zscore_ub and node2_zscore >= zscore_lb and node2_zscore <= zscore_ub:
                     edge = (node1, node2)
                     #edge = (node2, node1)
                 try:
@@ -254,17 +263,17 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
                 except UnboundLocalError:
                     pass
             ## when upperbound z-score pruning is applied
-            elif not zscore_upperbound is None: # z-score pruning applied
+            elif not zscore_ub is None: # z-score pruning applied
                 ## node1
-                if node1_zscore <= zscore_upperbound and not node1 in L:
+                if node1_zscore <= zscore_ub and not node1 in L:
                     L.append (node1)
                 else:
                     print(f"pruned node {node1} with z-score {node1_zscore: 0.4f}")
                     pruned_node_count += 1
                 ## node2
-                if node2_zscore <= zscore_upperbound and get_rank_of_list (node2, gap_mark) == rank and not node2 in R:
+                if node2_zscore <= zscore_ub and get_rank_of_list (node2, gap_mark) == rank and not node2 in R:
                     R.append (node2)
-                elif node2_zscore <= zscore_upperbound and not node2 in L:
+                elif node2_zscore <= zscore_ub and not node2 in L:
                     R.append (node2)
                 else:
                     print(f"pruned node {node2} with z-score {node2_zscore: 0.4f}")
@@ -273,7 +282,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
                 if count_items (node2, gap_mark) == 0 and node2 not in instances:
                     instances.append (node2)
                 ## process edges
-                if node1_zscore <= zscore_upperbound and node2_zscore <= zscore_upperbound:
+                if node1_zscore <= zscore_ub and node2_zscore <= zscore_ub:
                     edge = (node1, node2)
                     #edge = (node2, node1)
                 try:
@@ -282,23 +291,23 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
                 except UnboundLocalError:
                     pass
             ## when lowerbound z-score pruning is applied
-            elif not zscore_lowerbound is None: # z-score pruning applied
+            elif not zscore_lb is None: # z-score pruning applied
                 ## node1
-                if node1_zscore >= zscore_lowerbound and not node1 in L:
+                if node1_zscore >= zscore_lb and not node1 in L:
                     L.append (node1)
                 else:
                     print(f"pruned node {node1} with z-score {node1_zscore: 0.4f}")
                     pruned_node_count += 1
                 ## node2
-                if node2_zscore >= zscore_lowerbound and get_rank_of_list (node2, gap_mark) == rank and not node2 in R:
+                if node2_zscore >= zscore_lb and get_rank_of_list (node2, gap_mark) == rank and not node2 in R:
                     R.append (node2)
-                elif node2_zscore >= zscore_lowerbound and not node2 in L:
+                elif node2_zscore >= zscore_lb and not node2 in L:
                     R.append (node2)
                 else:
                     print(f"pruned node {node2} with z-score {node2_zscore: 0.4f}")
                     pruned_node_count += 1
                 ## process edges
-                if node1_zscore >= zscore_lowerbound and node2_zscore >= zscore_lowerbound:
+                if node1_zscore >= zscore_lb and node2_zscore >= zscore_lb:
                     edge = (node1, node2)
                     #edge = (node2, node1)
                 try:
@@ -309,14 +318,14 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
             ## when z-score pruning not applied
             else:
                 ## node1
-                if not node1 in L:
+                if node1_rank == rank and not node1 in L:
                     L.append (node1)
                 ## node2
-                if get_rank_of_list (node2, gap_mark) == rank:
+                if node2_rank == rank + 1:
                     if not node2 in R:
                         R.append (node2)
-                elif not node2 in L:
-                    R.append (node2)
+                elif node2_rank == rank and not node2 in L:
+                    L.append (node2)
                 ## process edges
                 if node1 and node2:
                     edge = (node1, node2)
@@ -506,14 +515,14 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     ### set title
     if generalized:
         if use_robust_zscore:
-            title_val = f"gPatternLattice (layout: {layout_name}; robust z-scores: {zscore_lowerbound} – {zscore_upperbound}) built from\n{instance_labels} ({label_count} in all)"
+            title_val = f"gPatternLattice (layout: {layout_name}; robust z-scores: {zscore_lb} – {zscore_ub}) built from\n{instance_labels} ({label_count} in all)"
         else:
-            title_val = f"gPatternLattice (layout: {layout_name}; normal z-scores: {zscore_lowerbound} – {zscore_upperbound}) built from\n{instance_labels} ({label_count} in all)"
+            title_val = f"gPatternLattice (layout: {layout_name}; normal z-scores: {zscore_lb} – {zscore_ub}) built from\n{instance_labels} ({label_count} in all)"
     else:
         if use_robust_zscore:
-            title_val = f"PatternLattice (layout: {layout_name}; robust z-scores: {zscore_lowerbound} – {zscore_upperbound}) built from\n{instance_labels} ({label_count} in all)"
+            title_val = f"PatternLattice (layout: {layout_name}; robust z-scores: {zscore_lb} – {zscore_ub}) built from\n{instance_labels} ({label_count} in all)"
         else:
-            title_val = f"PatternLattice (layout: {layout_name}; normal z-scores: {zscore_lowerbound} – {zscore_upperbound}) built from\n{instance_labels} ({label_count} in all)"
+            title_val = f"PatternLattice (layout: {layout_name}; normal z-scores: {zscore_lb} – {zscore_ub}) built from\n{instance_labels} ({label_count} in all)"
     plt.title(title_val)
     ##
     plt.show()
@@ -832,6 +841,7 @@ class PatternLattice():
                             supplement.append (node)
                     R.extend (supplement)
                 ## main
+                #selected_links = classify_relations_mp (R, L, check = check)
                 selected_links = classify_relations (R, L, check = check)
                 links.extend (selected_links)
             except KeyError:
@@ -926,7 +936,7 @@ class PatternLattice():
         return merged
 
     ##
-    def draw_diagrams (self, generalized: bool, zscores_from_targets: bool, layout: str = None, auto_fig_sizing: bool = False, zscore_lowerbound: float = None, zscore_upperbound: float = None, use_robust_zscore: bool = False, scale_factor: float = 3, fig_size: tuple = None, label_size: int = None, label_sample_n: int = None, node_size: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
+    def draw_diagrams (self, generalized: bool, zscores_from_targets: bool, layout: str = None, auto_fig_sizing: bool = False, zscore_lb: float = None, zscore_ub: float = None, use_robust_zscore: bool = False, scale_factor: float = 3, fig_size: tuple = None, label_size: int = None, label_sample_n: int = None, node_size: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
         """
         draw a lattice digrams from a given PatternLattice L by extracting L.links
         """
@@ -958,7 +968,7 @@ class PatternLattice():
                 print(f"node {i:4d} {node} has z-score {v:.4f}")
 
         ## draw PatternLattice
-        draw_network (ranked_links.items(), generalized = generalized, layout = layout, fig_size = fig_size, auto_fig_sizing = auto_fig_sizing, node_size = node_size, scale_factor = scale_factor, label_sample_n = label_sample_n, font_name = font_name, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lowerbound = zscore_lowerbound, zscore_upperbound = zscore_upperbound, check = check)
+        draw_network (ranked_links.items(), generalized = generalized, layout = layout, fig_size = fig_size, auto_fig_sizing = auto_fig_sizing, node_size = node_size, scale_factor = scale_factor, label_sample_n = label_sample_n, font_name = font_name, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, check = check)
 
 
 ### end of file

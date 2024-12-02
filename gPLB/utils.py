@@ -16,9 +16,41 @@ def as_label (T: (list, tuple), sep: str = "", add_sep_at_end: bool = False) -> 
     return result
 
 ##
+def filter_list (F: list, A: list, check: bool = False) -> list:
+    #assert len(F) <= len(A)
+    R = [ ]
+    for x in zip(F, A[:len(F)]):
+        test, value = x[0], x[1]
+        if test == 0 or test is False or test is None:
+            pass
+        else:
+            R.append(value)
+    ## return result
+    if check:
+        print (R)
+    return R
+
+##
+def sort_remove_duplicates (L: list, initial_value: object) -> list:
+    "takes a list and returns a list with duplicates removed"
+    R    = []
+    prev = initial_value
+    for x in sorted (L):
+        if x == prev:
+            pass
+        else:
+            R.append(x)
+        ## update prev
+        prev = x
+    ## return result
+    return R
+
+##
 def simplify_list (A: list) -> list:
     C = []
     return [ x for x in A if x is not None and len(x) > 0 and x not in C ]
+#def simplify_list (A:list) -> list:
+#    return remove_duplicates (A, None)
 
 ## alises
 reduce_list         = simplify_list

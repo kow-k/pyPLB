@@ -38,13 +38,21 @@ class PatternLink:
                 return True
 
     ##
-    def __len__ (self):
+    def __len__ (self, use_min: bool = False):
         #assert len(self.left) == len(self.right)
         #assert len(self.left) >= len(self.right) # offensive
         #assert abs(len(self.left) - len(self.right)) < 2 # slows down
-        return max(len(self.left), len(self.right))
-        #return min(len(self.left), len(self.right))
-
+        if use_min:
+            return min (len(self.left), len(self.right))
+        else:
+            return max (len(self.left), len(self.right))
+    
+    ##
+    def __lt__(self, other):
+        #return self.left < other.left and self.right < other.right
+        return self.right < other.right or self.left < other.left
+        
+    
     ##
     def __repr__ (self):
         return f"{type(self).__name__} (l: {self.left}; r: {self.right};\ntype: {self.link_type})"

@@ -28,6 +28,7 @@ modification history
 2024/11/01 implemented upperbound of z-score pruning of lattice nodes
 2024/11/02 improved implementation of Pattern: .form and .content are tuples rather than lists. This change is intended to memory conservation.
 2024/11/01 finally fixed bugs introduced at merger_lattices.
+2024/12/02 fixed a bug to produce wrong laying of nodes
 """
 
 #
@@ -365,7 +366,7 @@ elif build_lattice_stepwise:
 
         ##
         print(f"##Results")
-        M.draw_diagrams (layout = layout, generalized = generalized, auto_fig_sizing = auto_fig_sizing, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lowerbound = zscore_lowerbound, zscore_upperbound = zscore_upperbound, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+        M.draw_diagrams (layout = layout, generalized = generalized, auto_fig_sizing = auto_fig_sizing, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 
 else:
     gen_links_internally = False
@@ -404,7 +405,7 @@ else:
 
     ## draw diagram of M
     print(f"##Drawing a diagram from the merged lattice")
-    M.draw_diagrams (layout = layout, generalized = generalized, auto_fig_sizing = auto_fig_sizing, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lowerbound = zscore_lowerbound, zscore_upperbound = zscore_upperbound, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+    M.draw_diagrams (layout = layout, generalized = generalized, auto_fig_sizing = auto_fig_sizing, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 
 ## conclude
 print(f"##built from {len(S)} sources: {[ as_label(x, sep = ',') for x in S ]}")
