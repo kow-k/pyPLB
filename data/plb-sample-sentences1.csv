@@ -1,0 +1,38 @@
+a, pen
+another, pen
+a, way
+another, way
+a, wrong, way
+a, wrong, pen
+another, wrong, pen
+another, wrong, way
+wrong, pen-s
+wrong, way-s
+long, wrong, way-s
+This, is, a, pen, .
+That, is, a, pen, .
+This, is, another, pen, .
+That, is, a, long, pen, .
+They, are, long, pen-s, .
+These, are, long, pen-s, .
+They, are, short, pen-s, .
+This, is, a, way, .
+This, is, another , way, .
+That, is, another, way, .
+It, is, a, pen, .
+It, is, a, long, way, .
+That, is, a, long, way, .
+This, is ,another ,long, pen, .
+This, is, a, short, pen, .
+It, is, a, wrong, pen, .
+This, is, a, wrong, way, .
+Those, are, wrong, pen-s, .
+These, are, wrong, way-s, .
+They, are, wrong, way-s, .
+These, are, long, wrong, way-s, .
+He, loves, long, pen-s, .
+He, loves, short, way-s, .
+He, doesn't, love, long, way-s, .
+We, don't, love, long, way-s, .
+He, doesn't, love, wrong, way-s, .
+We, don't, love, wrong, way-s, .
