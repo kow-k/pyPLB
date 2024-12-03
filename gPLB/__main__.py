@@ -27,8 +27,9 @@ modification history
 2024/10/31 fixed a bug in multiparite layout; implemented content tracking on variables in a pattern
 2024/11/01 implemented upperbound of z-score pruning of lattice nodes
 2024/11/02 improved implementation of Pattern: .form and .content are tuples rather than lists. This change is intended to memory conservation.
-2024/11/01 finally fixed bugs introduced at merger_lattices.
+2024/11/01 fixed bugs introduced at merger_lattices.
 2024/12/02 fixed a bug to produce wrong laying of nodes
+2024/12/03 finished implementation of multiprocess version; implemented (un)capitalization of elements; implemented removal of punctuation marks; implemented subsegmentation of hyphenated tokens
 """
 
 #
@@ -49,11 +50,14 @@ from pattern_lattice import *
 import argparse
 parser  = argparse.ArgumentParser(description = "")
 parser.add_argument('file', type= open, default= None)
-parser.add_argument('-P', '--phrasal', action= 'store_true', default= False)
 parser.add_argument('-v', '--verbose', action= 'store_true', default= False)
 parser.add_argument('-w', '--detailed', action= 'store_true', default= False)
 parser.add_argument('-f', '--input_field_sep', type= str, default= ',')
 parser.add_argument('-c', '--input_comment_escape', type= str, default= '#')
+parser.add_argument('-X', '--phrasal', action= 'store_true', default= False)
+parser.add_argument('-C', '--uncapitalize', action='store_false', default= True)
+parser.add_argument('-P', '--remove_punctuations', action='store_false', default= True)
+parser.add_argument('-H', '--split_hyphenation', action='store_false', default= True)
 parser.add_argument('-g', '--gap_mark', type= str, default= '_')
 parser.add_argument('-R', '--unreflexive', action= 'store_false', default= True)
 parser.add_argument('-G', '--generalized', action= 'store_false', default= True)
@@ -75,11 +79,14 @@ parser.add_argument('-A', '--auto_fig_sizing', action= 'store_true', default= Fa
 args = parser.parse_args()
 ##
 file                    = args.file   # process a file when it exists
-phrasal                 = args.phrasal
 verbose                 = args.verbose
 detailed                = args.detailed
 input_field_sep         = args.input_field_sep
 input_comment_escape    = args.input_comment_escape
+phrasal                 = args.phrasal
+uncapitalize            = args.uncapitalize
+remove_punctuations     = args.remove_punctuations
+split_hyphenation       = args.split_hyphenation
 gap_mark                = args.gap_mark
 max_size                = args.max_size
 #sample_id               = args.sample_id
@@ -105,7 +112,7 @@ if not layout is None:
 
 ## inspection paramters
 draw_inspection      = False
-mp_inspection        = True # This disables use of multiprocess
+mp_inspection        = False # This disables use of multiprocess
 if mp_inspection:
     use_mp = False
 else:
@@ -113,10 +120,13 @@ else:
 
 ## show paramters
 print(f"##Parameters")
-print(f"#verbose: {verbose}")
 print(f"#detailed: {detailed}")
+print(f"#verbose: {verbose}")
 print(f"#input_field_sep: {input_field_sep}")
 print(f"#input_comment_escape: {input_comment_escape}")
+print(f"#uncapitalize: {uncapitalize}")
+print(f"#remove_punctuations: {remove_punctuations}")
+print(f"#split_hyphenation: {split_hyphenation}")
 print(f"#lattice is generalized: {generalized}")
 print(f"#instantiation is reflexive: {reflexive}")
 print(f"#gap_mark: {gap_mark}")
@@ -134,10 +144,24 @@ def parse_input (file, field_sep: str = ",", comment_escape: str = "#") -> None:
     "reads a file, splits it into segments using a given separator, removes comments, and forward the result to main"
     import csv
     ## reading data
-    data = list(csv.reader (file, delimiter = field_sep)) # Crucially list(..)
+    data = list (csv.reader (file, delimiter = field_sep)) # Crucially list(..)
 
     ## discard comment lines that start with #
     data = [ [ x.strip() for x in F ] for F in data if len(F) > 0 and not F[0][0] == comment_escape ]
+    
+    ## uncapitalize tokens
+    if uncapitalize:
+        data = [ [ x.lower() for x in l ] for l in data ]
+    
+    ## remove punctuations from lines
+    punct_symbols = list(",.?!:;/\–~")
+    if remove_punctuations:
+        data = [ [ x for x in l if x not in punct_symbols ] for l in data ]
+    
+    ## split hyphenated tokens
+    if split_hyphenation:
+        data = [ process_hyphenation (l) for l in data ]
+
 
     ## remove in-line comments
     data_renewed = [ ]
@@ -338,7 +362,7 @@ elif build_lattice_stepwise:
             patplat = None
 
         ## check nodes in M
-        print(f"merged lattice with {len(M.nodes)} nodes")
+        print(f"merged PatternLattice with {len(M.nodes)} nodes")
         for i, p in enumerate(M.nodes):
             print(f"#node {i:3d}: {p.separate_print()}")
 
@@ -404,7 +428,7 @@ else:
         print(f"#node {node} has z-score {zscore: .3f} (n: {M.link_sources[node]:2d})")
 
     ## draw diagram of M
-    print(f"##Drawing a diagram from the merged lattice")
+    print(f"##Drawing a diagram from the merged PatternLattice")
     M.draw_diagrams (layout = layout, generalized = generalized, auto_fig_sizing = auto_fig_sizing, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 
 ## conclude

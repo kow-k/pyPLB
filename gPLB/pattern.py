@@ -76,40 +76,44 @@ def wrapped_merger_main (args):
 ##
 def check_for_instantiation (self, other, check: bool = False):
     "tests the instantiation of a pair of pattern with the equal size"
-    R, L = self, other
+    r, l = self, other
     try:
-        assert len(L) >= len(R)
+        assert len(l) >= len(r)
     except AssertionError:
         return False
     ##
     gap_mark   = self.gap_mark
-    R_form     = self.form
-    L_form     = other.form
+    r_form     = self.form
+    l_form     = other.form
     ## filter invalid cases
-    ## Crucial for generating hierarchical organization!
-    if abs(R.get_substance_size() - L.get_substance_size()) > 1:
+    if r_form == l_form:
         if check:
-            print(f"#is-a:F[0]; {L_form} ~ {R_form}")
+            print(f"#is-a:F0; {l_form} ~~ {r_form}")
+        return False
+    ## Crucial for generating hierarchical organization!
+    if abs(r.get_substance_size() - l.get_substance_size()) > 1:
+        if check:
+            print(f"#is-a:F1; {l_form} ~~ {r_form}")
         return False
     ##
-    for i, r_seg in enumerate(R_form):
-        l_seg = L_form[i]
+    for i, r_seg in enumerate (r_form):
+        l_seg = l_form[i]
         if l_seg == r_seg:
             pass
         else: # l_seg != r_seg
             if l_seg != gap_mark:
                 if check:
-                    print(f"#is-a:F[1]; {L_form} ~ {R_form}")
+                    print(f"#is-a:F2; {l_form} ~~ {r_form}")
                 return False
             elif l_seg != r_seg:
                 if check:
-                    print(f"#is-a:F[2]; {L_form} ~ {R_form}")
+                    print(f"#is-a:F3; {l_form} ~~ {r_form}")
                 False
             else:
                 pass
     ##
     if check:
-        print(f"#is-a:T[1]; {L_form} <- {R_form}")
+        print(f"#is-a:T1; {l_form} <- {r_form}")
     ##
     #yield True # offensive??
     return True

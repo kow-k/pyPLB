@@ -16,27 +16,30 @@ except ImportError:
 
 ### Functions
 
-def test_for_ISA_relation (l: list, r: list, check: bool = False) -> list:
+def test_pairs_for_ISA (r: list, l: list, check: bool = False) -> list:
     '''
     tests if a given pair of Patterns is in IS-A relation
     '''
     gap_mark = r.gap_mark
-    r_form = r.form
-    r_size = len(r_form)
+    r_form, l_form = r.form, l.form
+    r_size, l_size = len (r_form), len (l_form)
     r_rank = get_rank_of_list (r_form, gap_mark)
-    l_form = l.form
-    l_size = len(l_form)
     l_rank = get_rank_of_list (l_form, gap_mark)
     ##
-    if abs(l_size - r_size) > 1:
+    if abs (l_size - r_size) > 1:
         if check:
             print(f"#is-a:F0; {l.form} ~ {r.form}")
         #continue
         return False
     ##
     elif l_size == r_size + 1:
-        if l_form[:-1] == r_form or l_form[1:] == r_form:
-            print(f"#is-a:T1; {l.form} <- {r.form}")
+        if l_form[0] == gap_mark and l_form[1:] == r_form:
+            if check:
+                print(f"#is-a:T1a; {l.form} <- {r.form}")
+            return True
+        elif  l_form[-1] == gap_mark and l_form[:-1] == r_form:
+            if check:
+                print(f"#is-a:T1b; {l.form} <- {r.form}")
             return True
         else:
             if check:
@@ -44,20 +47,22 @@ def test_for_ISA_relation (l: list, r: list, check: bool = False) -> list:
             return False
     ##
     elif l_size == r_size:
-        if r.form == l.form:
+        if r_form == l_form:
             if check:
                 print(f"#is-a:F2; {l.form} ~ {r.form}")
             return False
         if r.count_gaps() == 0 and l.count_gaps() == 1:
             if r.includes(l):
-                print(f"#is-a:T0:instance' {l.form} <- {r.form}")
+                if check:
+                    print(f"#is-a:T0:instance' {l.form} <- {r.form}")
                 return True
             else:
                 if check:
                     print(f"#is-a:F3; {l.form} ~ {r.form}")
                 return False
         elif check_for_instantiation (r, l, check = False):
-            print(f"#is-a:T2; {l.form} <- {r.form}")
+            if check:
+                print(f"#is-a:T2; {l.form} <- {r.form}")
             return True
         else:
             if check:
@@ -70,47 +75,111 @@ def test_for_ISA_relation (l: list, r: list, check: bool = False) -> list:
         return False
 
 ##
-def classify_relations_mp (R, L, check: bool = False):
+def classify_relations_mp1 (R, L, gap_mark, check: bool = False):
     """
     takes two Patterns, classify their relation and returns the list of is-a cases.
 
     in logging, "is-a:Ti" means is-a relation is True of case i; "is-a:Fi" means is-a relation is False of case i;
     """
-    ##
-    #if len(R) == 0 or len(L) == 0:
-    #    return []
     ## generates a list of Boolean values
-    try:
-        gap_mark = R[0].left.gap_mark
-    except IndexError:
-        print(f"#R: {R}")
-        try:
-            gap_mark = L[0].left.gap_mark
-        except IndexError:
-            print(f"#L: {L}")
-    ##
-    from itertools import product
     R2 = sorted (R, key = lambda x: len(x), reverse = False)
     L2 = sorted (L, key = lambda x: len(x), reverse = False)
+    from itertools import product
     #pairs = product (R2, L2) # cannot be reused
     import multiprocess as mp
     import os
     with mp.Pool(max(os.cpu_count(), 1)) as pool:
-        test_values = pool.starmap (test_for_ISA_relation, product (R2, L2))
-    print (f"test_values: {test_values}")
+        test_values = pool.starmap (test_pairs_for_ISA, product (R2, L2))
+    #print (f"test_values: {test_values}")
+    true_pairs = [ pair for pair, t in zip ([ (l, r) for r, l in product (R2, L2) ], test_values) if t is True ]
+    #print(f"true_pairs: {true_pairs}")
     ## remove duplicates
-    #seen  = [ ]
-    #links = [ ]
-    #for link in [ link for link, value in zip ([ PatternLink ((r, l)) for r, l in product (R2, L2) ], test_values) if value is True ]:
-    #    if not link in seen:
-    #        links.append(link)
-    raw_links = [ link for link, value in zip ([ PatternLink ((r, l)) for r, l in product (R2, L2) ], test_values) if value is True ]
-    print(f"raw_links: {raw_links}")
-    null_pat = Pattern ([], gap_mark = gap_mark)
-    links = sort_remove_duplicates (raw_links, PatternLink ((null_pat, null_pat)))
+    links = [ PatternLink (p) for p in simplify_list (true_pairs) if len(p) == 2 ]
     #print (links)
     ##
     return links
+
+##
+def classify_pairs (r: list, l: list, check: bool = False) -> list:
+    '''
+    tests if a given pair is in IS-A relation and returns classification result as a list of pairs
+    '''
+    gap_mark = r.gap_mark
+    r_form, l_form = r.form, l.form
+    r_size, l_size = len (r_form), len (l_form)
+    r_rank = get_rank_of_list (r_form, gap_mark)
+    l_rank = get_rank_of_list (l_form, gap_mark)
+    ##
+    sub_pairs = []
+    seen      = []
+    def register_pair (p, sub_pairs = sub_pairs, seen = seen):
+        if len (p) > 0 and not p in sub_pairs:
+            sub_pairs.append (p)
+        if len (p) > 0 and not p in seen:
+            seen.append (p)
+    ##
+    if abs (l_size - r_size) > 1:
+        if check:
+            print(f"#is-a:F0; {l.form} ~ {r.form}")
+        return None
+    ##
+    elif l_size == r_size + 1:
+        if l_form[:-1] == r_form and l_form[-1] == gap_mark:
+            if check:
+                print(f"#is-a:T1a; {l.form} <- {r.form}")
+            register_pair ((l, r))
+        elif l_form[1:] == r_form and l_form[0] == gap_mark:
+            if check:
+                print(f"#is-a:T1b; {l.form} <- {r.form}")
+            register_pair ((l, r))
+        else:
+            if check:
+                print(f"#is-a:F1; {l.form} <- {r.form}")
+            return None
+    ##
+    elif l_size == r_size:
+        if l_form == r_form:
+            if check:
+                print(f"#is-a:F2; {l.form} ~ {r.form}")
+            return None
+        if r.count_gaps() == 0 and l.count_gaps() == 1:
+            if r.includes (l):
+                if check:
+                    print(f"#is-a:T0:instance' {l.form} <- {r.form}")
+                register_pair ((l, r))
+            else:
+                if check:
+                    print(f"#is-a:F3; {l.form} ~ {r.form}")
+                return None
+        elif check_for_instantiation (r, l, check = False):
+            if check:
+                print(f"#is-a:T2; {l.form} <- {r.form}")
+            register_pair ((l, r))
+        else:
+            if check:
+                print(f"#is-a:F3; {l.form} ~ {r.form}")
+            return None
+    ##
+    else:
+        if check:
+            print(f"#is-a:F4; {l.form} ~ {r.form}")
+        return None
+    ## return result
+    return sub_pairs
+
+## The following fails to work properly because multiprocess can't reserve object attributes
+def classify_relations_mp2 (R, L, gap_mark: str, check: bool = False):
+    ## generates a list of Boolean values
+    from itertools import product
+    R2 = sorted (R, key = lambda x: len(x), reverse = False)
+    L2 = sorted (L, key = lambda x: len(x), reverse = False)
+    #pairs = product (R2, L2) # cannot be reused
+    import os
+    import multiprocess as mp
+    with mp.Pool(max(os.cpu_count(), 1)) as pool:
+        sub_pairs = pool.starmap (classify_pairs, product (R2, L2)) # seems to work
+    ##
+    return [ PatternLink (*p) for p in sub_pairs if p is not None and len(p) > 0 ] # Crucially, len(p) > 0
 
 ##
 def classify_relations (R, L, check: bool = False):
@@ -130,11 +199,9 @@ def classify_relations (R, L, check: bool = False):
     for r in sorted (R, key = lambda x: len(x)):
         for l in sorted (L, key = lambda x: len(x)):
             gap_mark = r.gap_mark
-            r_form = r.form
-            r_size = len(r_form)
+            r_form, l_form = r.form, l.form
+            r_size, l_size = len(r_form), len(l_form)
             r_rank = get_rank_of_list (r_form, gap_mark)
-            l_form = l.form
-            l_size = len(l_form)
             l_rank = get_rank_of_list (l_form, gap_mark)
             ##
             if abs(l_size - r_size) > 1:
@@ -143,10 +210,14 @@ def classify_relations (R, L, check: bool = False):
                 continue
             ##
             elif l_size == r_size + 1:
-                if l_form[:-1] == r_form or l_form[1:] == r_form:
-                    print(f"#is-a:T1; {l.form} <- {r.form}")
-                    link = PatternLink ((l, r))
-                    register_link (link)
+                if l_form[0] == gap_mark and l_form[1:] == r_form:
+                    if check:
+                        print(f"#is-a:T1a; {l.form} <- {r.form}")
+                    register_link (PatternLink ((l, r)))
+                elif  l_form[-1] == gap_mark and l_form[:-1] == r_form:
+                    if check:
+                        print(f"#is-a:T1b; {l.form} <- {r.form}")
+                    register_link (PatternLink ((l, r)))
                 else:
                     if check:
                         print(f"#is-a:F1; {l.form} <- {r.form}")
@@ -159,17 +230,17 @@ def classify_relations (R, L, check: bool = False):
                     continue
                 if r.count_gaps() == 0 and l.count_gaps() == 1:
                     if r.includes(l):
-                        print(f"#is-a:T0:instance' {l.form} <- {r.form}")
-                        link = PatternLink ((l, r))
-                        register_link (link)
+                        if check:
+                            print(f"#is-a:T0:instance' {l.form} <- {r.form}")
+                        register_link (PatternLink ((l, r)))
                     else:
                         if check:
                             print(f"#is-a:F3; {l.form} ~ {r.form}")
                         continue
                 elif check_for_instantiation (r, l, check = False):
-                    print(f"#is-a:T2; {l.form} <- {r.form}")
-                    link = PatternLink ((l, r))
-                    register_link (link)
+                    if check:
+                        print(f"#is-a:T2; {l.form} <- {r.form}")
+                    register_link (PatternLink ((l, r)))
                 else:
                     if check:
                         print(f"#is-a:F3; {l.form} ~ {r.form}")
@@ -181,7 +252,6 @@ def classify_relations (R, L, check: bool = False):
                 continue
     ##
     return sub_links
-
 
 ##
 def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing: bool = False, label_size: int = None, label_sample_n: int = None, node_size: int = None, zscores: dict = None, use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, scale_factor: float = 3, font_name: str = None, generalized: bool = True, test: bool = False, use_pyGraphviz: bool = False, use_directed_graph: bool = True, reverse_direction: bool = False, check: bool = False) -> None:
@@ -542,18 +612,36 @@ def make_ranked_dict (L: list, gap_mark: str) -> dict:
 
 #make_links_ranked   = make_ranked_dict
 ## The following is needed independently of make_ranked_dict(..)
-def make_links_ranked (L: list, check: bool = False) -> list:
+def make_links_ranked (L: list, safe: bool = False, check: bool = False) -> list:
     "takes a list of PatternLinks and returns a dictionary of {rank: [link1, link2, ...]}"
     ranked_links = {}
-    for link in L:
-        rank = link.get_link_rank ()
-        try:
-            if not link in ranked_links[rank]:
-                ranked_links[rank].append(link)
-        except KeyError:
-            ranked_links[rank] = [link]
+    if safe:
+        for link in L:
+            if check:
+                print(f"type(link): {type(link)}")
+            try:
+                rank = link.get_link_rank ()
+                try:
+                    if not link in ranked_links[rank]:
+                        ranked_links[rank].append(link)
+                except KeyError:
+                    ranked_links[rank] = [link]
+            except AttributeError:
+                print (f"failed link: {link}")
+    else:
+        for link in L:
+            rank = link.get_link_rank ()
+            try:
+                if not link in ranked_links[rank]:
+                    ranked_links[rank].append(link)
+            except KeyError:
+                ranked_links[rank] = [link]
     ##
     return ranked_links
+
+##
+def get_link_rank ():
+    pass
 
 ##
 def get_rank_dists (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
@@ -811,13 +899,13 @@ class PatternLattice():
             print(f"#ranked_nodes: {ranked_nodes}")
         return ranked_nodes
 
-
     ## generate links
-    def gen_links (self, reflexive: bool = True, use_mp: bool = False, check: bool = False):
+    def gen_links (self: object, reflexive: bool = True, use_mp: bool = True, check: bool = False) -> list:
         """
         takes a PatternLattice P, and generates data for for P.links
         """
         ##
+        gap_mark     = self.gap_mark
         ranked_nodes = self.ranked_nodes
         if len (ranked_nodes) == 0:
             ranked_nodes = make_ranked_dict (self.nodes)
@@ -830,7 +918,7 @@ class PatternLattice():
                 L = simplify_list (ranked_nodes[rank])
                 if check:
                     print(f"#L rank {rank} nodes: {L}")
-                R = simplify_list (ranked_nodes[rank + 1] )
+                R = simplify_list (ranked_nodes[rank + 1])
                 if check:
                     print(f"#R rank {rank + 1} nodes: {R}")
                 ## make R reflexive
@@ -841,14 +929,20 @@ class PatternLattice():
                             supplement.append (node)
                     R.extend (supplement)
                 ## main
-                #selected_links = classify_relations_mp (R, L, check = check)
-                selected_links = classify_relations (R, L, check = check)
+                use_mp2 = True
+                if use_mp:
+                    if use_mp2:
+                        classify_relations_mp = classify_relations_mp2
+                    else:
+                        classify_relations_mp = classify_relations_mp1
+                    selected_links = classify_relations_mp (R, L, gap_mark, check = check)
+                else:
+                    selected_links = classify_relations (R, L, check = check)
+                #print (f"selected_links: {selected_links}")
                 links.extend (selected_links)
             except KeyError:
                pass
         ##
-        #supplement_links = list((gap_mark,)*i for i in range(max(ranks) + 1))
-        #return links + supplement_links
         return links
 
     ##
@@ -864,7 +958,6 @@ class PatternLattice():
         self.link_sources, self.link_targets = self.get_link_stats (check = check)
         ## return result
         return self
-
 
     ##
     def get_link_stats (self, check: bool = False):

@@ -13,7 +13,7 @@ except ImportError:
 ##
 class PatternLink:
     "definition of PatternLink class"
-    def __init__ (self, pair, link_type = None):
+    def __init__ (self, pair, link_type: str = ""):
         assert len (pair) == 2
         left, right = pair[0], pair[1]
         #assert len (left) == len (right) # offensive

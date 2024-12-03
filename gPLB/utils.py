@@ -1,5 +1,44 @@
 ### Functions
 
+## parallel filter, or pfilter
+def mp_Filter (boolean_func, L: list):
+    """
+    multiprocess verions of Filter (..)
+    """
+    import os
+    import multiprocess as mp
+    with mp.Pool (max(os.cpu_count(), 1)) as pool:
+        boolean_tests = pool.map (boolean_func, L)
+    return [ r for r, t in zip (L, boolean_tests) if t ]
+
+##
+def mp_test_for_inclusion (item, L: (list, tuple))-> bool:
+    "multiprocess-version of membership test: effective only with a large list"
+    import os
+    import multiprocess as mp
+    with mp.Pool(max(os.cpu_count(), 1)) as pool:
+        return any(pool.map (lambda x: x == item, L))
+## alias
+mp_in_test = mp_test_for_inclusion
+
+##
+def process_hyphenation (W: list):
+    R = []
+    for w in W:
+        seg = w.split("-")
+        if len (seg) > 0:
+            r = []
+            for i, x in enumerate (seg):
+                if i == 0:
+                    r.append(x)
+                else:
+                    r.append(f"-{x}")
+            R.extend (r)
+        else:
+            R.append (w)
+    #
+    return R
+
 ##
 def as_tuple (L: list) -> tuple:
     "convert a list into a tuple"
@@ -31,7 +70,7 @@ def filter_list (F: list, A: list, check: bool = False) -> list:
     return R
 
 ##
-def sort_remove_duplicates (L: list, initial_value: object) -> list:
+def sort_remove_duplicates (L: list, initial_value: object = None) -> list:
     "takes a list and returns a list with duplicates removed"
     R    = []
     prev = initial_value
@@ -46,9 +85,14 @@ def sort_remove_duplicates (L: list, initial_value: object) -> list:
     return R
 
 ##
-def simplify_list (A: list) -> list:
+def simplify_list (A: list, use_mp: bool = False) -> list:
     C = []
-    return [ x for x in A if x is not None and len(x) > 0 and x not in C ]
+    if use_mp:
+        ## the following turned out to be really slow
+        return [ x for x in A if x is not None and len(x) > 0 and not mp_in_test (x, C) ]
+    else:
+        return [ x for x in A if x is not None and len(x) > 0 and x not in C ]
+
 #def simplify_list (A:list) -> list:
 #    return remove_duplicates (A, None)
 
@@ -92,29 +136,6 @@ def count_items (L: list, item: str, check: bool = False) -> int:
 def get_rank_of_list (L: (list, tuple), gap_mark: str):
     "takes a list and returns the count of its element which are not equal to gap_mark"
     return len([ x for x in L if len(x) > 0 and x != gap_mark ])
-
-## parallel filter, or pfilter
-def mp_filter (boolean_func, L: list):
-    #from multiprocessing import Pool
-    import os
-    from multiprocess import Pool
-    cores = max(os.cpu_count(), 1)
-    with Pool (cores) as pool:
-        boolean_res = pool.map (boolean_func, L)
-        return [ x for x, b in zip (L, boolean_res) if b ]
-
-##
-def mp_test_for_membership (item, L: (list, tuple))-> bool:
-    "multiprocess-version of membership test: effective only with a large list"
-    import os
-    import multiprocess as mp
-    cores = max(os.cpu_count(), 1)
-    with mp.Pool(cores) as pool:
-        result = pool.map(lambda x: x == item, L)
-    if sum(filter(lambda x: x == True, result)) > 0:
-        return False
-    else:
-        return True
 
 ##
 def attr_is_None_free (p, attr: str) -> bool:
