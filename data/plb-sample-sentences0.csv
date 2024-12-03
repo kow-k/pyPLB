@@ -1,0 +1,33 @@
+S, V
+S, U, V
+U, S, V
+S, V, O
+S, U, V, O
+U, S, V, O
+S, V, O, P
+S, U, V, O, P
+U, S, V, O
+S, V, O, P, O
+S, U, V, O, P, O
+U, S, V, O, P, O
+S, V, Adv
+S, U, V, Adv
+U, S, V, Adv
+Adv, S, V
+Adv, S, U, V
+S, Adv, V
+S, Adv, U, V
+U, S, Adv, V
+S, V, O, Adv
+U, S, V, O, Adv
+Adv, S, V, O
+S, Adv, V, O
+U, S, Adv, V, O
+O, S, V, Adv
+S, V, O, P, O
+S, Adv, V, O, P, O
+S, V, O, P, O, Adv
+S, V, Adv, O, P, O, Adv
+S, V, Adv, O, Adv, P, O, Adv
+S, V, O, Adv, P, O, Adv
+S, Adv, V, O, P, O, Adv
