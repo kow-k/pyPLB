@@ -422,8 +422,10 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
 
     ## post-process for max_node_count_by_layers
     try:
-        max_node_count_on_layer = max(node_counts_by_layers)
+        max_node_count_on_layer = max (node_counts_by_layers)
     except ValueError:
+        max_node_count_on_layer = 4
+    if max_node_count_on_layer <= 4:
         max_node_count_on_layer = 4
 
     ## node color setting
@@ -513,7 +515,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     else:
         if auto_fig_sizing:
             fig_size_local = \
-                (round(2 * len(D), 0), round(2 * math.log (max_node_count_on_layer), 0))
+                (2 * len(D), 10 * round(2 * math.log (max_node_count_on_layer + 1), 0))
         else:
             pass
     try:
