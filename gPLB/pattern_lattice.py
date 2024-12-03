@@ -515,7 +515,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     else:
         if auto_fig_sizing:
             fig_size_local = \
-                (2 * len(D), 10 * round(2 * math.log (max_node_count_on_layer + 1), 0))
+                (2 * len(D), round (10 * math.log (max_node_count_on_layer), 0))
         else:
             pass
     try:
