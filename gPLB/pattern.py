@@ -222,7 +222,7 @@ class Pattern:
     def get_form (self):
         "takes a pattern and returns its form as list"
         #return [ x[0] for x in self.form ]
-        return tuple([ x[0] for x in self.form ])
+        return tuple([ x[0] for x in self.paired ]) # 2025/01/05
 
     ##
     def get_form_size (self):
@@ -280,7 +280,7 @@ class Pattern:
                 return False
         ##
         return True
-    
+
     ##
     def group_patterns_by_size (self: object, reverse: bool = False) -> dict:
         "takes a list of Patterns and returns a dict whose keys are sizes of them"
@@ -291,7 +291,7 @@ class Pattern:
             sized_dict[size] = [ p for p in L if len (p.form) == size ]
         ##
         return sized_dict
-    
+
     ##
     def has_compatible_content (R, L: list, check: bool = False) -> bool:
         "tests if a pair of Patterns has compatible contents"
