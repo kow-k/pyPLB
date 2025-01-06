@@ -278,7 +278,6 @@ for s in S:
 ##
 Patterns = sorted (Patterns, key = lambda x: len(x), reverse = False)
 
-
 ##
 for i, pat in enumerate(Patterns):
     if verbose:
@@ -332,7 +331,7 @@ if print_forms:
     joint = input_field_sep
     for i, patlat in enumerate(L):
         for j, pat in enumerate(patlat):
-            print(f"#p{i}.{j}: {joint.join(pat.get_form())}")
+            print(f"#form{i:02d}.{j:03d}: {joint.join(pat.get_form())}")
 
 ## draw lattices
 if draw_individually and verbose:
