@@ -66,13 +66,13 @@ parser.add_argument('-m', '--max_size', type= int, default= None)
 parser.add_argument('-n', '--sample_n', type= int, default= None)
 #parser.add_argument('-S', '--sample_id', type= int, default= 1)
 parser.add_argument('-S', '--build_lattice_stepwise', action= 'store_true', default= False)
+parser.add_argument('-I', '--draw_individual_lattices', action= 'store_true', default = False)
 parser.add_argument('-F', '--scaling_factor', type= float, default= 5)
 parser.add_argument('-z', '-zl', '--zscore_lowerbound', type= float, default= None)
 parser.add_argument('-zu', '--zscore_upperbound', type= float, default= None)
 parser.add_argument('-Z', '--use_robust_zscore', action='store_true', default= False)
 parser.add_argument('-T', '--zscores_from_targets', action='store_true', default= False)
 parser.add_argument('-t', '--print_link_targets', action='store_true', default= False)
-parser.add_argument('-D', '--draw_individually', action= 'store_false', default = True)
 parser.add_argument('-J', '--use_multibyte_chars', action= 'store_true', default = False)
 parser.add_argument('-L', '--layout', type= str, default= 'Multi_partite')
 parser.add_argument('-A', '--auto_fig_sizing', action= 'store_true', default= False)
@@ -97,7 +97,7 @@ sample_n                = args.sample_n
 generalized             = args.generalized
 reflexive               = args.unreflexive
 build_lattice_stepwise  = args.build_lattice_stepwise
-draw_individually       = args.draw_individually
+draw_individually       = args.draw_individual_lattices
 layout                  = args.layout
 auto_fig_sizing         = args.auto_fig_sizing
 print_forms             = args.print_forms
@@ -110,10 +110,6 @@ scale_factor            = args.scaling_factor
 use_multibyte_chars     = args.use_multibyte_chars
 
 ### implications
-# diagram drawing
-if not layout is None:
-    draw_individually   = True
-
 ## inspection paramters
 draw_inspection      = False
 mp_inspection        = False # This disables use of multiprocess
@@ -326,20 +322,21 @@ if detailed:
             print(f"#p{i}.{j}: {pattern}")
 #exit()
 
-## optionally print forms
+## print forms and then quit without drawing lattices
 if print_forms:
     joint = input_field_sep
     for i, patlat in enumerate(L):
         for j, pat in enumerate(patlat):
-            print(f"#form{i:02d}.{j:03d}: {joint.join(pat.get_form())}")
+            print(f"p{i:02d}.form{j:03d}: {joint.join(pat.get_form())}")
+    exit()
 
-## draw lattices
-if draw_individually and verbose:
-    print(f"##Drawing diagrams")
+## draw lattices and then quit without drawing the merged lattice
+if draw_individually:
+    print(f"##Drawing diagrams individually")
     for i, patlat in enumerate(L):
         print(f"#drawing diagram from PatternLattice {i+1}")
         patlat.draw_diagrams (layout = layout, generalized = generalized, auto_fig_sizing = auto_fig_sizing, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
-#exit()
+    exit()
 
 ##
 print(f"##Merging {len(L)} PatternLattices ...")
@@ -352,7 +349,6 @@ if simplified:
         print(f"#La: {La}")
         print(f"#Lb: {Lb}")
     M = La.merge_lattices (Lb, use_mp = use_mp, show_steps = True, check = False)
-
 elif build_lattice_stepwise:
     gen_links_internally = True
     print(f"##Mergig PatternLattices ...")
@@ -364,38 +360,31 @@ elif build_lattice_stepwise:
             M = M.merge_lattices (patlat, gen_links_internally = gen_links_internally, use_mp = use_mp, generalized = generalized, reflexive = reflexive, reductive = True, show_steps = True, check = False)
             ## delete the original
             patplat = None
-
         ## check nodes in M
         print(f"merged PatternLattice with {len(M.nodes)} nodes")
         for i, p in enumerate(M.nodes):
             print(f"#node {i:3d}: {p.separate_print()}")
-
         ## genenrate links in delay
         if len(M.links) == 0 and not gen_links_internally:
             ## Don't do: M = M.update(...)
             M.update_links (reflexive = reflexive, check = False) ## Crucially
         print(f"#generated {len(M.links)} links")
-
         ## checking links in M
         print(f"##Links")
         for i, link in enumerate(M.links):
             link.pprint (indicator = i, paired = True, link_type = "instantiates", check = False)
-
         ## generate z-scores from link targets
         gen_zscores_from_targets (M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
         if print_link_targets:
             for node, zscore in M.source_zscores.items():
                 print(f"#node {node} has z-score {zscore: .3f}")
-
         ## generate z-scores from link sources
         gen_zscores_from_sources (M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
         for node, zscore in M.source_zscores.items():
             print(f"#node {node} has z-score {zscore: .3f}")
-
         ##
         print(f"##Results")
         M.draw_diagrams (layout = layout, generalized = generalized, auto_fig_sizing = auto_fig_sizing, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
-
 else:
     gen_links_internally = False
     M = functools.reduce (lambda La, Lb: La.merge_lattices (Lb, gen_links_internally = gen_links_internally, use_mp = use_mp, generalized = generalized, reflexive = reflexive, reductive = True, check = False), L)
