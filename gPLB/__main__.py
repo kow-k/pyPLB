@@ -30,6 +30,7 @@ modification history
 2024/11/01 fixed bugs introduced at merger_lattices.
 2024/12/02 fixed a bug to produce wrong laying of nodes
 2024/12/03 finished implementation of multiprocess version; implemented (un)capitalization of elements; implemented removal of punctuation marks; implemented subsegmentation of hyphenated tokens
+2025/01/06 improved the handling of input so that the script now accepts i) # and % for comment escapes, and ii) regex to field separator.
 """
 
 #
@@ -53,7 +54,7 @@ parser.add_argument('file', type= open, default= None)
 parser.add_argument('-v', '--verbose', action= 'store_true', default= False)
 parser.add_argument('-w', '--detailed', action= 'store_true', default= False)
 parser.add_argument('-f', '--input_field_sep', type= str, default= ',')
-parser.add_argument('-c', '--input_comment_escape', type= str, default= '#')
+parser.add_argument('-c', '--input_comment_escapes', type= list, default= ['#', '%'])
 parser.add_argument('-X', '--phrasal', action= 'store_true', default= False)
 parser.add_argument('-C', '--uncapitalize', action='store_false', default= True)
 parser.add_argument('-P', '--remove_punctuations', action='store_false', default= True)
@@ -75,14 +76,16 @@ parser.add_argument('-D', '--draw_individually', action= 'store_false', default 
 parser.add_argument('-J', '--use_multibyte_chars', action= 'store_true', default = False)
 parser.add_argument('-L', '--layout', type= str, default= 'Multi_partite')
 parser.add_argument('-A', '--auto_fig_sizing', action= 'store_true', default= False)
+parser.add_argument('-o', '--print_forms', action='store_true', default= False)
+
 ##
 args = parser.parse_args()
 ##
 file                    = args.file   # process a file when it exists
 verbose                 = args.verbose
 detailed                = args.detailed
+input_comment_escapes   = args.input_comment_escapes
 input_field_sep         = args.input_field_sep
-input_comment_escape    = args.input_comment_escape
 phrasal                 = args.phrasal
 uncapitalize            = args.uncapitalize
 remove_punctuations     = args.remove_punctuations
@@ -97,11 +100,12 @@ build_lattice_stepwise  = args.build_lattice_stepwise
 draw_individually       = args.draw_individually
 layout                  = args.layout
 auto_fig_sizing         = args.auto_fig_sizing
+print_forms             = args.print_forms
+print_link_targets      = args.print_link_targets
 zscore_lowerbound       = args.zscore_lowerbound
 zscore_upperbound       = args.zscore_upperbound
 use_robust_zscore       = args.use_robust_zscore
 zscores_from_targets    = args.zscores_from_targets
-print_link_targets      = args.print_link_targets
 scale_factor            = args.scaling_factor
 use_multibyte_chars     = args.use_multibyte_chars
 
@@ -123,7 +127,7 @@ print(f"##Parameters")
 print(f"#detailed: {detailed}")
 print(f"#verbose: {verbose}")
 print(f"#input_field_sep: {input_field_sep}")
-print(f"#input_comment_escape: {input_comment_escape}")
+print(f"#input_comment_escapes: {input_comment_escapes}")
 print(f"#uncapitalize: {uncapitalize}")
 print(f"#remove_punctuations: {remove_punctuations}")
 print(f"#split_hyphenation: {split_hyphenation}")
@@ -140,48 +144,45 @@ print(f"#mp_inspection: {mp_inspection}")
 ### Functions
 
 ##
-def parse_input (file, field_sep: str = ",", comment_escape: str = "#") -> None:
+def parse_input (file, comment_escapes: list, field_sep: str, uncapitalize: bool = uncapitalize, remove_punctuations: bool = remove_punctuations, split_hyphenation: bool = split_hyphenation, check: bool = False) -> None:
     "reads a file, splits it into segments using a given separator, removes comments, and forward the result to main"
-    import csv
     ## reading data
-    data = list (csv.reader (file, delimiter = field_sep)) # Crucially list(..)
-
-    ## discard comment lines that start with #
-    data = [ [ x.strip() for x in F ] for F in data if len(F) > 0 and not F[0][0] == comment_escape ]
-    
+    with file as f:
+        lines =  [ line.strip() for line in f.readlines() if not line[0] in comment_escapes ]
+    ##
+    if check:
+        print(f"#input: {lines}")
+    ## remove inline comments
+    filtered_lines = [ ]
+    for line in lines:
+        filtered_line = []
+        for char in line:
+            if char not in comment_escapes:
+                filtered_line.append(char)
+            else:
+                break
+        filtered_lines.append("".join(filtered_line))
+    ##
+    if check:
+        print(f"#filtered_lines: {filtered_lines}")
+    ## strip extra chars
+    data = [ [ field.strip() for field in re.split(field_sep, line) ] for line in filtered_lines ]
     ## uncapitalize tokens
     if uncapitalize:
         data = [ [ x.lower() for x in l ] for l in data ]
-    
     ## remove punctuations from lines
     punct_symbols = list(",.?!:;/\–~")
     if remove_punctuations:
         data = [ [ x for x in l if x not in punct_symbols ] for l in data ]
-    
     ## split hyphenated tokens
     if split_hyphenation:
         data = [ process_hyphenation (l) for l in data ]
-
-
-    ## remove in-line comments
-    data_renewed = [ ]
-    for F in data:
-        G = []
-        for f in F:
-            pos = f.find (comment_escape)
-            if pos > 0:
-                G.append(f[:pos])
-                continue
-            else:
-                G.append(f)
-        ##
-        data_renewed.append(G)
     ##
-    return data_renewed
+    return data
 
 ## process
 if not file is None:
-    S0 = parse_input (file, field_sep = input_field_sep, comment_escape = input_comment_escape)
+    S0 = parse_input (file, comment_escapes = input_comment_escapes, field_sep = input_field_sep, uncapitalize = uncapitalize, remove_punctuations = remove_punctuations, split_hyphenation = split_hyphenation, check = False)
 else:
     ## phrasal source
     if phrasal:
@@ -318,27 +319,31 @@ for i, p in enumerate(Patterns):
             pp.pprint (patlat.links)
     ##
     L.append (patlat)
-##
 #exit()
 ##
 if detailed:
     for i, patlat in enumerate(L):
         for j, pattern in enumerate(patlat):
             print(f"#p{i}.{j}: {pattern}")
-##
 #exit()
-##
+
+## optionally print forms
+if print_forms:
+    joint = input_field_sep
+    for i, patlat in enumerate(L):
+        for j, pat in enumerate(patlat):
+            print(f"#p{i}.{j}: {joint.join(pat.get_form())}")
+
+## draw lattices
 if draw_individually and verbose:
     print(f"##Drawing diagrams")
     for i, patlat in enumerate(L):
         print(f"#drawing diagram from PatternLattice {i+1}")
         patlat.draw_diagrams (layout = layout, generalized = generalized, auto_fig_sizing = auto_fig_sizing, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
-##
 #exit()
 
 ##
 print(f"##Merging {len(L)} PatternLattices ...")
-
 label_sample_n = 10
 simplified     = False
 if simplified:
