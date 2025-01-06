@@ -50,11 +50,11 @@ where `<file>` is an input file in .csv format. Crucial options are:
 - -H [flag] sets off automatic subsegmentation of hyphenated tokens
 - -P [flag] sets off automatic removal of isolated punctuation marks such as ",", "." from input
 - -G [flag] produces the ungeneralized version of Pattern Lattice instead of the generalized version (default).
+- -I [flag] draw individual lattices without drawing the merged one.
 - -z, -zl [float] sets the lower limit of z-score to prune the unwanted nodes. This is truly useful when a Pattern Lattice grows a big and complex.
 - -zu [float] sets the upper limit of z-score to prune the unwanted nodes. This is truly useful when a Pattern Lattice grows a big and complex.
 - -Z [flag] flag to use robust (i.e., median-based) z-score instead of normal (i.e., mean-based) z-score.
 - -L [str] selects graph layout. Default is 'Multi_partite', a (clumsy) NetworkX-based simulation of RubyPLB output, but other graph layouts like Graphviz [-L G], ARF [-L ARF], Fruchterman-Reingold [-L FR], Kamada-Kawai [-L KK], Spring [-L Sp], Shell [-L Sh], Circular [-L C], etc., are available, using layout options offered by NetworkX. Some layouts give a better description of the structure of the (generalized) Pattern Lattice networks.
-- -D [flag] flag to draw diagrams without specifying layout.
 - -A [flag] sets on automatic figure sizing to produce a better diagram. Useful at running on terminal rather than in Jupyter Notebook.
 - -J [flag] set multibyte font to display. Setting up for a font path may be also needed. This depends on your system configuration.
 
