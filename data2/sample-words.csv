@@ -2,7 +2,7 @@
 un, do
 un, able
 un, do, able
-un, st, able
+un, st, able # this is an inline comment
 un, find, able
 un, stop(p), able
 under, mine, (e)r
@@ -10,7 +10,7 @@ under, take, (e)r
 under, go, (e)r
 go
 stop(p)
-do, able
+do, able % this is another inline comment
 do
 tak(e), able
 mis, take, (e)r
