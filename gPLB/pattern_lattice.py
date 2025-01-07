@@ -254,14 +254,14 @@ def classify_relations (R, L, check: bool = False):
     return sub_links
 
 ##
-def draw_network (D: dict, layout: str, fig_size: tuple = None, node_size: int = None, label_size: int = None, label_sample_n: int = None, zscores: dict = None, use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, scale_factor: float = 3, font_name: str = None, generalized: bool = True, test: bool = False, use_pyGraphviz: bool = False, use_directed_graph: bool = True, reverse_direction: bool = False, mark_instances: bool = True, check: bool = False) -> None:
+def draw_network (D: dict, layout: str, fig_size: tuple = None, node_size: int = None, label_size: int = None, label_sample_n: int = None, zscores: dict = None, use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, scale_factor: float = 3, font_name: str = None, generalized: bool = True, test: bool = False, use_pyGraphviz: bool = False, use_directed_graph: bool = True, reverse_direction: bool = False, mark_instances: bool = True, no_auto_figsize_adjust: bool = False, check: bool = False) -> None:
     "draw layered graph under multi-partite setting"
     ##
     import networkx as nx
     import math
     import matplotlib.pyplot as plt
     from matplotlib import colormaps
-    #import seaborn as sns
+    #import seaborn as sns # dependency is removed on 2025/01/07
 
     ## define graph
     if use_directed_graph:
@@ -276,7 +276,6 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, node_size: int =
     ##
     node_dict = { }
     instances = [ ] # register instances
-    #node_counts_by_layers = [ ]
     pruned_node_count = 0
     for rank, links in sorted (D, reverse = True): # be careful on list up direction
         L, R, E = [], [], []
@@ -411,19 +410,8 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, node_size: int =
         ## populates edges for G
         G.add_edges_from (E)
 
-        ## update node_counts_by_layers
-        #node_counts_by_layers.append (len(R))
-
     ## post-process for z-score pruning
     print(f"#pruned {pruned_node_count} nodes")
-
-    ## post-process for max_node_count_by_layers
-    #try:
-    #    max_node_count_on_layer = max (node_counts_by_layers)
-    #except ValueError:
-    #    max_node_count_on_layer = 4
-    #if max_node_count_on_layer <= 4:
-    #    max_node_count_on_layer = 4
 
     ## node color setting
     if mark_instances:
@@ -432,7 +420,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, node_size: int =
         padding_val = 0
     values_for_color = []
     for node in G:
-        ## handles instances
+        ## process for mark_instances
         if node in instances:
             values_for_color.append (0)
         else:
@@ -445,7 +433,8 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, node_size: int =
                     print(f"#z_normalized: {z_normalized: 0.4f}")
                 values_for_color.append (z_normalized + padding_val)
             except KeyError:
-                values_for_color.append (0.5 + padding_val) # normalized value falls between 0 and 1.0
+                # normalized value falls between 0 and 1.0
+                values_for_color.append (0.5 + padding_val)
 
     ## relabeling nodes: this needs to come after color setting
     new_labels = { x: as_label(x, sep = " ", add_sep_at_end = True) for x in G }
@@ -514,27 +503,40 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, node_size: int =
     else:
         connectionstyle = "arc"
 
+    ## set colormap
+    my_cmap = colormaps['coolwarm']
+    ## The following requires Seaborn and made obsolete
+    #my_cmap = sns.color_palette("coolwarm", 24, as_cmap = True) # Crucially, as_cmap
+
     ## set figure size
     n_items = len(instances)
     print(f"n_items: {n_items}")
     max_n_segs = max([ len(x) for x in instances ])
     print(f"max_n_segs: {max_n_segs}")
     if fig_size is None:
-        graph_width    = round (12 * math.log(1 + n_items))
-        graph_height   = round (15 * max_n_segs)
-        fig_size = (graph_width, graph_height)
+        if not no_auto_figsize_adjust:
+            graph_width    = round (10 * math.log(1 + n_items))
+            graph_height   = round (10 * max_n_segs)
+            fig_size = (graph_width, graph_height)
+        else:
+            fig_size = (12, 10)
     print(f"fig_size: {fig_size}")
+    plt.figure(figsize = fig_size)
 
     ## set label size
     if label_size is None:
-        label_size  = 4 + round(1.3 * math.log(1 + n_items))
-    else:
-        label_size = label_size
+        if not no_auto_figsize_adjust:
+            label_size = 4 + round(2 * math.log(1 + n_items))
+        else:
+            label_size = 6 # default value
     print(f"label_size: {label_size}")
     
     ## set node size
     if node_size is None:
-        node_size  = 5 + round(1.3 * math.log (1 + n_items))
+        if not no_auto_figsize_adjust:
+            node_size = 5 + round(2 * math.log (1 + n_items))
+        else:
+            node_size = 5
     print(f"node_size: {node_size}")
 
     ## set font name
@@ -542,11 +544,6 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, node_size: int =
         font_family = "Sans-serif"
     else:
         font_family = font_name
-
-    ## set colormap
-    my_cmap = colormaps['coolwarm']
-    ## The following requires Seaborn and made obsolete
-    #my_cmap = sns.color_palette("coolwarm", 24, as_cmap = True) # Crucially, as_cmap
 
     ## revserse the arrows
     if use_directed_graph and reverse_direction:
@@ -1022,7 +1019,7 @@ class PatternLattice():
         return merged
 
     ##
-    def draw_diagrams (self, generalized: bool, zscores_from_targets: bool, layout: str = None, zscore_lb: float = None, zscore_ub: float = None, use_robust_zscore: bool = False, scale_factor: float = 3, fig_size: tuple = None, node_size: int = None, label_size: int = None, label_sample_n: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
+    def draw_diagrams (self, generalized: bool, zscores_from_targets: bool, layout: str = None, zscore_lb: float = None, zscore_ub: float = None, use_robust_zscore: bool = False, no_auto_figsize_adjust: bool = False, fig_size: tuple = None, node_size: int = None, label_size: int = None, label_sample_n: int = None, scale_factor: float = 3, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
         """
         draw a lattice digrams from a given PatternLattice L by extracting L.links
         """
@@ -1053,7 +1050,7 @@ class PatternLattice():
                 print(f"node {i:4d} {node} has z-score {v:.4f}")
 
         ## draw PatternLattice
-        draw_network (ranked_links.items(), generalized = generalized, layout = layout, fig_size = fig_size, scale_factor = scale_factor, label_sample_n = label_sample_n, font_name = font_name, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, check = check)
+        draw_network (ranked_links.items(), generalized = generalized, layout = layout, no_auto_figsize_adjust = no_auto_figsize_adjust, fig_size = fig_size, scale_factor = scale_factor, label_sample_n = label_sample_n, font_name = font_name, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, check = check)
 
 
 ### end of file
