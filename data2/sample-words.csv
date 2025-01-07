@@ -1,19 +1,19 @@
 # these words are segmented using explicit field separator ","
 un, do
-un, able
-un, do, able
-un, st, able # this is an inline comment
-un, find, able
-un, stop(p), able
-under, mine, (e)r
-under, take, (e)r
-under, go, (e)r
+un, abl(e)
+un, do, abl(e)
+un, st, abl(e) # this is an inline comment
+un, find, abl(e)
+un, stop(p), abl(e)
+under, mine, er
+under, tak(e), er
+under, go, er
 go
 stop(p)
-do, able % this is another inline comment
+do, abl(e) % this is another inline comment
 do
-tak(e), able
-mis, take, (e)r
-mis, nome, (e)r
+tak(e), abl(e)
+mis, tak(e), er
+mis, nom(e), er
 find, (e)r
-en, able, (e)r
+en, abl(e), er
