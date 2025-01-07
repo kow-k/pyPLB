@@ -254,14 +254,14 @@ def classify_relations (R, L, check: bool = False):
     return sub_links
 
 ##
-def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing: bool = False, label_size: int = None, label_sample_n: int = None, node_size: int = None, zscores: dict = None, use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, scale_factor: float = 3, font_name: str = None, generalized: bool = True, test: bool = False, use_pyGraphviz: bool = False, use_directed_graph: bool = True, reverse_direction: bool = False, check: bool = False) -> None:
+def draw_network (D: dict, layout: str, fig_size: tuple = None, node_size: int = None, label_size: int = None, label_sample_n: int = None, zscores: dict = None, use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, scale_factor: float = 3, font_name: str = None, generalized: bool = True, test: bool = False, use_pyGraphviz: bool = False, use_directed_graph: bool = True, reverse_direction: bool = False, mark_instances: bool = True, check: bool = False) -> None:
     "draw layered graph under multi-partite setting"
     ##
     import networkx as nx
     import math
     import matplotlib.pyplot as plt
-    import matplotlib.cm as cm
-    import seaborn as sns
+    from matplotlib import colormaps
+    #import seaborn as sns
 
     ## define graph
     if use_directed_graph:
@@ -276,7 +276,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
     ##
     node_dict = { }
     instances = [ ] # register instances
-    node_counts_by_layers = [ ]
+    #node_counts_by_layers = [ ]
     pruned_node_count = 0
     for rank, links in sorted (D, reverse = True): # be careful on list up direction
         L, R, E = [], [], []
@@ -354,7 +354,6 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
                 ## process edges
                 if node1_zscore <= zscore_ub and node2_zscore <= zscore_ub:
                     edge = (node1, node2)
-                    #edge = (node2, node1)
                 try:
                     if edge and not edge in E:
                         E.append (edge)
@@ -379,7 +378,6 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
                 ## process edges
                 if node1_zscore >= zscore_lb and node2_zscore >= zscore_lb:
                     edge = (node1, node2)
-                    #edge = (node2, node1)
                 try:
                     if edge and not edge in E:
                         E.append (edge)
@@ -399,7 +397,6 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
                 ## process edges
                 if node1 and node2:
                     edge = (node1, node2)
-                    #edge = (node2, node1)
                 if edge and not edge in E:
                     E.append (edge)
 
@@ -415,32 +412,40 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
         G.add_edges_from (E)
 
         ## update node_counts_by_layers
-        node_counts_by_layers.append (len(R))
+        #node_counts_by_layers.append (len(R))
 
     ## post-process for z-score pruning
     print(f"#pruned {pruned_node_count} nodes")
 
     ## post-process for max_node_count_by_layers
-    try:
-        max_node_count_on_layer = max (node_counts_by_layers)
-    except ValueError:
-        max_node_count_on_layer = 4
-    if max_node_count_on_layer <= 4:
-        max_node_count_on_layer = 4
+    #try:
+    #    max_node_count_on_layer = max (node_counts_by_layers)
+    #except ValueError:
+    #    max_node_count_on_layer = 4
+    #if max_node_count_on_layer <= 4:
+    #    max_node_count_on_layer = 4
 
     ## node color setting
+    if mark_instances:
+        padding_val = 0.25
+    else:
+        padding_val = 0
     values_for_color = []
     for node in G:
-        try:
-            z_value = zscores[node]
-            if check:
-                print(f"#z_value: {z_value: 0.4f}")
-            z_normalized = normalize_zscore(z_value, use_robust_zscore = use_robust_zscore)
-            if check:
-                print(f"#z_normalized: {z_normalized: 0.4f}")
-            values_for_color.append (z_normalized)
-        except KeyError:
-            values_for_color.append (0.5) # normalized value falls between 0 and 1.0
+        ## handles instances
+        if node in instances:
+            values_for_color.append (0)
+        else:
+            try:
+                z_value = zscores[node]
+                if check:
+                    print(f"#z_value: {z_value: 0.4f}")
+                z_normalized = normalize_zscore(z_value, use_robust_zscore = use_robust_zscore)
+                if check:
+                    print(f"#z_normalized: {z_normalized: 0.4f}")
+                values_for_color.append (z_normalized + padding_val)
+            except KeyError:
+                values_for_color.append (0.5 + padding_val) # normalized value falls between 0 and 1.0
 
     ## relabeling nodes: this needs to come after color setting
     new_labels = { x: as_label(x, sep = " ", add_sep_at_end = True) for x in G }
@@ -510,43 +515,27 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
         connectionstyle = "arc"
 
     ## set figure size
-    if not fig_size is None:
-        fig_size_local = fig_size
-    else:
-        if auto_fig_sizing:
-            fig_size_local = \
-                (2 * len(D), round (10 * math.log (max_node_count_on_layer), 0))
-        else:
-            pass
-    try:
-        print(f"#fig_size_local: {fig_size_local}")
-        plt.figure(figsize = fig_size_local)
-    except NameError:
-        pass
+    n_items = len(instances)
+    print(f"n_items: {n_items}")
+    max_n_segs = max([ len(x) for x in instances ])
+    print(f"max_n_segs: {max_n_segs}")
+    if fig_size is None:
+        graph_width    = round (12 * math.log(1 + n_items))
+        graph_height   = round (15 * max_n_segs)
+        fig_size = (graph_width, graph_height)
+    print(f"fig_size: {fig_size}")
 
-    ## set font_size
-    if auto_fig_sizing:
-        if label_size is None:
-            try:
-                font_size = round(label_size/1.5 * math.log (max_node_count_on_layer), 0)
-            except (ZeroDivisionError, TypeError):
-                font_size = 7
+    ## set label size
+    if label_size is None:
+        label_size  = 4 + round(1.3 * math.log(1 + n_items))
     else:
-        if not label_size is None:
-            font_size = label_size
-        else:
-            font_size = 7
-    print(f"#font_size: {font_size}")
-
-    ## set node_size
+        label_size = label_size
+    print(f"label_size: {label_size}")
+    
+    ## set node size
     if node_size is None:
-        node_size = 12
-    else:
-        try:
-            node_size = round (1.2 * node_size/math.log (max_node_count_on_layer), 0)
-        except ZeroDivisionError:
-            node_size = 12
-    print(f"#node_size: {node_size}")
+        node_size  = 5 + round(1.3 * math.log (1 + n_items))
+    print(f"node_size: {node_size}")
 
     ## set font name
     if font_name is None:
@@ -555,7 +544,9 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
         font_family = font_name
 
     ## set colormap
-    my_cmap = sns.color_palette("coolwarm", 24, as_cmap = True) # Crucially, as_cmap
+    my_cmap = colormaps['coolwarm']
+    ## The following requires Seaborn and made obsolete
+    #my_cmap = sns.color_palette("coolwarm", 24, as_cmap = True) # Crucially, as_cmap
 
     ## revserse the arrows
     if use_directed_graph and reverse_direction:
@@ -567,7 +558,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, auto_fig_sizing:
         font_color = 'darkblue', # label font color
         verticalalignment = "bottom", horizontalalignment = "right",
         min_source_margin = 6, min_target_margin = 6,
-        font_size = font_size, node_size = node_size,
+        font_size = label_size, node_size = node_size,
         node_color = values_for_color, cmap = my_cmap,
         edge_color = 'gray', width = 0.1, arrowsize = 6,
         arrows = True, connectionstyle = connectionstyle,
@@ -1031,13 +1022,12 @@ class PatternLattice():
         return merged
 
     ##
-    def draw_diagrams (self, generalized: bool, zscores_from_targets: bool, layout: str = None, auto_fig_sizing: bool = False, zscore_lb: float = None, zscore_ub: float = None, use_robust_zscore: bool = False, scale_factor: float = 3, fig_size: tuple = None, label_size: int = None, label_sample_n: int = None, node_size: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
+    def draw_diagrams (self, generalized: bool, zscores_from_targets: bool, layout: str = None, zscore_lb: float = None, zscore_ub: float = None, use_robust_zscore: bool = False, scale_factor: float = 3, fig_size: tuple = None, node_size: int = None, label_size: int = None, label_sample_n: int = None, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
         """
         draw a lattice digrams from a given PatternLattice L by extracting L.links
         """
         ##
-        #generalized = self.generalized
-        links       = self.links
+        links  = self.links
         if check:
             print(f"#links: {links}")
         ##
@@ -1063,7 +1053,7 @@ class PatternLattice():
                 print(f"node {i:4d} {node} has z-score {v:.4f}")
 
         ## draw PatternLattice
-        draw_network (ranked_links.items(), generalized = generalized, layout = layout, fig_size = fig_size, auto_fig_sizing = auto_fig_sizing, node_size = node_size, scale_factor = scale_factor, label_sample_n = label_sample_n, font_name = font_name, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, check = check)
+        draw_network (ranked_links.items(), generalized = generalized, layout = layout, fig_size = fig_size, scale_factor = scale_factor, label_sample_n = label_sample_n, font_name = font_name, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, check = check)
 
 
 ### end of file

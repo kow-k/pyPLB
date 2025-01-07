@@ -75,7 +75,6 @@ parser.add_argument('-T', '--zscores_from_targets', action='store_true', default
 parser.add_argument('-t', '--print_link_targets', action='store_true', default= False)
 parser.add_argument('-J', '--use_multibyte_chars', action= 'store_true', default = False)
 parser.add_argument('-L', '--layout', type= str, default= 'Multi_partite')
-parser.add_argument('-A', '--auto_fig_sizing', action= 'store_true', default= False)
 parser.add_argument('-o', '--print_forms', action='store_true', default= False)
 
 ##
@@ -99,7 +98,6 @@ reflexive               = args.unreflexive
 build_lattice_stepwise  = args.build_lattice_stepwise
 draw_individually       = args.draw_individual_lattices
 layout                  = args.layout
-auto_fig_sizing         = args.auto_fig_sizing
 print_forms             = args.print_forms
 print_link_targets      = args.print_link_targets
 zscore_lowerbound       = args.zscore_lowerbound
@@ -335,13 +333,13 @@ if draw_individually:
     print(f"##Drawing diagrams individually")
     for i, patlat in enumerate(L):
         print(f"#drawing diagram from PatternLattice {i+1}")
-        patlat.draw_diagrams (layout = layout, generalized = generalized, auto_fig_sizing = auto_fig_sizing, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
+        patlat.draw_diagrams (layout = layout, generalized = generalized, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
     exit()
 
 ##
 print(f"##Merging {len(L)} PatternLattices ...")
-label_sample_n = 10
 simplified     = False
+label_sample_n = 5
 if simplified:
     #print(f"#binary merger")
     La, Lb = L[0], L[1]
@@ -384,7 +382,7 @@ elif build_lattice_stepwise:
             print(f"#node {node} has z-score {zscore: .3f}")
         ##
         print(f"##Results")
-        M.draw_diagrams (layout = layout, generalized = generalized, auto_fig_sizing = auto_fig_sizing, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+        M.draw_diagrams (layout = layout, generalized = generalized, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 else:
     gen_links_internally = False
     M = functools.reduce (lambda La, Lb: La.merge_lattices (Lb, gen_links_internally = gen_links_internally, use_mp = use_mp, generalized = generalized, reflexive = reflexive, reductive = True, check = False), L)
@@ -422,7 +420,7 @@ else:
 
     ## draw diagram of M
     print(f"##Drawing a diagram from the merged PatternLattice")
-    M.draw_diagrams (layout = layout, generalized = generalized, auto_fig_sizing = auto_fig_sizing, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+    M.draw_diagrams (layout = layout, generalized = generalized, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 
 ## conclude
 print(f"##built from {len(S)} sources: {[ as_label(x, sep = ',') for x in S ]}")
