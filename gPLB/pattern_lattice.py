@@ -510,38 +510,38 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, node_size: int =
 
     ## set figure size
     n_items = len(instances)
-    print(f"n_items: {n_items}")
+    print(f"#n_items: {n_items}")
     max_n_segs = max([ len(x) for x in instances ])
-    print(f"max_n_segs: {max_n_segs}")
+    print(f"#max_n_segs: {max_n_segs}")
     if fig_size is None:
         if not no_auto_figsize_adjust:
             graph_width    = round (10 * math.log(1 + n_items))
-            graph_height   = round (10 * max_n_segs)
+            graph_height   = 5 + round (8 * max_n_segs)
             fig_size = (graph_width, graph_height)
         else:
-            fig_size = (12, 10)
-    print(f"fig_size: {fig_size}")
+            fig_size = (12, 10) # default value
+    print(f"#fig_size: {fig_size}")
     plt.figure(figsize = fig_size)
 
     ## set label size
     if label_size is None:
         if not no_auto_figsize_adjust:
-            label_size = 4 + round(2 * math.log(1 + n_items))
+            label_size = 4 + round(3 * math.log(1 + n_items))
         else:
             label_size = 6 # default value
-    print(f"label_size: {label_size}")
+    print(f"#label_size: {label_size}")
     
     ## set node size
     if node_size is None:
         if not no_auto_figsize_adjust:
-            node_size = 5 + round(2 * math.log (1 + n_items))
+            node_size = 5 + round(3 * math.log (1 + n_items))
         else:
-            node_size = 5
-    print(f"node_size: {node_size}")
+            node_size = 6 # default value
+    print(f"#node_size: {node_size}")
 
     ## set font name
     if font_name is None:
-        font_family = "Sans-serif"
+        font_family = "Sans-serif" # default value
     else:
         font_family = font_name
 
@@ -562,7 +562,6 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, node_size: int =
     )
 
     ## set labels used in title
-    #instance_labels = [ as_label (x, sep = ",") for x in sorted (instances) ]
     instance_labels = [ as_label (x, sep = ",") for x in instances ]
     label_count = len (instance_labels)
     if label_sample_n is not None and label_count > label_sample_n:
