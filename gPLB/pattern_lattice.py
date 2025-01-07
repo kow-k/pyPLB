@@ -511,12 +511,14 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, node_size: int =
     ## set figure size
     n_items = len(instances)
     print(f"#n_items: {n_items}")
+    max_item_size = max([ len(list(x)) for x in instances ])
+    print(f"#max_item_size: {max_item_size}")
     max_n_segs = max([ len(x) for x in instances ])
     print(f"#max_n_segs: {max_n_segs}")
     if fig_size is None:
         if not no_auto_figsize_adjust:
-            graph_width    = round (10 * math.log(1 + n_items))
-            graph_height   = 5 + round (8 * max_n_segs)
+            graph_width    = max_item_size + 4 + round (9 * math.log(1 + n_items))
+            graph_height   = 3 + round (9 * max_n_segs)
             fig_size = (graph_width, graph_height)
         else:
             fig_size = (12, 10) # default value
