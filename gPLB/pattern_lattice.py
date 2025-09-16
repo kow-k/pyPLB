@@ -254,9 +254,14 @@ def classify_relations (R, L, check: bool = False):
     return sub_links
 
 ##
-def draw_network (D: dict, layout: str, fig_size: tuple = None, node_size: int = None, label_size: int = None, label_sample_n: int = None, zscores: dict = None, use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, scale_factor: float = 3, font_name: str = None, generalized: bool = True, test: bool = False, use_pyGraphviz: bool = False, use_directed_graph: bool = True, reverse_direction: bool = False, mark_instances: bool = True, no_auto_figsize_adjust: bool = False, check: bool = False) -> None:
-    "draw layered graph under multi-partite setting"
-    ##
+def draw_network (N: dict, layout: str, fig_size: tuple = None, node_size: int = None, label_size: int = None, label_sample_n: int = None, zscores: dict = None, use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, scale_factor: float = 3, font_name: str = None, generalized: bool = True, test: bool = False, use_pyGraphviz: bool = False, use_directed_graph: bool = True, reverse_direction: bool = False, mark_instances: bool = True, auto_figsize_adjust: bool = True, check: bool = False) -> None:
+    """
+    draw layered graph under multi-partite setting
+    """
+
+    #print(f"N with {len(N)} keys")
+    #for rank, links in N: print(f"{rank}:\n{links}")
+
     import networkx as nx
     import math
     import matplotlib.pyplot as plt
@@ -270,14 +275,14 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, node_size: int =
         G = nx.Graph() # does not accept connectionstyle specification
     ##
     try:
-        rank_max = max(int(x[0]) for x in list(D))
+        rank_max = max(int(x[0]) for x in list(N))
     except ValueError:
         rank_max = 3
     ##
     node_dict = { }
     instances = [ ] # register instances
     pruned_node_count = 0
-    for rank, links in sorted (D, reverse = True): # be careful on list up direction
+    for rank, links in sorted (N, reverse = True): # be careful on list up direction
         L, R, E = [], [], []
         for link in links:
             if check:
@@ -306,7 +311,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, node_size: int =
 
             ## add nodes
             ## when lowerbound and upperbound z-score pruning is applied
-            if zscore_ub is not None and zscore_lb is not None: # z-score pruning applied
+            if zscore_ub is not None and zscore_lb is not None: # z-score pruning
                 ## node1
                 if node1_zscore >= zscore_lb and node1_zscore <= zscore_ub and node1_rank == rank and not node1 in L:
                     L.append (node1)
@@ -332,7 +337,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, node_size: int =
                 except UnboundLocalError:
                     pass
             ## when upperbound z-score pruning is applied
-            elif not zscore_ub is None: # z-score pruning applied
+            elif not zscore_ub is None: # z-score pruning
                 ## node1
                 if node1_zscore <= zscore_ub and not node1 in L:
                     L.append (node1)
@@ -398,7 +403,7 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, node_size: int =
                     edge = (node1, node2)
                 if edge and not edge in E:
                     E.append (edge)
-
+        ## L, R, E created
         ## populates nodes for G
         ## forward rank scan = rank increments
         #G.add_nodes_from (L, rank = rank)
@@ -406,6 +411,8 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, node_size: int =
         ## backward rank scan = rank decrements
         G.add_nodes_from (R, rank = (rank_max - rank - 1))
         G.add_nodes_from (L, rank = (rank_max - rank))
+        #G.add_nodes_from (R, rank = rank + 1)
+        #G.add_nodes_from (L, rank = rank)
 
         ## populates edges for G
         G.add_edges_from (E)
@@ -516,29 +523,37 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, node_size: int =
     max_n_segs = max([ len(x) for x in instances ])
     print(f"#max_n_segs: {max_n_segs}")
     if fig_size is None:
-        if not no_auto_figsize_adjust:
-            graph_width    = max_item_size + 4 + round (9 * math.log(1 + n_items))
-            graph_height   = 3 + round (9 * max_n_segs)
+        if auto_figsize_adjust:
+            #graph_width   = max_item_size + 4 + round (9 * math.log(1 + n_items))
+            #graph_height  = 3 + round (9 * max_n_segs)
+            if generalized:
+                width_step = 5
+                height_step = 5
+            else:
+                width_step = 2
+                height_step = 2
+            graph_width   = max_item_size + 3 + round (width_step * math.log(1 + n_items))
+            graph_height  = 3 + round (height_step * max_n_segs)
             fig_size = (graph_width, graph_height)
         else:
-            fig_size = (12, 10) # default value
+            fig_size = (10, 8) # default value
     print(f"#fig_size: {fig_size}")
     plt.figure(figsize = fig_size)
 
     ## set label size
     if label_size is None:
-        if not no_auto_figsize_adjust:
+        if auto_figsize_adjust:
             label_size = 4 + round(3 * math.log(1 + n_items))
         else:
             label_size = 6 # default value
     print(f"#label_size: {label_size}")
-    
+
     ## set node size
     if node_size is None:
-        if not no_auto_figsize_adjust:
+        if auto_figsize_adjust:
             node_size = 5 + round(3 * math.log (1 + n_items))
         else:
-            node_size = 6 # default value
+            node_size = 7 # default value
     print(f"#node_size: {node_size}")
 
     ## set font name
@@ -555,8 +570,9 @@ def draw_network (D: dict, layout: str, fig_size: tuple = None, node_size: int =
     nx.draw_networkx (G, positions,
         font_family = font_family,
         font_color = 'darkblue', # label font color
-        verticalalignment = "bottom", horizontalalignment = "right",
-        min_source_margin = 6, min_target_margin = 6,
+        verticalalignment = "top", # verticalalignment = "bottom",
+        horizontalalignment = "left", # horizontalalignment = "right",
+        min_source_margin = 12, min_target_margin = 12,
         font_size = label_size, node_size = node_size,
         node_color = values_for_color, cmap = my_cmap,
         edge_color = 'gray', width = 0.1, arrowsize = 6,
@@ -1020,7 +1036,7 @@ class PatternLattice():
         return merged
 
     ##
-    def draw_diagrams (self, generalized: bool, zscores_from_targets: bool, layout: str = None, zscore_lb: float = None, zscore_ub: float = None, use_robust_zscore: bool = False, no_auto_figsize_adjust: bool = False, fig_size: tuple = None, node_size: int = None, label_size: int = None, label_sample_n: int = None, scale_factor: float = 3, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
+    def draw_diagrams (self, generalized: bool, zscores_from_targets: bool, layout: str = None, zscore_lb: float = None, zscore_ub: float = None, use_robust_zscore: bool = False, auto_figsize_adjust: bool = True, fig_size: tuple = None, node_size: int = None, label_size: int = None, label_sample_n: int = None, scale_factor: float = 3, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
         """
         draw a lattice digrams from a given PatternLattice L by extracting L.links
         """
@@ -1051,7 +1067,7 @@ class PatternLattice():
                 print(f"node {i:4d} {node} has z-score {v:.4f}")
 
         ## draw PatternLattice
-        draw_network (ranked_links.items(), generalized = generalized, layout = layout, no_auto_figsize_adjust = no_auto_figsize_adjust, fig_size = fig_size, scale_factor = scale_factor, label_sample_n = label_sample_n, font_name = font_name, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, check = check)
+        draw_network (ranked_links.items(), generalized = generalized, layout = layout, auto_figsize_adjust = auto_figsize_adjust, fig_size = fig_size, scale_factor = scale_factor, label_sample_n = label_sample_n, font_name = font_name, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, check = check)
 
 
 ### end of file

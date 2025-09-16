@@ -11,7 +11,8 @@ developed by Kow Kuroda
 "Generalized" means that a pattern lattice build from [a, b, c] includes [_, a, b, c], [a, b, c, _] and [_, a, b, c, _]. This makes gPLB different from RubyPLB (rubyplb) developed by Yoichoro Hasebe and Kow Kuroda, available at <https://github.com/yohasebe/rubyplb>.
 
 created on 2024/09/24
-modified on 2024/09/25, 28, 29, 30; 10/01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 12, 15, 16, 17, 18, 19, 20, 21, 23, 24, 30, 31; 11/01, 06, 07, 08, 09, 10, 11
+modified on
+2024/09/25, 28, 29, 30; 10/01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 12, 15, 16, 17, 18, 19, 20, 21, 23, 24, 30, 31; 11/01, 06, 07, 08, 09, 10, 11;
 
 modification history
 2024/10/11 fixed a bug in instantiates(), added make_R_reflexive
@@ -32,6 +33,8 @@ modification history
 2024/12/03 finished implementation of multiprocess version; implemented (un)capitalization of elements; implemented removal of punctuation marks; implemented subsegmentation of hyphenated tokens
 2025/01/06 improved the handling of input so that the script now accepts i) # and % for comment escapes, and ii) regex to field separator.
 2025/01/07 better auto figure sizing is implemented; mark_instances option is implemented;
+2025/09/04 added recursion limit increase;
+2025/09/16 modified auto_figsize_adjust;
 """
 
 #
@@ -41,8 +44,13 @@ import functools
 import pprint as pp
 import random
 
+## increase recursion limit
+import sys
+sys.setrecursionlimit(1500)
+
 #import multiprocessing as mp
-##
+
+## import other modules
 from utils import *
 from pattern import *
 from pattern_link import *
@@ -66,7 +74,7 @@ parser.add_argument('-G', '--generalized', action= 'store_false', default= True)
 parser.add_argument('-m', '--max_size', type= int, default= None)
 parser.add_argument('-n', '--sample_n', type= int, default= None)
 #parser.add_argument('-S', '--sample_id', type= int, default= 1)
-parser.add_argument('-A', '--no_auto_figsize_adjust', action='store_true', default= False)
+parser.add_argument('-A', '--auto_figsize_adjust', action='store_true', default= False)
 parser.add_argument('-S', '--build_lattice_stepwise', action= 'store_true', default= False)
 parser.add_argument('-I', '--draw_individual_lattices', action= 'store_true', default = False)
 parser.add_argument('-F', '--scaling_factor', type= float, default= 5)
@@ -99,7 +107,7 @@ generalized             = args.generalized
 reflexive               = args.unreflexive
 build_lattice_stepwise  = args.build_lattice_stepwise
 print_link_targets      = args.print_link_targets
-no_auto_figsize_adjust  = args.no_auto_figsize_adjust
+auto_figsize_adjust     = args.auto_figsize_adjust
 layout                  = args.layout
 draw_individually       = args.draw_individual_lattices
 print_forms             = args.print_forms
@@ -133,7 +141,7 @@ print(f"#lattice is generalized: {generalized}")
 print(f"#instantiation is reflexive: {reflexive}")
 print(f"#gap_mark: {gap_mark}")
 print(f"#draw_individually: {draw_individually}")
-print(f"#no_auto_figsize_adjust: {no_auto_figsize_adjust}")
+print(f"#auto_figsize_adjust: {auto_figsize_adjust}")
 print(f"#use_robust_zscore: {use_robust_zscore}")
 print(f"#zscore_lowerbound: {zscore_lowerbound}")
 print(f"#zscore_upperbound: {zscore_upperbound}")
@@ -385,7 +393,7 @@ elif build_lattice_stepwise:
             print(f"#node {node} has z-score {zscore: .3f}")
         ##
         print(f"##Results")
-        M.draw_diagrams (layout = layout, generalized = generalized, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, no_auto_figsize_adjust = no_auto_figsize_adjust,  font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+        M.draw_diagrams (layout = layout, generalized = generalized, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, auto_figsize_adjust = auto_figsize_adjust,  font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 else:
     gen_links_internally = False
     M = functools.reduce (lambda La, Lb: La.merge_lattices (Lb, gen_links_internally = gen_links_internally, use_mp = use_mp, generalized = generalized, reflexive = reflexive, reductive = True, check = False), L)
@@ -423,7 +431,7 @@ else:
 
     ## draw diagram of M
     print(f"##Drawing a diagram from the merged PatternLattice")
-    M.draw_diagrams (layout = layout, generalized = generalized, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, no_auto_figsize_adjust = no_auto_figsize_adjust, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+    M.draw_diagrams (layout = layout, generalized = generalized, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, auto_figsize_adjust = auto_figsize_adjust, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 
 ## conclude
 print(f"##built from {len(S)} sources: {[ as_label(x, sep = ',') for x in S ]}")
