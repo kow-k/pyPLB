@@ -254,7 +254,7 @@ def classify_relations (R, L, check: bool = False):
     return sub_links
 
 ##
-def draw_network (N: dict, layout: str, fig_size: tuple = None, node_size: int = None, label_size: int = None, label_sample_n: int = None, zscores: dict = None, use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, scale_factor: float = 3, font_name: str = None, generalized: bool = True, test: bool = False, use_pyGraphviz: bool = False, use_directed_graph: bool = True, reverse_direction: bool = False, mark_instances: bool = True, auto_figsize_adjust: bool = True, check: bool = False) -> None:
+def draw_network (N: dict, layout: str, fig_size: tuple = None, node_size: int = None, label_size: int = None, label_sample_n: int = None, zscores: dict = None, use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, scale_factor: float = 3, font_name: str = None, generalized: bool = True, test: bool = False, use_directed_graph: bool = True, reverse_direction: bool = False, mark_instances: bool = True, auto_figsize_adjust: bool = True, check: bool = False) -> None:
     """
     draw layered graph under multi-partite setting
     """
@@ -448,60 +448,59 @@ def draw_network (N: dict, layout: str, fig_size: tuple = None, node_size: int =
     G = nx.relabel_nodes (G, new_labels, copy = False)
 
     ## set positions
-    if use_pyGraphviz:
-        nx.nx_agraph.view_pygraphviz(G, prog = 'fdp')
+    #if use_pyGraphviz:
+    #    nx.nx_agraph.view_pygraphviz(G, prog = 'fdp')
+    #else:
+    ## select layout
+    if layout in [ 'Multipartite', 'Multi_partite', 'multi_partite', 'M', 'MP', 'mp' ]:
+        layout_name = "Multi-partite"
+        ## scale parameter suddenly gets crucial on 2024/10/30
+        positions   = nx.multipartite_layout (G, subset_key = "rank", scale = -1)
+    ##
+    elif layout in [ 'Graphviz', 'graphviz', 'G' ] :
+        layout_name = "Graphviz"
+        positions   = nx.nx_pydot.graphviz_layout(G, prog = 'fdp')
+    ##
+    elif layout in ['arf', 'ARF' ] :
+        layout_name = "ARF"
+        positions   = nx.arf_layout(G, scaling = scale_factor)
+    ##
+    elif layout in [ 'Fruchterman-Reingold', 'Fruchterman_Reingold', 'fruchterman_reingold', 'FR']:
+        layout_name = "Fruchterman-Reingold"
+        positions   = nx.fruchterman_reingold_layout (G, scale = scale_factor, dim = 2)
+    ##
+    elif layout in [ 'Kamada-Kawai', 'Kamada_Kawai', 'kamda_kawai', 'KK' ]:
+        layout_name = "Kamada-Kawai"
+        positions   = nx.kamada_kawai_layout (G, scale = scale_factor, dim = 2)
+    ##
+    elif layout in [ 'Spring', 'spring', 'Sp' ]:
+        layout_name = "Spring"
+        positions   = nx.spring_layout (G, k = 1.4, dim = 2)
+    ##
+    elif layout in [ 'Shell', 'shell' , 'Sh' ]:
+        layout_name = "Shell"
+        positions   = nx.shell_layout (G, scale = scale_factor, dim = 2)
+    ##
+    elif layout in [ 'Spiral', 'spiral', 'Spr' ]:
+        layout_name = "Spiral"
+        positions   = nx.spiral_layout (G, scale = scale_factor, dim = 2)
+    ##
+    elif layout in [ 'Spectral', 'spectral', 'Spc' ]:
+        layout_name = "Spectral"
+        positions   = nx.spectral_layout (G, scale = scale_factor, dim = 2)
+    ##
+    elif layout in [ 'Circular', 'circular', 'C' ]:
+        layout_name = "Circular"
+        positions   = nx.circular_layout (G, scale = scale_factor, dim = 2)
+    ##
+    elif layout in ['Planar', 'planar', 'P'] :
+        layout_name = "Planar"
+        positions   = nx.planar_layout(G, scale = scale_factor, dim = 2)
+    ##
     else:
-        ## select layout
-        if layout in [ 'Multipartite', 'Multi_partite', 'multi_partite', 'M', 'MP', 'mp' ]:
-            layout_name = "Multi-partite"
-            ## scale parameter suddenly gets crucial on 2024/10/30
-            positions   = nx.multipartite_layout (G, subset_key = "rank", scale = -1)
-        ##
-        elif layout in [ 'Graphviz', 'graphviz', 'G' ] :
-            layout_name = "Graphviz"
-            positions   = nx.nx_pydot.graphviz_layout(G) # obsolete?
-            #positions = nx.nx_agraph.graphviz_layout(G)
-        ##
-        elif layout in ['arf', 'ARF' ] :
-            layout_name = "ARF"
-            positions   = nx.arf_layout(G, scaling = scale_factor)
-        ##
-        elif layout in [ 'Fruchterman-Reingold', 'Fruchterman_Reingold', 'fruchterman_reingold', 'FR']:
-            layout_name = "Fruchterman-Reingold"
-            positions   = nx.fruchterman_reingold_layout (G, scale = scale_factor, dim = 2)
-        ##
-        elif layout in [ 'Kamada-Kawai', 'Kamada_Kawai', 'kamda_kawai', 'KK' ]:
-            layout_name = "Kamada-Kawai"
-            positions   = nx.kamada_kawai_layout (G, scale = scale_factor, dim = 2)
-        ##
-        elif layout in [ 'Spring', 'spring', 'Sp' ]:
-            layout_name = "Spring"
-            positions   = nx.spring_layout (G, k = 1.4, dim = 2)
-        ##
-        elif layout in [ 'Shell', 'shell' , 'Sh' ]:
-            layout_name = "Shell"
-            positions   = nx.shell_layout (G, scale = scale_factor, dim = 2)
-        ##
-        elif layout in [ 'Spiral', 'spiral', 'Spr' ]:
-            layout_name = "Spiral"
-            positions   = nx.spiral_layout (G, scale = scale_factor, dim = 2)
-        ##
-        elif layout in [ 'Spectral', 'spectral', 'Spc' ]:
-            layout_name = "Spectral"
-            positions   = nx.spectral_layout (G, scale = scale_factor, dim = 2)
-        ##
-        elif layout in [ 'Circular', 'circular', 'C' ]:
-            layout_name = "Circular"
-            positions   = nx.circular_layout (G, scale = scale_factor, dim = 2)
-        ##
-        elif layout in ['Planar', 'planar', 'P'] :
-            layout_name = "Planar"
-            positions   = nx.planar_layout(G, scale = scale_factor, dim = 2)
-        ##
-        else:
-            print(f"Layout is unknown: Multi-partite (default) is used")
-            layout_name = "Multi-partite"
-            positions   = nx.multipartite_layout (G, subset_key = "rank", scale = -1)
+        print(f"Layout is unknown: Multi-partite (default) is used")
+        layout_name = "Multi-partite"
+        positions   = nx.multipartite_layout (G, subset_key = "rank", scale = -1)
 
     ### draw
     ## set connection
@@ -1036,7 +1035,7 @@ class PatternLattice():
         return merged
 
     ##
-    def draw_diagrams (self, generalized: bool, zscores_from_targets: bool, layout: str = None, zscore_lb: float = None, zscore_ub: float = None, use_robust_zscore: bool = False, auto_figsize_adjust: bool = True, fig_size: tuple = None, node_size: int = None, label_size: int = None, label_sample_n: int = None, scale_factor: float = 3, font_name: str = None, use_pyGraphviz: bool = False, test: bool = False, check: bool = False) -> None:
+    def draw_diagrams (self, generalized: bool, zscores_from_targets: bool, layout: str = None, zscore_lb: float = None, zscore_ub: float = None, use_robust_zscore: bool = False, auto_figsize_adjust: bool = True, fig_size: tuple = None, node_size: int = None, label_size: int = None, label_sample_n: int = None, scale_factor: float = 3, font_name: str = None, test: bool = False, check: bool = False) -> None:
         """
         draw a lattice digrams from a given PatternLattice L by extracting L.links
         """
