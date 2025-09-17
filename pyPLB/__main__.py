@@ -74,8 +74,8 @@ parser.add_argument('-R', '--unreflexive', action= 'store_false', default= True)
 parser.add_argument('-G', '--generalized', action= 'store_true', default= False)
 parser.add_argument('-m', '--max_size', type= int, default= None)
 parser.add_argument('-n', '--sample_n', type= int, default= None)
-#parser.add_argument('-S', '--sample_id', type= int, default= 1)
 parser.add_argument('-A', '--auto_figsize_adjust', action='store_true', default= False)
+#parser.add_argument('-S', '--sample_id', type= int, default= 1)
 parser.add_argument('-S', '--build_lattice_stepwise', action= 'store_true', default= False)
 parser.add_argument('-I', '--draw_individual_lattices', action= 'store_true', default = False)
 parser.add_argument('-F', '--scaling_factor', type= float, default= 5)
@@ -394,7 +394,7 @@ elif build_lattice_stepwise:
             print(f"#node {node} has z-score {zscore: .3f}")
         ##
         print(f"##Results")
-        M.draw_diagrams (layout = layout, generalized = generalized, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, auto_figsize_adjust = auto_figsize_adjust,  font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+        M.draw_diagrams (layout = layout, generalized = generalized, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, auto_figsize_adjust = auto_figsize_adjust, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 else:
     gen_links_internally = False
     M = functools.reduce (lambda La, Lb: La.merge_lattices (Lb, gen_links_internally = gen_links_internally, use_mp = use_mp, generalized = generalized, reflexive = reflexive, reductive = True, check = False), L)
