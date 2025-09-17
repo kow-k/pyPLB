@@ -35,6 +35,7 @@ modification history
 2025/01/07 better auto figure sizing is implemented; mark_instances option is implemented;
 2025/09/04 added recursion limit increase;
 2025/09/16 modified auto_figsize_adjust;
+2025/09/17 changed default value for -G;
 """
 
 #
@@ -70,7 +71,7 @@ parser.add_argument('-P', '--remove_punctuations', action='store_false', default
 parser.add_argument('-H', '--split_hyphenation', action='store_false', default= True)
 parser.add_argument('-g', '--gap_mark', type= str, default= '_')
 parser.add_argument('-R', '--unreflexive', action= 'store_false', default= True)
-parser.add_argument('-G', '--generalized', action= 'store_false', default= True)
+parser.add_argument('-G', '--generalized', action= 'store_true', default= False)
 parser.add_argument('-m', '--max_size', type= int, default= None)
 parser.add_argument('-n', '--sample_n', type= int, default= None)
 #parser.add_argument('-S', '--sample_id', type= int, default= 1)

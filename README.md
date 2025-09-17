@@ -51,10 +51,11 @@ where `<file>` is an input file in .csv format. Crucial options are:
 - -m [int] sets the maximum number of segments in each instance.
 - -f [str] sets the field separator (defaults to ",") to the one you choose.
 - -g [str] sets the gap_mark (defaults to "\_") to the one you choose.
-- -C [flag] sets off automatic capitalization of tokens
-- -H [flag] sets off automatic subsegmentation of hyphenated tokens
-- -P [flag] sets off automatic removal of isolated punctuation marks such as ",", "." from input
-- -G [flag] produces the ungeneralized version of Pattern Lattice instead of the generalized version (default).
+- -C [flag] sets off automatic capitalization of tokens.
+- -H [flag] sets off automatic subsegmentation of hyphenated tokens.
+- -P [flag] sets off automatic removal of isolated punctuation marks such as ",", "." from input.
+- -G [flag] produces the generalized version of Pattern Lattice instead of the ungeneralized version (default).
+- -A [flag] apply automatic figure sizing.
 - -I [flag] draw individual lattices without drawing the merged one.
 - -z, -zl [float] sets the lower limit of z-score to prune the unwanted nodes. This is truly useful when a Pattern Lattice grows a big and complex.
 - -zu [float] sets the upper limit of z-score to prune the unwanted nodes. This is truly useful when a Pattern Lattice grows a big and complex.
