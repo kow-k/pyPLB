@@ -8,7 +8,7 @@ A Python implementation of generalized Pattern Lattice Builder (gPLB)
 
 developed by Kow Kuroda
 
-"Generalized" means that a pattern lattice build from [a, b, c] includes [_, a, b, c], [a, b, c, _] and [_, a, b, c, _]. This makes gPLB different from RubyPLB (rubyplb) developed by Yoichoro Hasebe and Kow Kuroda, available at <https://github.com/yohasebe/rubyplb>.
+"Generalized" means that a pattern lattice build from [a, b, c] includes either [_, a, b, c], [a, b, c, _] and [_, a, b, c, _] (Level 1 generalization) or ['_', 'a', '_', 'b', 'c'], ['a', '_', 'b', 'c', '_'], ['_', 'a', '_', 'b', 'c', '_'], ['_', 'a', 'b', '_', 'c'], ['a', 'b', '_', 'c', '_'], ['_', 'a', 'b', '_', 'c', '_'], ['_', 'a', '_', 'b', '_', 'c'], ['a', '_', 'b', '_', 'c', '_'], ['_', 'a', '_', 'b', '_', 'c', '_'] (Level 2 generalization). Level 1 generalization is concerned with gaps at edges only, whereas Level 2 generalization with all possible insertion points. This makes pyPLB different from RubyPLB (rubyplb) developed by Yoichoro Hasebe and Kow Kuroda, available at <https://github.com/yohasebe/rubyplb>.
 
 created on 2024/09/24
 modified on
@@ -34,8 +34,9 @@ modification history
 2025/01/06 improved the handling of input so that the script now accepts i) # and % for comment escapes, and ii) regex to field separator.
 2025/01/07 better auto figure sizing is implemented; mark_instances option is implemented;
 2025/09/04 added recursion limit increase;
-2025/09/16 modified auto_figsize_adjust;
+2025/09/16 modified auto_figsizing;
 2025/09/17 changed default value for -G;
+2025/09/18 fixed a bug in rank calculation;
 """
 
 #
@@ -61,30 +62,33 @@ from pattern_lattice import *
 import argparse
 parser  = argparse.ArgumentParser(description = "")
 parser.add_argument('file', type= open, default= None)
-parser.add_argument('-v', '--verbose', action= 'store_true', default= False)
-parser.add_argument('-w', '--detailed', action= 'store_true', default= False)
-parser.add_argument('-f', '--input_field_sep', type= str, default= ',')
-parser.add_argument('-c', '--input_comment_escapes', type= list, default= ['#', '%'])
-parser.add_argument('-X', '--phrasal', action= 'store_true', default= False)
-parser.add_argument('-C', '--uncapitalize', action='store_false', default= True)
-parser.add_argument('-P', '--remove_punctuations', action='store_false', default= True)
-parser.add_argument('-H', '--split_hyphenation', action='store_false', default= True)
-parser.add_argument('-g', '--gap_mark', type= str, default= '_')
-parser.add_argument('-R', '--unreflexive', action= 'store_false', default= True)
-parser.add_argument('-G', '--generalized', action= 'store_true', default= False)
-parser.add_argument('-m', '--max_size', type= int, default= None)
-parser.add_argument('-n', '--sample_n', type= int, default= None)
-parser.add_argument('-A', '--auto_figsize_adjust', action='store_true', default= False)
+parser.add_argument('-v', '--verbose', action='store_true', default=False)
+parser.add_argument('-w', '--detailed', action='store_true', default=False)
+parser.add_argument('-f', '--input_field_sep', type=str, default=',')
+parser.add_argument('-c', '--input_comment_escapes', type=list, default=['#', '%'])
+parser.add_argument('-X', '--phrasal', action='store_true', default=False)
+parser.add_argument('-C', '--uncapitalize', action='store_false', default=True)
+parser.add_argument('-P', '--remove_punctuations', action='store_false', default=True)
+parser.add_argument('-H', '--split_hyphenation', action='store_false', default=True)
+parser.add_argument('-g', '--gap_mark', type= str, default='_')
+parser.add_argument('-t', '--tracer', type= str, default='~')
+parser.add_argument('-R', '--unreflexive', action= 'store_false', default = True)
+#parser.add_argument('-G', '--generalized', action= 'store_true', default= False)
+parser.add_argument('-G', '--generalization', type=int, default=0)
+parser.add_argument('-E', '--add_transposed_versions', action='store_true', default=False)
+parser.add_argument('-m', '--max_size', type=int, default=None)
+parser.add_argument('-n', '--sample_n', type=int, default=None)
+parser.add_argument('-A', '--auto_figsizing', action='store_true', default=False)
 #parser.add_argument('-S', '--sample_id', type= int, default= 1)
-parser.add_argument('-S', '--build_lattice_stepwise', action= 'store_true', default= False)
-parser.add_argument('-I', '--draw_individual_lattices', action= 'store_true', default = False)
+parser.add_argument('-S', '--build_lattice_stepwise', action='store_true', default=False)
+parser.add_argument('-I', '--draw_individual_lattices', action='store_true', default=False)
 parser.add_argument('-F', '--scaling_factor', type= float, default= 5)
-parser.add_argument('-z', '-zl', '--zscore_lowerbound', type= float, default= None)
-parser.add_argument('-zu', '--zscore_upperbound', type= float, default= None)
-parser.add_argument('-Z', '--use_robust_zscore', action='store_true', default= False)
-parser.add_argument('-T', '--zscores_from_targets', action='store_true', default= False)
-parser.add_argument('-t', '--print_link_targets', action='store_true', default= False)
-parser.add_argument('-J', '--use_multibyte_chars', action= 'store_true', default = False)
+parser.add_argument('-z', '-zl', '--zscore_lowerbound', type=float, default=None)
+parser.add_argument('-zu', '--zscore_upperbound', type=float, default= None)
+parser.add_argument('-Z', '--use_robust_zscore', action='store_true', default=False)
+parser.add_argument('-T', '--zscores_from_targets', action='store_true', default=False)
+parser.add_argument('-N', '--print_link_targets', action='store_true', default=False)
+parser.add_argument('-J', '--use_multibyte_chars', action='store_true', default=False)
 parser.add_argument('-L', '--layout', type= str, default= 'Multi_partite')
 parser.add_argument('-o', '--print_forms', action='store_true', default= False)
 
@@ -101,14 +105,17 @@ uncapitalize            = args.uncapitalize
 remove_punctuations     = args.remove_punctuations
 split_hyphenation       = args.split_hyphenation
 gap_mark                = args.gap_mark
+tracer                  = args.tracer
 max_size                = args.max_size
 #sample_id               = args.sample_id
 sample_n                = args.sample_n
-generalized             = args.generalized
+#generalized             = args.generalized
+generalization          = args.generalization
+add_transposed_versions = args.add_transposed_versions
 reflexive               = args.unreflexive
 build_lattice_stepwise  = args.build_lattice_stepwise
 print_link_targets      = args.print_link_targets
-auto_figsize_adjust     = args.auto_figsize_adjust
+auto_figsizing          = args.auto_figsizing
 layout                  = args.layout
 draw_individually       = args.draw_individual_lattices
 print_forms             = args.print_forms
@@ -120,6 +127,21 @@ use_robust_zscore       = args.use_robust_zscore
 zscores_from_targets    = args.zscores_from_targets
 
 ### implications
+generalized = False
+fully_generalized = False
+if generalization == 0:
+    #generalized = False
+    #fully_generalized = False
+    pass
+elif generalization == 1:
+    generalized = True
+    #fully_generalized = False
+elif generalization == 2:
+    generalized = True
+    fully_generalized = True
+else:
+    raise "ValueError: undefined level of generalization"
+
 ## inspection paramters
 draw_inspection      = False
 mp_inspection        = False # This disables use of multiprocess
@@ -139,17 +161,17 @@ print(f"#uncapitalize: {uncapitalize}")
 print(f"#remove_punctuations: {remove_punctuations}")
 print(f"#split_hyphenation: {split_hyphenation}")
 print(f"#lattice is generalized: {generalized}")
+print(f"#lattice is fully generalized: {fully_generalized}")
 print(f"#instantiation is reflexive: {reflexive}")
 print(f"#gap_mark: {gap_mark}")
 print(f"#draw_individually: {draw_individually}")
-print(f"#auto_figsize_adjust: {auto_figsize_adjust}")
+print(f"#auto_figsizing: {auto_figsizing}")
 print(f"#use_robust_zscore: {use_robust_zscore}")
 print(f"#zscore_lowerbound: {zscore_lowerbound}")
 print(f"#zscore_upperbound: {zscore_upperbound}")
 print(f"#zscores_from_targets: {zscores_from_targets}")
 
 ### Functions
-##
 def parse_input (file, comment_escapes: list, field_sep: str, uncapitalize: bool = uncapitalize, remove_punctuations: bool = remove_punctuations, split_hyphenation: bool = split_hyphenation, check: bool = False) -> None:
     "reads a file, splits it into segments using a given separator, removes comments, and forward the result to main"
     ## reading data
@@ -186,12 +208,43 @@ def parse_input (file, comment_escapes: list, field_sep: str, uncapitalize: bool
     ##
     return data
 
+## main
+## set font for Japanese character display
+import matplotlib
+if use_multibyte_chars:
+    from matplotlib import font_manager as Font_manager
+    ## select font
+    multibyte_font_names = [    "IPAexGothic",  # 0 Multi-platform font
+                                "Hiragino sans" # 1 Mac only
+                            ]
+    multibyte_font_name  = multibyte_font_names[0]
+    ## tell where target fonts are
+    system_font_dir = "/System/Library/Fonts/"
+    user_font_dir = "/Library/Fonts/"
+    # use the version installed via TeXLive
+    user_font_dir2 = "/usr/local/texlive/2013/texmf-dist/fonts/truetype/public/ipaex/"
+    if multibyte_font_name == "IPAexGothic":
+        try:
+            Font_manager.fontManager.addfont(f"{user_font_dir}ipaexg.ttf")
+        except FileNotFoundError:
+            Font_manager.fontManager.addfont(f"{user_font_dir2}ipaexg.ttf")
+    elif multibyte_font_name == "Hiragino sans":
+        Font_manager.fontManager.addfont(f"{system_font_dir}ヒラギノ角ゴシック W0.ttc")
+    ## check result
+    matplotlib.rc('font', family = multibyte_font_name)
+else:
+    multibyte_font_name = None
+    matplotlib.rcParams['font.family'] = "Sans-serif"
+
+## check font settings
+print(f"multibyte_font_name: {multibyte_font_name}")
+print(f"matplotlib.rcParams['font.family']: {matplotlib.rcParams['font.family']}")
+
 ## process
 if not file is None:
     S0 = parse_input (file, comment_escapes = input_comment_escapes, field_sep = input_field_sep, uncapitalize = uncapitalize, remove_punctuations = remove_punctuations, split_hyphenation = split_hyphenation, check = False)
 else:
-    ## phrasal source
-    if phrasal:
+    if phrasal: # phrasal source
         Text1 = [ 'a big boy', 'the big boy', 'a big girl', 'the big girl',
             'a funny boy', 'the funny boy', 'the funny boys', 'funny boys',
             'a small boy', 'a small girl', 'the small boy', 'the small girl',
@@ -199,8 +252,7 @@ else:
             'the big boys', 'the small boys', 'the boys', 'the girls' ]
         Phrases1 = [ t.split() for t in Text1 ]
         S0 = Phrases1
-    ## lexical sources
-    else:
+    else: # lexical sources
         Words3 = [ "bye", "pie", "lie", "pye", "pip", "pig", "lig", "bug", "hug", "rug", "say", "lye", "dig", "fog", "pin", "sin", "day", "dan", "dye", "may", "way", "fig", "dog" ]
         Words4 = [ "gene", "dean", "fine", "sine", "wine", "wing", "wide", "pine", "line", "mine", "pane", "wane", "wade", "lamb", "womb", "bomb", "find", "wind", "folk", "dogs", "fogs", "bombs", "winds", "finds", "wines", "wings"  ]
         Words5 = [ "power", "pride", "poker", "slide", "tried", "kinky", "image", "ships", "deals", "wings", "folks", "quick" ]
@@ -241,49 +293,39 @@ print(f"##Source lists:")
 for i, s in enumerate(S):
     print (f"#source {i}: {s}")
 
-## set font for Japanese character display
-import matplotlib
-if use_multibyte_chars:
-    from matplotlib import font_manager as Font_manager
-    ## select font
-    multibyte_font_names = [    "IPAexGothic",  # 0 Multi-platform font
-                                "Hiragino sans" # 1 Mac only
-                            ]
-    multibyte_font_name  = multibyte_font_names[0]
-    ## tell where target fonts are
-    system_font_dir = "/System/Library/Fonts/"
-    user_font_dir = "/Library/Fonts/"
-    # use the version installed via TeXLive
-    user_font_dir2 = "/usr/local/texlive/2013/texmf-dist/fonts/truetype/public/ipaex/"
-    if multibyte_font_name == "IPAexGothic":
-        try:
-            Font_manager.fontManager.addfont(f"{user_font_dir}ipaexg.ttf")
-        except FileNotFoundError:
-            Font_manager.fontManager.addfont(f"{user_font_dir2}ipaexg.ttf")
-    elif multibyte_font_name == "Hiragino sans":
-        Font_manager.fontManager.addfont(f"{system_font_dir}ヒラギノ角ゴシック W0.ttc")
-    ## check result
-    matplotlib.rc('font', family = multibyte_font_name)
-else:
-    multibyte_font_name = None
-    matplotlib.rcParams['font.family'] = "Sans-serif"
-## check font settings
-print(f"multibyte_font_name: {multibyte_font_name}")
-print(f"matplotlib.rcParams['font.family']: {matplotlib.rcParams['font.family']}")
-
 ## generating patterns
 Patterns = [ ]
 for s in S:
-    if verbose:
+    if generalized:
+        T = [s]
+        ## apply Level 2 generalization
+        if fully_generalized:
+            T.extend (insert_gaps (s, gap_mark = gap_mark))
+        ## add transposed versions
+        if add_transposed_versions:
+            T.extend(create_transposed_versions (s, tracer = tracer))
+        ## apply Level 1 generalization
+        T.extend (add_gaps_at_edge (s, gap_mark = gap_mark))
+        for s in T:
+            print(f"#processing: {s}")
+            try:
+                p = Pattern(s, gap_mark = gap_mark)
+            except:
+                p = Pattern(s, gap_mark = gap_mark, tracer = tracer)
+            if detailed:
+                print(f"#p: {p}")
+            Patterns.append(p)
+    else:
         print(f"#processing: {s}")
-    p = Pattern(s, gap_mark = gap_mark)
-    if detailed:
-        print(f"#p: {p}")
-    Patterns.append(p)
-
+        try:
+            p = Pattern(s, gap_mark = gap_mark)
+        except TypeError:
+            p = Pattern(s, gap_mark = gap_mark, tracer = tracer)
+        if detailed:
+            print(f"#p: {p}")
+        Patterns.append(p)
 ##
 Patterns = sorted (Patterns, key = lambda x: len(x), reverse = False)
-
 ##
 for i, pat in enumerate(Patterns):
     if verbose:
@@ -291,7 +333,6 @@ for i, pat in enumerate(Patterns):
     for i, g_pat in enumerate(pat.create_gapped_versions (check = False)):
         if verbose:
             print(f"# gapped {i+1}: {g_pat}")
-##
 #exit()
 ##
 print(f"##Generating (generalized) PatternLattices ...")
@@ -299,7 +340,7 @@ L = [ ]
 for i, p in enumerate(Patterns):
     print(f"#generating PatternLattice {i+1} from {p}")
     ## main
-    patlat = PatternLattice (p, generalized = generalized, reflexive = reflexive, check = False)
+    patlat = PatternLattice (p, generalized = generalized, fully_generalized = fully_generalized, reflexive = reflexive, check = False)
     if detailed:
         pp.pprint(patlat)
     ##
@@ -345,7 +386,7 @@ if draw_individually:
     print(f"##Drawing diagrams individually")
     for i, patlat in enumerate(L):
         print(f"#drawing diagram from PatternLattice {i+1}")
-        patlat.draw_diagrams (layout = layout, generalized = generalized, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
+        patlat.draw_diagrams (layout = layout, generalized = generalized, fully_generalized = fully_generalized, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
     exit()
 
 ##
@@ -367,7 +408,7 @@ elif build_lattice_stepwise:
         if i == 0:
             M = patlat
         else: ## merger
-            M = M.merge_lattices (patlat, gen_links_internally = gen_links_internally, use_mp = use_mp, generalized = generalized, reflexive = reflexive, reductive = True, show_steps = True, check = False)
+            M = M.merge_lattices (patlat, gen_links_internally = gen_links_internally, use_mp = use_mp, generalized = generalized, fully_generalized = fully_generalized, reflexive = reflexive, reductive = True, show_steps = True, check = False)
             ## delete the original
             patplat = None
         ## check nodes in M
@@ -394,10 +435,10 @@ elif build_lattice_stepwise:
             print(f"#node {node} has z-score {zscore: .3f}")
         ##
         print(f"##Results")
-        M.draw_diagrams (layout = layout, generalized = generalized, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, auto_figsize_adjust = auto_figsize_adjust, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+        M.draw_diagrams (layout = layout, generalized = generalized, fully_generalized = fully_generalized, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, auto_figsizing = auto_figsizing, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 else:
     gen_links_internally = False
-    M = functools.reduce (lambda La, Lb: La.merge_lattices (Lb, gen_links_internally = gen_links_internally, use_mp = use_mp, generalized = generalized, reflexive = reflexive, reductive = True, check = False), L)
+    M = functools.reduce (lambda La, Lb: La.merge_lattices (Lb, gen_links_internally = gen_links_internally, use_mp = use_mp, generalized = generalized, fully_generalized = fully_generalized, reflexive = reflexive, reductive = True, check = False), L)
 
     # The following process was isolated for memory conservation
     if len(M.links) == 0 and not gen_links_internally:
@@ -420,19 +461,19 @@ else:
 
     ## get z-scores from link targets
     print(f"##Calculating z-scores ...")
-    gen_zscores_from_targets (M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
+    gen_zscores_from_targets (M, gap_mark = gap_mark, tracer = tracer, use_robust_zscore = use_robust_zscore, check = False)
     if print_link_targets:
         for node, zscore in M.source_zscores.items():
             print(f"#node {node} has z-score {zscore: .3f} [n: {M.link_targets[node]:2d}]")
 
     ## get z-scores from link sources
-    gen_zscores_from_sources (M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
+    gen_zscores_from_sources (M, gap_mark = gap_mark, tracer = tracer, use_robust_zscore = use_robust_zscore, check = False)
     for node, zscore in M.source_zscores.items():
         print(f"#node {node} has z-score {zscore: .3f} (n: {M.link_sources[node]:2d})")
 
     ## draw diagram of M
     print(f"##Drawing a diagram from the merged PatternLattice")
-    M.draw_diagrams (layout = layout, generalized = generalized, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, auto_figsize_adjust = auto_figsize_adjust, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+    M.draw_diagrams (layout = layout, generalized = generalized, fully_generalized = fully_generalized, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, auto_figsizing = auto_figsizing, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 
 ## conclude
 print(f"##built from {len(S)} sources: {[ as_label(x, sep = ',') for x in S ]}")

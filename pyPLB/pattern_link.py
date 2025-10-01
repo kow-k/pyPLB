@@ -9,6 +9,60 @@ except ImportError:
     from pattern import *
 
 ## Functions
+def merge_patterns_with_equal_size (form_pairs: list, content_pairs: list, gap_mark: str, boundary_mark: str, check: bool = False):
+    ## The following operation needs to be re-implemented for speed up
+    #import numpy as np
+    ##
+    Fa = [ f[0] for f in form_pairs ]
+    Fb = [ f[1] for f in form_pairs ]
+    if abs(get_rank(Fa) == get_rank(Fb)) > 1:
+        return None
+    ##
+    new_form    = [ ]
+    void_result = [ ]
+    new_content = [ [ ] for _ in range(len(form_pairs)) ] # Crucially
+    for i, pair in enumerate (form_pairs):
+        fa, fb = pair[0], pair[1]
+        ca, cb = content_pairs[i]
+        C = [ x[0] for x in content_pairs[i] ] # Crucially
+        ## handles form
+        if fa is None or fb is None:
+            return None
+            #return void_result # Crucially
+        elif fa == fb:
+            new_form.append (fa)
+            new_content[i].extend (C)
+        else:
+            if fa == gap_mark:
+                new_form.append (fb)
+                if ca == cb:
+                    new_content[i].extend(C)
+                else:
+                    ## handling boundary marking
+                    if ca == boundary_mark:
+                        new_content[i].append (cb)
+                    else:
+                        return None
+                        #return void_result # Crucially
+            elif fb == gap_mark:
+                new_form.append (fa)
+                if ca == cb:
+                    new_content[i].extend (C)
+                else:
+                    ## handling boundary marking
+                    if cb == boundary_mark:
+                        new_content[i].append (ca)
+                    else:
+                        return None
+                        #return void_result # Crucially
+            else:
+                return None
+                #return void_result # Crucially
+    ## Cruially, list(...)
+    new_paired  = [ (F, C) for F, C in list(zip(new_form, new_content)) ]
+    #yield new_paired # fails
+    return new_paired
+
 ### Classes
 ##
 class PatternLink:
@@ -46,13 +100,13 @@ class PatternLink:
             return min (len(self.left), len(self.right))
         else:
             return max (len(self.left), len(self.right))
-    
+
     ##
     def __lt__(self, other):
         #return self.left < other.left and self.right < other.right
         return self.right < other.right or self.left < other.left
-        
-    
+
+
     ##
     def __repr__ (self):
         return f"{type(self).__name__} (l: {self.left}; r: {self.right};\ntype: {self.link_type})"
