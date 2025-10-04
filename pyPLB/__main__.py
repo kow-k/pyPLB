@@ -2,7 +2,7 @@
 # -*- encoding: utf-8 -*-
 #
 """
-gPLB.py
+pyPLB
 
 A Python implementation of generalized Pattern Lattice Builder (gPLB)
 
@@ -37,6 +37,10 @@ modification history
 2025/09/16 modified auto_figsizing;
 2025/09/17 changed default value for -G;
 2025/09/18 fixed a bug in rank calculation;
+2025/09/30 implemented generalization level 2;
+2025/10/03 refactored graph drawing algorithm but Multiparite still fails under obscure conditions;
+2025/10/04 added key_for_MPG option that allows changing 'subset_key' in Multi-partite graph;
+
 """
 
 #
@@ -70,26 +74,27 @@ parser.add_argument('-X', '--phrasal', action='store_true', default=False)
 parser.add_argument('-C', '--uncapitalize', action='store_false', default=True)
 parser.add_argument('-P', '--remove_punctuations', action='store_false', default=True)
 parser.add_argument('-H', '--split_hyphenation', action='store_false', default=True)
-parser.add_argument('-g', '--gap_mark', type= str, default='_')
-parser.add_argument('-t', '--tracer', type= str, default='~')
-parser.add_argument('-R', '--unreflexive', action= 'store_false', default = True)
-#parser.add_argument('-G', '--generalized', action= 'store_true', default= False)
+parser.add_argument('-g', '--gap_mark', type=str, default='_')
+parser.add_argument('-t', '--tracer', type=str, default='~')
+parser.add_argument('-R', '--unreflexive', action='store_false', default=True)
+#parser.add_argument('-G', '--generalized', action='store_true', default=False)
 parser.add_argument('-G', '--generalization', type=int, default=0)
-parser.add_argument('-E', '--add_transposed_versions', action='store_true', default=False)
+parser.add_argument('-D', '--add_displaced_versions', action='store_true', default=False)
 parser.add_argument('-m', '--max_size', type=int, default=None)
 parser.add_argument('-n', '--sample_n', type=int, default=None)
 parser.add_argument('-A', '--auto_figsizing', action='store_true', default=False)
+parser.add_argument('-L', '--layout', type= str, default= 'Multi_partite')
+parser.add_argument('-K', '--key_for_MPG', type=str, default='rank')
 #parser.add_argument('-S', '--sample_id', type= int, default= 1)
 parser.add_argument('-S', '--build_lattice_stepwise', action='store_true', default=False)
 parser.add_argument('-I', '--draw_individual_lattices', action='store_true', default=False)
 parser.add_argument('-F', '--scaling_factor', type= float, default= 5)
-parser.add_argument('-z', '-zl', '--zscore_lowerbound', type=float, default=None)
+parser.add_argument('-zl', '-z', '--zscore_lowerbound', type=float, default=None)
 parser.add_argument('-zu', '--zscore_upperbound', type=float, default= None)
 parser.add_argument('-Z', '--use_robust_zscore', action='store_true', default=False)
 parser.add_argument('-T', '--zscores_from_targets', action='store_true', default=False)
 parser.add_argument('-N', '--print_link_targets', action='store_true', default=False)
 parser.add_argument('-J', '--use_multibyte_chars', action='store_true', default=False)
-parser.add_argument('-L', '--layout', type= str, default= 'Multi_partite')
 parser.add_argument('-o', '--print_forms', action='store_true', default= False)
 
 ##
@@ -109,14 +114,15 @@ tracer                  = args.tracer
 max_size                = args.max_size
 #sample_id               = args.sample_id
 sample_n                = args.sample_n
+reflexive               = args.unreflexive
 #generalized             = args.generalized
 generalization          = args.generalization
-add_transposed_versions = args.add_transposed_versions
-reflexive               = args.unreflexive
+add_displaced_versions = args.add_displaced_versions
 build_lattice_stepwise  = args.build_lattice_stepwise
 print_link_targets      = args.print_link_targets
 auto_figsizing          = args.auto_figsizing
 layout                  = args.layout
+key_for_MPG             = args.key_for_MPG
 draw_individually       = args.draw_individual_lattices
 print_forms             = args.print_forms
 scale_factor            = args.scaling_factor
@@ -127,20 +133,21 @@ use_robust_zscore       = args.use_robust_zscore
 zscores_from_targets    = args.zscores_from_targets
 
 ### implications
+
+## four generalization levels: 0 [default], 1, 2, and 3
 generalized = False
-fully_generalized = False
+more_generalized = False
 if generalization == 0:
-    #generalized = False
-    #fully_generalized = False
     pass
 elif generalization == 1:
     generalized = True
-    #fully_generalized = False
 elif generalization == 2:
+    more_generalized = True
+elif generalization == 3:
     generalized = True
-    fully_generalized = True
+    more_generalized = True
 else:
-    raise "ValueError: undefined level of generalization"
+    raise ValueError("undefined level of generalization")
 
 ## inspection paramters
 draw_inspection      = False
@@ -161,7 +168,7 @@ print(f"#uncapitalize: {uncapitalize}")
 print(f"#remove_punctuations: {remove_punctuations}")
 print(f"#split_hyphenation: {split_hyphenation}")
 print(f"#lattice is generalized: {generalized}")
-print(f"#lattice is fully generalized: {fully_generalized}")
+print(f"#lattice is fully generalized: {more_generalized}")
 print(f"#instantiation is reflexive: {reflexive}")
 print(f"#gap_mark: {gap_mark}")
 print(f"#draw_individually: {draw_individually}")
@@ -296,26 +303,29 @@ for i, s in enumerate(S):
 ## generating patterns
 Patterns = [ ]
 for s in S:
-    if generalized:
-        T = [s]
-        ## apply Level 2 generalization
-        if fully_generalized:
-            T.extend (insert_gaps (s, gap_mark = gap_mark))
-        ## add transposed versions
-        if add_transposed_versions:
-            T.extend(create_transposed_versions (s, tracer = tracer))
-        ## apply Level 1 generalization
-        T.extend (add_gaps_at_edge (s, gap_mark = gap_mark))
-        for s in T:
-            print(f"#processing: {s}")
-            try:
-                p = Pattern(s, gap_mark = gap_mark)
-            except:
-                p = Pattern(s, gap_mark = gap_mark, tracer = tracer)
-            if detailed:
-                print(f"#p: {p}")
-            Patterns.append(p)
+    T = [s]
+    ## level 3 generalization
+    if generalized and more_generalized:
+        T.extend (insert_gaps (s, gap_mark = gap_mark))
+        ## add displaced versions
+        if add_displaced_versions:
+            T.extend (create_displaced_versions (s, tracer = tracer))
+        T.extend (add_gaps_around (s, gap_mark = gap_mark))
+    ## level 2 generalization
+    elif not generalized and more_generalized:
+        T.extend (insert_gaps (s, gap_mark = gap_mark))
+        ## add displaced versions
+        if add_displaced_versions:
+            T.extend (create_displaced_versions (s, tracer = tracer))
+    ## level 1 generalization
+    elif generalized and not more_generalized:
+        ## add displaced versions
+        if add_displaced_versions:
+            T.extend (create_displaced_versions (s, tracer = tracer))
+        T.extend (add_gaps_around (s, gap_mark = gap_mark))
     else:
+        pass
+    for s in T:
         print(f"#processing: {s}")
         try:
             p = Pattern(s, gap_mark = gap_mark)
@@ -340,7 +350,7 @@ L = [ ]
 for i, p in enumerate(Patterns):
     print(f"#generating PatternLattice {i+1} from {p}")
     ## main
-    patlat = PatternLattice (p, generalized = generalized, fully_generalized = fully_generalized, reflexive = reflexive, check = False)
+    patlat = PatternLattice (p, generalized = generalized, more_generalized = more_generalized, reflexive = reflexive, check = False)
     if detailed:
         pp.pprint(patlat)
     ##
@@ -386,7 +396,7 @@ if draw_individually:
     print(f"##Drawing diagrams individually")
     for i, patlat in enumerate(L):
         print(f"#drawing diagram from PatternLattice {i+1}")
-        patlat.draw_diagrams (layout = layout, generalized = generalized, fully_generalized = fully_generalized, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
+        patlat.draw_network (layout = layout, key_for_MPG = key_for_MPG, generalized = generalized, more_generalized = more_generalized, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
     exit()
 
 ##
@@ -408,7 +418,7 @@ elif build_lattice_stepwise:
         if i == 0:
             M = patlat
         else: ## merger
-            M = M.merge_lattices (patlat, gen_links_internally = gen_links_internally, use_mp = use_mp, generalized = generalized, fully_generalized = fully_generalized, reflexive = reflexive, reductive = True, show_steps = True, check = False)
+            M = M.merge_lattices (patlat, gen_links_internally = gen_links_internally, use_mp = use_mp, generalized = generalized, more_generalized = more_generalized, reflexive = reflexive, reductive = True, show_steps = True, check = False)
             ## delete the original
             patplat = None
         ## check nodes in M
@@ -435,10 +445,10 @@ elif build_lattice_stepwise:
             print(f"#node {node} has z-score {zscore: .3f}")
         ##
         print(f"##Results")
-        M.draw_diagrams (layout = layout, generalized = generalized, fully_generalized = fully_generalized, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, auto_figsizing = auto_figsizing, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+        M.draw_network (layout = layout, generalized = generalized, more_generalized = more_generalized, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, auto_figsizing = auto_figsizing, key_for_MPG = key_for_MPG, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 else:
     gen_links_internally = False
-    M = functools.reduce (lambda La, Lb: La.merge_lattices (Lb, gen_links_internally = gen_links_internally, use_mp = use_mp, generalized = generalized, fully_generalized = fully_generalized, reflexive = reflexive, reductive = True, check = False), L)
+    M = functools.reduce (lambda La, Lb: La.merge_lattices (Lb, gen_links_internally = gen_links_internally, use_mp = use_mp, generalized = generalized, more_generalized = more_generalized, reflexive = reflexive, reductive = True, check = False), L)
 
     # The following process was isolated for memory conservation
     if len(M.links) == 0 and not gen_links_internally:
@@ -473,7 +483,7 @@ else:
 
     ## draw diagram of M
     print(f"##Drawing a diagram from the merged PatternLattice")
-    M.draw_diagrams (layout = layout, generalized = generalized, fully_generalized = fully_generalized, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, auto_figsizing = auto_figsizing, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+    M.draw_network (layout = layout, generalized = generalized, more_generalized = more_generalized, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, auto_figsizing = auto_figsizing, key_for_MPG = key_for_MPG, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 
 ## conclude
 print(f"##built from {len(S)} sources: {[ as_label(x, sep = ',') for x in S ]}")

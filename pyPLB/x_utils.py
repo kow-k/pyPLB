@@ -56,11 +56,10 @@ def merge_patterns (self, other, track_content: bool = False, reduction: bool = 
 #@jit(nopython = True)
 def merge_lattice_main (nodes, check: bool = False) -> list:
     "takes a pair of pattern lattices and returns their merger"
-    #import itertools # This code needs to be externalized
-    #
+
     merged_nodes = [ ]
     for A, B in itertools.combinations (nodes, 2):
-        C = A.merge_patterns (B, check = check)
+        C = A.merges_with (B, check = check)
         ## The following fails to work if Pattern.__eq__ is not redefined
         #if not C in merged_nodes: # This fails.
         if is_None_free (C) and not C in merged_nodes:

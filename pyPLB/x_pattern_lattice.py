@@ -1,5 +1,64 @@
 ## Functions
 
+def test_pairs_for_ISA (r: list, l: list, check: bool = False) -> bool:
+    '''
+    tests if a given pair of Patterns is in IS-A relation
+    '''
+    gap_mark = r.gap_mark
+    r_form, l_form = r.form, l.form
+    r_size, l_size = len (r_form), len (l_form)
+    r_rank = get_rank_of_list (r_form, gap_mark)
+    l_rank = get_rank_of_list (l_form, gap_mark)
+    ##
+    if abs (l_size - r_size) > 1:
+        if check:
+            print(f"#is-a:F0; {l.form} ~ {r.form}")
+        #continue
+        return False
+    ##
+    elif l_size == r_size + 1:
+        if l_form[0] == gap_mark and l_form[1:] == r_form:
+            if check:
+                print(f"#is-a:T1a; {l.form} <- {r.form}")
+            return True
+        elif  l_form[-1] == gap_mark and l_form[:-1] == r_form:
+            if check:
+                print(f"#is-a:T1b; {l.form} <- {r.form}")
+            return True
+        else:
+            if check:
+                print(f"#is-a:F1; {l.form} <- {r.form}")
+            return False
+    ##
+    elif l_size == r_size:
+        if r_form == l_form:
+            if check:
+                print(f"#is-a:F2; {l.form} ~ {r.form}")
+            return False
+        if r.count_gaps() == 0 and l.count_gaps() == 1:
+            if r.includes(l):
+                if check:
+                    print(f"#is-a:T0:instance' {l.form} <- {r.form}")
+                return True
+            else:
+                if check:
+                    print(f"#is-a:F3; {l.form} ~ {r.form}")
+                return False
+        elif check_for_instantiation (r, l, check = False):
+            if check:
+                print(f"#is-a:T2; {l.form} <- {r.form}")
+            return True
+        else:
+            if check:
+                print(f"#is-a:F3; {l.form} ~ {r.form}")
+            return False
+    ##
+    else:
+        if check:
+            print(f"#is-a:F4; {l.form} ~ {r.form}")
+        return False
+
+
 ##
 def classify_relationsX (R, L, check: bool = False):
 
@@ -268,7 +327,7 @@ def X():
                     print(f"#sized_nodes {size}: {sized_nodes}")
                 merged_sized_nodes = [ ]
                 for A, B in itertools.combinations (sized_nodes, 2):
-                    C = A.merge_patterns (B, check = False)
+                    C = A.merges_with (B, check = False)
                     ## The following fails unless Pattern.__eq__ is redefined
                     if len(C) > 0 and not C in merged_sized_nodes:
                         merged_sized_nodes.append (C)

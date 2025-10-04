@@ -46,15 +46,6 @@ def as_tuple (L: list) -> tuple:
     return tuple(L)
 
 ##
-def as_label (T: (list, tuple), sep: str = "", add_sep_at_end: bool = False) -> str:
-    "convert a given tuple to a string by concatenating its elements"
-    result = ""
-    result = sep.join(T)
-    if add_sep_at_end:
-        result = result + sep
-    return result
-
-##
 def filter_list (F: list, A: list, check: bool = False) -> list:
     #assert len(F) <= len(A)
     R = [ ]
@@ -197,7 +188,7 @@ def insert_gaps (input_list, gap_mark: str = "_"):
     return result
 
 ##
-def add_gaps_at_edge (input_list, gap_mark: str  = "_") -> list:
+def add_gaps_around (input_list, gap_mark: str  = "_") -> list:
     """
     Add underscores at the beginning and/or end of the list.
     For [a,b,c] => [[_,a,b,c], [a,b,c,_], [_,a,b,c,_]]
@@ -210,13 +201,13 @@ def add_gaps_at_edge (input_list, gap_mark: str  = "_") -> list:
     #
     return result
 
-def create_transposed_versions (L: list, tracer: str, check: bool = False):
+def create_displaced_versions (L: list, tracer: str, check: bool = False):
     """
-    Transpose each element x in L with every other element y in L if L doesn't contan transposed elements, generating new lists.
+    Displace each element x in L with every other element y in L if L doesn't contain displaced elements, generating new lists.
     """
 
     ## check if any x is already negated
-    if any([ x for x in L if x[0] == tracer]):
+    if any([ x for x in L if x[0] == tracer ]):
         return [] # if any x is already negated, return empty list
     ##
     R = []
@@ -251,6 +242,7 @@ def create_transposed_versions (L: list, tracer: str, check: bool = False):
                 if check:
                     print(f"r: {r}")
                 R.append(r)
+    ##
     return R
 
 ### end of file

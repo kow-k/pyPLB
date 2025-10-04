@@ -11,68 +11,26 @@ def list_encode_for_pattern (L: list) -> list:
     R needs to be a list because it needs to be expanded later at building generalized PatternLattice
     """
     # Crucially, strip(..)
-    return [ (str(x).strip(), [str(x).strip()]) for x in L if len(x) > 0 ]
-
-
-##
-def wrapped_merger_main (args):
-    "utility function for Pool in merge_patterns"
-    return merger_main (*args)
+    return [ (str(x).strip(), [str(x).strip()] ) for x in L if len(x) > 0 ]
 
 ##
-def check_for_instantiation (self, other, check: bool = False):
-    "tests the instantiation of a pair of pattern with the equal size"
-    r, l = self, other
-    try:
-        assert len(l) >= len(r)
-    except AssertionError:
-        return False
-    ##
-    gap_mark         = self.gap_mark
-    tracer           = self.tracer
-    r_form           = self.form
-    r_untraced_form  = [ seg.replace(tracer, "") for seg in self.form ]
-    l_form           = other.form
-    l_untraced_form  = [ seg.replace(tracer, "") for seg in other.form ]
-    ## filter invalid cases
-    if r_form == l_form or r_form == l_untraced_form:
-        if check:
-            print(f"#is-a:F0; {l_form} ~~ {r_form}")
-        return False
-    ## Crucial for generating hierarchical organization!
-    if abs(r.get_substance_size() - l.get_substance_size()) > 1:
-        if check:
-            print(f"#is-a:F1; {l_form} ~~ {r_form}")
-        return False
-    ##
-    for i, r_seg in enumerate (r_form):
-        l_seg = l_form[i]
-        l_untraced_seg = l_untraced_form[i]
-        if l_seg == r_seg or l_untraced_seg == r_seg:
-            pass
-        else: # l_seg != r_seg
-            if l_seg != gap_mark:
-                if check:
-                    print(f"#is-a:F2; {l_form} ~~ {r_form}")
-                return False
-            elif l_seg != r_seg:
-                if check:
-                    print(f"#is-a:F3; {l_form} ~~ {r_form}")
-                False
-            else:
-                pass
-    ##
-    if check:
-        print(f"#is-a:T1; {l_form} <- {r_form}")
-
-    #yield True # offensive??
-    return True
-
-## aliases
-#test_for_is_a_relation = check_instantiation
+def is_tracing_pair (f: str, g: str, tracer: str, strict: bool = True) -> bool:
+    """
+    tests if a given pair of strings is a tracing pair in that one is the tracer of the other
+    """
+    if strict:
+        if f[0] == tracer and f[1:] == g:
+            return True
+        else:
+            return False
+    else:
+        if (f[0] == tracer and f[1:] == g) or (g[0] == tracer and f == g[1:]):
+            return True
+        else:
+            return False
 
 ##
-def test_completion_of_gap_creation (P: list, gap_mark: str, check: bool = False) -> bool:
+def test_gapping_completion (P: list, gap_mark: str, check: bool = False) -> bool:
     "tests if P, a list of patterns, contains a fully gapped pattern"
     for p in P:
         if check:
@@ -82,6 +40,39 @@ def test_completion_of_gap_creation (P: list, gap_mark: str, check: bool = False
     return False
 
 ##
+def check_for_isa_under_size_equality (r_form, l_form, gap_mark: str, tracer: str = '~', check: bool = False) -> bool:
+    """
+    checks if r_form instantiates l_form under size equality, returning True or False
+    """
+
+    ## handling type mismatch
+    if r_form is Pattern:
+        r_form = r_form.form
+    if l_form is Pattern:
+        l_form = l_form.form
+
+    ##
+    for i, r_seg in enumerate (r_form):
+        l_seg = l_form[i]
+        ## compare r_seg and l_seg and return False if isa fails to hold
+        if l_seg == r_seg:
+            pass
+        elif is_tracing_pair (l_seg, r_seg, tracer = tracer):
+            pass
+        else:
+            if l_seg == gap_mark:
+                pass
+            else:
+                if r_seg != gap_mark and l_seg != r_seg:
+                    print(f"#is-a: {l_form} ~~ {r_form}")
+                    return False
+                else:
+                    pass
+    #if check:
+    print(f"#is-a: {l_form} <= {r_form}")
+    return True
+
+##
 def gen_L1_generalized_nodes (L, check: bool = False):
     """
     creates nodes at level 1 generalization to a given L
@@ -89,7 +80,7 @@ def gen_L1_generalized_nodes (L, check: bool = False):
     G = []
     for p in L:
         for position in [ 'left', 'right', 'both' ]:
-            g = p.add_gaps_at_edge (position)
+            g = p.add_gaps_around (position)
             if check:
                 print(f"g: {g}")
             if g not in G:
@@ -100,12 +91,74 @@ def gen_L2_generalized_nodes (L, check: bool = False):
     """
     creates nodes at level 2 generalization to a given L
     """
-    R = []
+    G = []
     for p in L:
         for i, g in enumerate(p.create_gap_inserted_versions ()):
-            if g not in R:
-                R.append(g)
-    return R
+            if check:
+                print(f"inserting g{i}: {g}")
+            if g not in G:
+                G.append(g)
+    return G
+
+##
+def merge_patterns_with_equal_size (form_pairs: list, content_pairs: list, gap_mark: str, boundary_mark: str, check: bool = False):
+    ## The following operation needs to be re-implemented for speed up
+    #import numpy as np
+    ##
+    Fa = [ f[0] for f in form_pairs ]
+    Fb = [ f[1] for f in form_pairs ]
+    if abs(get_rank(Fa) == get_rank(Fb)) > 1:
+        return None
+    ##
+    new_form    = [ ]
+    void_result = [ ]
+    new_content = [ [ ] for _ in range(len(form_pairs)) ] # Crucially
+    for i, pair in enumerate (form_pairs):
+        fa, fb = pair[0], pair[1]
+        ca, cb = content_pairs[i]
+        C = [ x[0] for x in content_pairs[i] ] # Crucially
+        ## handles form
+        if fa is None or fb is None:
+            return None
+            #return void_result # Crucially
+        elif fa == fb:
+            new_form.append (fa)
+            new_content[i].extend (C)
+        else:
+            if fa == gap_mark:
+                new_form.append (fb)
+                if ca == cb:
+                    new_content[i].extend(C)
+                else:
+                    ## handling boundary marking
+                    if ca == boundary_mark:
+                        new_content[i].append (cb)
+                    else:
+                        return None
+                        #return void_result # Crucially
+            elif fb == gap_mark:
+                new_form.append (fa)
+                if ca == cb:
+                    new_content[i].extend (C)
+                else:
+                    ## handling boundary marking
+                    if cb == boundary_mark:
+                        new_content[i].append (ca)
+                    else:
+                        return None
+                        #return void_result # Crucially
+            else:
+                return None
+                #return void_result # Crucially
+    ## Cruially, list(...)
+    new_paired  = [ (F, C) for F, C in list(zip(new_form, new_content)) ]
+    #yield new_paired # fails
+    return new_paired
+
+##
+def wrapped_merger_main (args):
+    "utility function for Pool in merge_patterns"
+    return merger_main (*args)
 
 ### The idea of using NamedTuple turned out inadequate
 #from collections import UserList
@@ -124,17 +177,18 @@ class Pattern:
         self.tracer        = tracer
         self.boundary_mark = boundary_mark
         ## form
-        #self.form          = [ x[0] for x in self.paired ]
+        self.form          = [ x[0] for x in self.paired ] # revived on 2025/01/05
         #self.form          = ak.Array([ x[0] for x in self.paired ]) # not work
         #self.form          = tuple([ x[0] for x in self.paired ]) # works
-        self.form          = [ x[0] for x in self.paired ] # stopped using tuple 2025/01/05
+
         ## form_hash
         self.form_hash     = hash(tuple(self.form))
+
         ## content
-        #self.content       = [ x[1] for x in self.paired ]
+        self.content       = [ x[1] for x in self.paired ] # revived on 2025/01/05
         #self.content       = ak.Array([ x[1] for x in self.paired ]) # not work
         #self.content       = tuple([ x[1] for x in self.paired ]) # works
-        self.content       = [ x[1] for x in self.paired ] # stopped using tuple 2025/01/05
+
         ## size and others
         self.size          = len (self.form)
         self.rank          = self.get_rank()
@@ -174,8 +228,12 @@ class Pattern:
 
     ##
     def __lt__ (self, other):
-        #return len(self.form) < len(other.form)
-        return self.form < other.form # tricky
+        #return len(self.form) < len(other.form) # harmful
+        #return self.form < other.form # tricky
+        try:
+            return self.form < other.form # tricky
+        except TypeError:
+            return tuple(self.form) < tuple(other.form)
 
     ## Basic list-like properties
     #def __get__item (self, index): # This was a mistake
@@ -236,17 +294,22 @@ class Pattern:
     ##
     def get_form (self):
         "takes a pattern and returns its form as list"
-        return [ x[0] for x in self.form ]
         #return tuple([ x[0] for x in self.paired ]) # 2025/01/05
+        return [ x[0] for x in self.form ]
+
     ##
     def get_form_size (self):
         "takes a pattern and returns its form size"
         return len(self.get_form())
+    ## alias
+    get_size = get_form_size
+
     ##
     def get_content (self):
         "takes a pattern and returns its content as a list"
+        #return tuple([ x[1] for x in self.content ]) # stopped using this
         return [ x[1] for x in self.content ]
-        #return tuple([ x[1] for x in self.content ])
+
     ##
     def get_content_size (self):
         "takes a pattern and returns its content size"
@@ -254,15 +317,27 @@ class Pattern:
     ##
     def get_substance (self):
         "takes a pattern and returns the list of non-gap elements in it"
-        return [ x for x in self.form if x != self.gap_mark]
-        #return tuple ([ x for x in self.form if x != self.gap_mark ])
+        #return [ x for x in self.form if x != self.gap_mark and x[0] != self.tracer ]
+        return [ x for x in self.form if x != self.gap_mark ]
+
+    ##
+    def get_g2_substance (self):
+        "takes a pattern and returns the list of non-gap elements in it"
+        return [ x for x in self.form if x != self.gap_mark and x[0] != self.tracer ]
+
     ##
     def get_substance_size (self):
         "takes a pattern and returns its rank, i.e., the number of non-gap elements"
-        #return len([ x for x in self.form if x != self.gap_mark ])
         return len (self.get_substance())
     ## alias
     get_rank = get_substance_size
+
+    ##
+    def get_g2_substance_size (self):
+        "takes a pattern and returns its rank, i.e., the number of non-gap elements"
+        return len (self.get_g2_substance())
+    ## alias
+    get_g2_rank = get_g2_substance_size
 
     ##
     def get_gaps (self):
@@ -273,6 +348,7 @@ class Pattern:
     def get_gap_size (self):
         "takes a pattern and returns the number of gap_marks in it"
         return len (self.get_gaps())
+
     ## alias
     count_gaps = get_gap_size
 
@@ -381,18 +457,12 @@ class Pattern:
         for i in range (len(paired)):
             gapped = list(paired) # creates a copy of list form
             #gapped = deepcopy(paired) # This makes a copy of tuple.
-            #form    = [ x[0] for x in paired ]
-            #content = [ x[1] for x in paired ]
-            #form    = tuple([ x[0] for x in paired ])
-            #content = tuple([ x[1] for x in paired ])
-            form    = [ x[0] for x in paired ] # Stopped using tuple on 2025/09/24
-            content = [ x[1] for x in paired ] # Stopped using tuple on 2025/09/24
+            form    = [ x[0] for x in paired ] # stopped using tuple on 2025/09/24
+            content = [ x[1] for x in paired ] # stopped using tuple on 2025/09/24
 
             f, c = form[i], content[i]
             if f != gap_mark:
                 gapped[i] = (gap_mark, c)
-            ## conversion to tuple
-            #gapped = tuple((x, y) for x, y in zip(form, content))
             if check:
                 print(f"#gapped: {gapped}")
             ##
@@ -438,7 +508,7 @@ class Pattern:
         return True
 
     ##
-    def add_gaps_at_edge (self, position: str, gap_content: str = "_", check: bool = False):
+    def add_gaps_around (self, position: str, gap_content: str = "_", check: bool = False):
         "add a gap at edge of a pattern given"
 
         gap_mark     = self.gap_mark
@@ -464,66 +534,101 @@ class Pattern:
         return result
 
     ##
-    def create_gap_inserted_versions (self, gap_content: str = "_", check: bool = False):
-        "add a gap at edge of a pattern given"
+    def instantiates_or_not (self, other, check: bool = False) -> bool:
+        """
+        tests if pattern R instantiates another L, i.e., instance(R, L) == part_of(L, R)
+        """
+        gap_mark        = self.gap_mark
+        boundary_mark   = self.boundary_mark
+        R, L = self, other
+        R_form, L_form = self.form, other.form
+        R_size, L_size = len(R.form), len(L.form)
+        R_rank, L_rank  = R.get_rank(), L.get_rank()
+        R_content       = self.content
+        L_content       = other.content
+        R_content_size  = len(R_content)
+        L_content_size  = len(L_content)
+        R_substance     = R.get_substance()
+        L_substance     = L.get_substance()
 
-        n = len(self)
-        if n < 2:
-            return self
+        if check:
+            print(f"===================")
+            print(f"#L: {L}; R: {R}")
+            print(f"#L_size: {L_size}; R_size: {R_size}")
+            print(f"#L_rank: {L_rank}; L_rank: {R_rank}")
+            print(f"#L_form: {L_form}; R_form: {R_form}")
+
+        ## L and R have a size difference more than 1
+        if abs(L_size - R_size) > 1:
+            return False
+        ## L and R have the same size and L's rank is one-segment smaller than R's
+        elif L_size == R_size and L_rank == R_rank - 1:
+            return check_for_isa_under_size_equality (R_form, L_form, gap_mark = gap_mark, check = check)
+        ## when L is one-segment longer than R
+        ## This case needs revision to handle generalizeation level 2
+        #elif (L_size == R_size + 1) and len(L_substance) == len(R_substance):
+        elif (L_size == R_size + 1):
+            if L_gap_size == R_gap_size + 1:
+                if L_substance == R_substance:
+                    ## risks overgeneration ...
+                    if check:
+                        print(f"L_substance: {L_substance}")
+                        print(f"R_substance: {R_substance}")
+                    return True
+                else:
+                    if check:
+                        print(f"L_substance: {L_substance}")
+                        print(f"R_substance: {R_substance}")
+                    return False
+            else:
+                if check:
+                    print(f"L_substance: {L_substance}")
+                    print(f"R_substance: {R_substance}")
+                return False
+        ## other cases
         else:
-            #input_p = self[:] # causes trouble
-            input_p = self.copy()
-        ##
-        gap_mark = self.gap_mark
-        gapped_seg = (gap_mark, [gap_content])
-        G = [] # holder of gapped versions
-        import itertools
-        positions = list(range(1, n)) # all positions to insert gaps
-        # generate all non-empty subsets of positions
-        for r in range(1, len(positions) + 1):
-            for pos_combo in itertools.combinations(positions, r):
-                if check:
-                    print(f"pos_combo: {pos_combo}")
-                #copied_p = input_p[:] # causes trouble
-                copied_p = input_p.copy()
-                if check:
-                    print(f"copied_p: {copied_p}")
-                # Insert gaps from right to left to maintain indices
-                for pos in reversed (pos_combo):
-                    if check:
-                        print(f"pos: {pos}")
-                    gapped_p = copied_p[:pos] + [gapped_seg] + copied_p[pos:]
-                    ## make it Pattern, crucially
-                    new_paired = [ (x[0], x[1]) for x in gapped_p ]
-                    gapped_p = Pattern([], gap_mark = gap_mark)
-                    gapped_p.paired = new_paired
-                    gapped_p.update_form()
-                    gapped_p.update_content()
-                    if check:
-                        print(f"gapped_p: {gapped_p}")
-                if gapped_p not in G:
-                    G.append(gapped_p)
-        ## return result
-        return G
+            return False
 
     ##
-    def transpose (p, trace_mark: str = "~", check: bool = False):
-        """
-        Implements transposition
-        """
-        r = p.copy()
-        R = []
-        for i in range(len(p)):
-            x = p[i]
-            for j in range(1,len(p)):
-                if i != j:
-                    r.insert(j, x)
-                    R.append(r)
+    def merges_with (self, other, reduction: bool = True, check: bool = False):
+        "take a pair of Patterns, merges one Pattern with another"
+        if check:
+            print(f"#=====================")
+            print(f"#self:  {self}")
+            print(f"#other: {other}")
         ##
-        return R
+        gap_mark       = self.gap_mark
+        boundary_mark  = self.boundary_mark
+
+        ##
+        if len(self) != len(other):
+            return None
+
+        ## prevents void operation
+        if self.form == other.form and self.content == other.content:
+            return self
+
+        ## main
+        form_pairs     = list(zip (self.form, other.form))
+        content_pairs  = list(zip (self.content, other.content))
+        if check:
+            print(f"#form_pairs :{form_pairs}")
+            print(f"#content_pairs: {content_pairs}")#
+
+        ##
+        new_paired = merge_patterns_with_equal_size (form_pairs, content_pairs, gap_mark, boundary_mark, check = check)
+        if check:
+            print(f"#new_paired: {new_paired}")
+
+        ## create Pattern for return
+        new = Pattern([], gap_mark = gap_mark)
+        new.paired = new_paired
+        new.update_form()
+        new.update_content()
+        return new # yield new fails
 
     ##
-    def build_lattice_nodes (p, generalized: bool, fully_generalized: bool, check: bool = False):
+    def build_lattice_nodes (p, generalized: bool, more_generalized: bool, check: bool = False):
         "takes a pattern and returns a list of lattice nodes"
         if check:
             print (f"#p: {p}")
@@ -549,15 +654,14 @@ class Pattern:
                         R.append (g)
                         form_register.append(g.form)
             ## check termination
-            if test_completion_of_gap_creation (R, gap_mark = gap_mark, check = False):
+            if test_gapping_completion (R, gap_mark = gap_mark, check = False):
                 completed = True
 
-        ## The following block was replaced by input manipulation before building patterns
         ## build generalized lattice
         #if generalized:
         #    # level 2
         #    G2 = []
-        #    if fully_generalized:
+        #    if more_generalized:
         #        for i, g in enumerate(gen_L2_generalized_nodes (R, check = check)):
         #            print(f"#added g{i} in G2: {g}")
         #        R.extend(G) # add G2 elements to R
@@ -573,84 +677,5 @@ class Pattern:
 
         ## return result
         return sorted (R)
-
-    ##
-    def instantiates_or_not (self, other, check: bool = False) -> bool:
-        """
-        tests if pattern R instantiates another L, i.e., instance(R, L) == part_of(L, R)
-        """
-        gap_mark        = self.gap_mark
-        boundary_mark   = self.boundary_mark
-        R, L = self, other
-        #R_form, L_form = R.form, L.form
-        R_form, L_form = self.form, other.form
-        #R_size, L_size = R.size, L.size ## fails
-        R_size, L_size = len(R.form), len(L.form)
-        #R_rank, L_rank = R.rank, L.rank # fails
-        R_rank, L_rank  = R.get_rank(), L.get_rank()
-        R_content       = self.content
-        L_content       = other.content
-        R_content_size  = len(R_content)
-        L_content_size  = len(L_content)
-        R_substance     = R.get_substance()
-        L_substance     = L.get_substance()
-        if check:
-            print(f"===================")
-            print(f"#L: {L}; R: {R}")
-            print(f"#L_size: {L_size}; R_size: {R_size}")
-            print(f"#L_rank: {L_rank}; L_rank: {R_rank}")
-            print(f"#L_form: {L_form}; R_form: {R_form}")
-        ## L's rank is one-segment smaller than R's
-        if L_size == R_size and L_rank + 1 == R_rank:
-            return check_instantiation (R, L, check = check)
-        ## when L is one-segment longer than R
-        #elif L_size - 1 == R_size and L_rank == R_rank: # goes awry, but why?
-        #elif (L_size + 1 == R_size) and len(L_substance) == len(R_substance):
-        elif (L_size - 1 == R_size) and len(L_substance) == len(R_substance):
-            if L_substance == R_substance:
-                ## risks overgeneration ...
-                return True
-                if check:
-                    print(f"L_substance: {L_substance}")
-                    print(f"R_substance: {R_substance}")
-            else:
-                return False
-        ## other cases
-        else:
-            return False
-
-    ##
-    def merge_patterns (self, other, reduction: bool = True, check: bool = False):
-        "take a pair of Patterns, merges one Pattern with another"
-        if check:
-            print(f"#=====================")
-            print(f"#self:  {self}")
-            print(f"#other: {other}")
-        ##
-        gap_mark       = self.gap_mark
-        boundary_mark  = self.boundary_mark
-        ##
-        if len(self) != len(other):
-            return None
-        ## prevents void operation
-        if self.form == other.form and self.content == other.content:
-            return self
-        ## main
-        form_pairs     = list(zip (self.form, other.form))
-        content_pairs  = list(zip (self.content, other.content))
-        if check:
-            print(f"#form_pairs :{form_pairs}")
-            print(f"#content_pairs: {content_pairs}")#
-        ##
-        new_paired = merge_patterns_with_equaly_size (form_pairs, content_pairs, gap_mark, boundary_mark, check = check)
-        if check:
-            print(f"#new_paired: {new_paired}")
-        ##
-        new = Pattern([], gap_mark = gap_mark)
-        new.paired = new_paired
-        new.update_form()
-        new.update_content()
-        #yield new # fails
-        return new
 
 ### end of file
