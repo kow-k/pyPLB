@@ -11,11 +11,13 @@ profiled/
 !sources/
 !pyPLB/
 pyPLB/__pycache__/
-pyPLB/x__main__.py
-pyPLB/x_pattern_lattice.py
-pyPLB/x_pattern.py
-pyPLB/x_utils.py
-
+pyPLB/*.py
+!pyPLB/__init__.py
+!pyPLB/__main__.py
+!pyPLB/pattern_lattice.py
+!pyPLB/pattern_link.py
+!pyPLB/pattern.py
+!pyPLB/utils.py
 
 #
 .DS_Store
