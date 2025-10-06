@@ -40,7 +40,7 @@ def test_gapping_completion (P: list, gap_mark: str, check: bool = False) -> boo
     return False
 
 ##
-def check_for_isa_under_size_equality (r_form, l_form, gap_mark: str, tracer: str = '~', check: bool = False) -> bool:
+def isa_under_size_equality (r_form, l_form, gap_mark: str, tracer: str = '~', check: bool = False) -> bool:
     """
     checks if r_form instantiates l_form under size equality, returning True or False
     """
@@ -533,61 +533,6 @@ class Pattern:
         result.update_content() # Don't forget to add () at the end!
         return result
 
-    ##
-    def instantiates_or_not (self, other, check: bool = False) -> bool:
-        """
-        tests if pattern R instantiates another L, i.e., instance(R, L) == part_of(L, R)
-        """
-        gap_mark        = self.gap_mark
-        boundary_mark   = self.boundary_mark
-        R, L = self, other
-        R_form, L_form = self.form, other.form
-        R_size, L_size = len(R.form), len(L.form)
-        R_rank, L_rank  = R.get_rank(), L.get_rank()
-        R_content       = self.content
-        L_content       = other.content
-        R_content_size  = len(R_content)
-        L_content_size  = len(L_content)
-        R_substance     = R.get_substance()
-        L_substance     = L.get_substance()
-
-        if check:
-            print(f"===================")
-            print(f"#L: {L}; R: {R}")
-            print(f"#L_size: {L_size}; R_size: {R_size}")
-            print(f"#L_rank: {L_rank}; L_rank: {R_rank}")
-            print(f"#L_form: {L_form}; R_form: {R_form}")
-
-        ## L and R have a size difference more than 1
-        if abs(L_size - R_size) > 1:
-            return False
-        ## L and R have the same size and L's rank is one-segment smaller than R's
-        elif L_size == R_size and L_rank == R_rank - 1:
-            return check_for_isa_under_size_equality (R_form, L_form, gap_mark = gap_mark, check = check)
-        ## when L is one-segment longer than R
-        ## This case needs revision to handle generalizeation level 2
-        #elif (L_size == R_size + 1) and len(L_substance) == len(R_substance):
-        elif (L_size == R_size + 1):
-            if L_gap_size == R_gap_size + 1:
-                if L_substance == R_substance:
-                    ## risks overgeneration ...
-                    if check:
-                        print(f"L_substance: {L_substance}")
-                        print(f"R_substance: {R_substance}")
-                    return True
-                else:
-                    if check:
-                        print(f"L_substance: {L_substance}")
-                        print(f"R_substance: {R_substance}")
-                    return False
-            else:
-                if check:
-                    print(f"L_substance: {L_substance}")
-                    print(f"R_substance: {R_substance}")
-                return False
-        ## other cases
-        else:
-            return False
 
     ##
     def merges_with (self, other, reduction: bool = True, check: bool = False):
@@ -677,5 +622,132 @@ class Pattern:
 
         ## return result
         return sorted (R)
+
+    ##
+    def instantiates_or_not_rev (self, other, check: bool = False) -> bool:
+        """
+        tests if pattern R instantiates another L, i.e., instance(R, L) == part_of(L, R)
+        """
+        gap_mark        = self.gap_mark
+        boundary_mark   = self.boundary_mark
+
+        R, L = self, other
+        R_form, L_form  = self.form, other.form
+        R_size, L_size  = len(R.form), len(L.form)
+        R_rank, L_rank  = R.get_rank(), L.get_rank()
+        R_gap_size, L_gap_size  = R.form.get_gap_size(), L.form.get_gap_size()
+        R_content       = self.content
+        L_content       = other.content
+        R_content_size  = len(R_content)
+        L_content_size  = len(L_content)
+        R_substance     = R.get_substance()
+        L_substance     = L.get_substance()
+
+        if check:
+            print(f"===================")
+            print(f"#L: {L}; R: {R}")
+            print(f"#L_size: {L_size}; R_size: {R_size}")
+            print(f"#L_rank: {L_rank}; L_rank: {R_rank}")
+            print(f"#L_form: {L_form}; R_form: {R_form}")
+
+        ##
+        size_diff = L_size - R_size
+        gap_diff  = L_gap_size - R_gap_size
+        rank_diff = R_rank - L_rank
+
+        ## L and R have a size difference more than 1
+        if abs(size_diff) > 1:
+            return False
+
+        ## L and R have the same size and L's rank is one-segment smaller than R's
+        elif size_diff == 0:
+            return isa_under_size_equality (R_form, L_form, gap_mark = gap_mark, check = check)
+
+        ## when L is one-segment longer than R
+        ## This case needs revision to handle generalizeation level 2
+        elif size_diff == 1 and rank_diff == 1:
+            if L_gap_size == R_gap_size + 1:
+                if L_substance == R_substance:
+                    ## risks overgeneration ...
+                    if check:
+                        print(f"L_substance: {L_substance}")
+                        print(f"R_substance: {R_substance}")
+                    return True
+                else:
+                    if check:
+                        print(f"L_substance: {L_substance}")
+                        print(f"R_substance: {R_substance}")
+                    return False
+            else:
+                if check:
+                    print(f"L_substance: {L_substance}")
+                    print(f"R_substance: {R_substance}")
+                return False
+
+        ## other cases
+        else:
+            return False
+
+    ##
+    def instantiates_or_not_prev (self, other, check: bool = False) -> bool:
+        """
+        tests if pattern R instantiates another L, i.e., instance(R, L) == part_of(L, R)
+        """
+        gap_mark        = self.gap_mark
+        boundary_mark   = self.boundary_mark
+        R, L = self, other
+        R_form, L_form = self.form, other.form
+        R_size, L_size = len(R.form), len(L.form)
+        R_rank, L_rank  = R.get_rank(), L.get_rank()
+        R_content       = self.content
+        L_content       = other.content
+        R_content_size  = len(R_content)
+        L_content_size  = len(L_content)
+        R_substance     = R.get_substance()
+        L_substance     = L.get_substance()
+
+        if check:
+            print(f"===================")
+            print(f"#L: {L}; R: {R}")
+            print(f"#L_size: {L_size}; R_size: {R_size}")
+            print(f"#L_rank: {L_rank}; L_rank: {R_rank}")
+            print(f"#L_form: {L_form}; R_form: {R_form}")
+
+        ##
+        size_diff = L_size - R_size
+        ## L and R have a size difference more than 1
+        if abs(size_diff) > 1:
+            return False
+        ## L and R have the same size and L's rank is one-segment smaller than R's
+        elif L_size == R_size and L_rank == R_rank - 1:
+        #elif L_size == R_size: # fails
+            return isa_under_size_equality (R_form, L_form, gap_mark = gap_mark, check = check)
+        ## when L is one-segment longer than R
+        ## This case needs revision to handle generalizeation level 2
+        #elif (L_size == R_size + 1) and len(L_substance) == len(R_substance):
+        elif (L_size == R_size + 1):
+            if L_gap_size == R_gap_size + 1:
+                if L_substance == R_substance:
+                    ## risks overgeneration ...
+                    if check:
+                        print(f"L_substance: {L_substance}")
+                        print(f"R_substance: {R_substance}")
+                    return True
+                else:
+                    if check:
+                        print(f"L_substance: {L_substance}")
+                        print(f"R_substance: {R_substance}")
+                    return False
+            else:
+                if check:
+                    print(f"L_substance: {L_substance}")
+                    print(f"R_substance: {R_substance}")
+                return False
+        ## other cases
+        else:
+            return False
+
+    ## alias
+    instantiates_or_not = instantiates_or_not_prev
 
 ### end of file

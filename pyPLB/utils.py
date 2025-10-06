@@ -161,7 +161,21 @@ def pattern_is_None_free (p: list) -> bool:
 #    pass
 
 ##
-def insert_gaps (input_list, gap_mark: str = "_"):
+def add_gaps_around (input_list, gap_mark: str  = "_") -> list:
+    """
+    Add underscores at the beginning and/or end of the list.
+    For [a,b,c] => [[_,a,b,c], [a,b,c,_], [_,a,b,c,_]]
+    """
+    result = [
+        [gap_mark] + input_list,           # Add _ at the beginning
+        input_list + [gap_mark],           # Add _ at the end
+        [gap_mark] + input_list + [gap_mark]    # Add _ at both beginning and end
+    ]
+    #
+    return result
+
+##
+def insert_gaps (input_list, gap_mark: str = "_") -> list:
     """
     Generate all non-empty subsets of possible underscore insertion positions
     """
@@ -188,27 +202,15 @@ def insert_gaps (input_list, gap_mark: str = "_"):
     return result
 
 ##
-def add_gaps_around (input_list, gap_mark: str  = "_") -> list:
-    """
-    Add underscores at the beginning and/or end of the list.
-    For [a,b,c] => [[_,a,b,c], [a,b,c,_], [_,a,b,c,_]]
-    """
-    result = [
-        [gap_mark] + input_list,           # Add _ at the beginning
-        input_list + [gap_mark],           # Add _ at the end
-        [gap_mark] + input_list + [gap_mark]    # Add _ at both beginning and end
-    ]
-    #
-    return result
-
-def create_displaced_versions (L: list, tracer: str, check: bool = False):
+def create_displaced_versions (L: list, tracer: str, mask_tracer: bool = True, aggressive: bool = False, check: bool = False) -> list:
     """
     Displace each element x in L with every other element y in L if L doesn't contain displaced elements, generating new lists.
     """
 
     ## check if any x is already negated
-    if any([ x for x in L if x[0] == tracer ]):
-        return [] # if any x is already negated, return empty list
+    if not aggressive:
+        if any([ x for x in L if x[0] == tracer or x == gap_mark ]):
+            return [] # if any x is already negated, return empty list
     ##
     R = []
     insertion_points = range(len(L))
@@ -218,10 +220,16 @@ def create_displaced_versions (L: list, tracer: str, check: bool = False):
             continue # skip if x is already negated
         M = L.copy()
         N = L.copy()
-        M[i] = f"{tracer}{x}" # replace x with ~x
-        N[i] = f"{tracer}{x}" # replace x with ~x
+        ## define trace
+        if mask_tracer:
+            trace = f"{gap_mark}" # replace x with gap_mark
+        else:
+            trace = f"{tracer}{x}" # replace x with ~x
+        M[i] = f"{trace}"
+        N[i] = f"{trace}"
         if check:
             print(f"M: {M}")
+
         ## left-preposing
         for j in range(len(M)):
             if i < j:

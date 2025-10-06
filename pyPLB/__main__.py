@@ -84,7 +84,7 @@ parser.add_argument('-m', '--max_size', type=int, default=None)
 parser.add_argument('-n', '--sample_n', type=int, default=None)
 parser.add_argument('-A', '--auto_figsizing', action='store_true', default=False)
 parser.add_argument('-L', '--layout', type= str, default= 'Multi_partite')
-parser.add_argument('-K', '--key_for_MPG', type=str, default='rank')
+parser.add_argument('-K', '--key_for_MPG', type=str, default='gap_size')
 #parser.add_argument('-S', '--sample_id', type= int, default= 1)
 parser.add_argument('-S', '--build_lattice_stepwise', action='store_true', default=False)
 parser.add_argument('-I', '--draw_individual_lattices', action='store_true', default=False)
@@ -215,7 +215,6 @@ def parse_input (file, comment_escapes: list, field_sep: str, uncapitalize: bool
     ##
     return data
 
-## main
 ## set font for Japanese character display
 import matplotlib
 if use_multibyte_chars:
@@ -487,5 +486,6 @@ else:
 
 ## conclude
 print(f"##built from {len(S)} sources: {[ as_label(x, sep = ',') for x in S ]}")
+
 
 ### end of file

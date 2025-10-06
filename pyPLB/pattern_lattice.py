@@ -18,28 +18,40 @@ except ImportError:
 make_links_safely = True # False previously
 debugged  = True
 
-### Functions
-def add_edge(E, node1, node2):
-    edge = (node1, node2)
-    if edge and not edge in E:
-        E.append (edge)
 
-##
-def append_carefully (L, item, value, min_value):
+### Data
+from dataclasses import dataclass
+
+@dataclass
+class NodeAttrs:
+    rank: int
+    size: int
+    gap_size: int
+    moment: float
+    zscore: float
+
+### Functions
+
+def add_node_with_attrs (node_name, attrs: NodeAttrs, Gx, check: bool = False):
     """
-    conditional append of item to list L
+    a routine for adding a node with attributes to Gx
     """
-    if value >= min_value:
-        L.append (item)
-        return L
+    if check:
+        print(f"#adding node: {node_name}")
+    ## to use dataclass
+    Gx.add_node (node_name, **vars(attrs))
 
 ##
 def as_label (T: (list, tuple), sep: str = "", add_sep_at_end: bool = False) -> str:
-    "convert a given tuple to a string by concatenating its elements"
+    """
+    convert a given tuple to a string by concatenating its elements
+    """
+
     result = ""
     result = sep.join(T)
     if add_sep_at_end:
         result = result + sep
+    ##
     return result
 
 ##
@@ -460,7 +472,7 @@ def gen_zscores_from_targets (M, gap_mark: str, tracer: str, use_robust_zscore: 
     ##
     #return M
 
-def gen_G_with_zscore_filtering (N, zscores, zscore_lb, zscore_ub, use_directed_graph: bool, check: bool = False):
+def gen_G (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_directed_graph: bool, test: bool = True, check: bool = False):
     """
     generate a NetworkX graph G from a given nodes N
     """
@@ -478,32 +490,40 @@ def gen_G_with_zscore_filtering (N, zscores, zscore_lb, zscore_ub, use_directed_
     ## main
     instances = [ ] # register instances
     pruned_node_count = 0
+
     for rank, links in sorted (N, reverse = False): # be careful on list up direction
         assert rank >= 0
         for link in links:
             if check:
                 print(f"#adding link at rank {rank}: {link}")
+
             ## get variables
             gap_mark      = link.gap_mark
+
             ## get patterns for node1 and node2
             node1_p = link.left
             node2_p = link.right
+
             ## get sizes for node1 and node2
             node1_size = node1_p.get_size()
             node2_size = node2_p.get_size()
-            ## get ranks for node1 and node2
+
+            ## set ranks for node1 and node2
             #node1_rank = node1_p.rank # harmful
             #node2_rank = node2_p.rank # harmful
             node1_rank = node1_p.get_rank()
             node2_rank = node2_p.get_rank()
-            ## get gap sizes for node1 and node2
+
+            ## set gap sizes for node1 and node2
             #node1_gap_size = node1_p.gap_size # harmful
             #node2_gap_size = node2_p.gap_size # harmful
             node1_gap_size = node1_p.get_gap_size()
             node2_gap_size = node2_p.get_gap_size()
-            ## calculate moment
+
+            ## set moment
             node1_moment = math.log(node1_size + 2)/math.log(node1_rank + 2)
             node2_moment = math.log(node2_size + 2)/math.log(node2_rank + 2)
+
             ## node1, node2 are node names and need to be tuples
             node1, node2  = map (tuple, link.form_paired)
 
@@ -513,7 +533,7 @@ def gen_G_with_zscore_filtering (N, zscores, zscore_lb, zscore_ub, use_directed_
             if node2_gap_size == 0 and node2 not in instances:
                 instances.append (node2)
 
-            ## assign z-scores
+            ## get z-scores for node1 and node2
             try:
                 node1_zscore = zscores[node1]
             except KeyError:
@@ -523,86 +543,95 @@ def gen_G_with_zscore_filtering (N, zscores, zscore_lb, zscore_ub, use_directed_
             except KeyError:
                 node2_zscore = 0
 
+            ## Create node attributes
+            node1_attrs = NodeAttrs (node1_rank, node1_size, node1_gap_size, node1_moment, node1_zscore)
+            node2_attrs = NodeAttrs (node2_rank, node2_size, node2_gap_size, node2_moment, node2_zscore)
+
             ## add nodes and edges to G
             ## case 1: either lowerbound nor upperbound is applied
             if zscore_ub is None and zscore_lb is None:
                 ## node1
                 if not node1 in G.nodes():
-                    G.add_node(node1, rank = node1_rank, size = node1_size, gap_size = node1_gap_size, moment = node1_moment, zscore = node1_zscore)
+                    add_node_with_attrs(node1, node1_attrs, G)
                 else:
-                    print(f"ignored node {node1} with z-score {node1_zscore: 0.4f}")
+                    print(f"#ignored existing node {node1}")
                 ## node2
                 if not node2 in G.nodes():
-                    G.add_node(node2, rank = node2_rank, size = node2_size, gap_size = node2_gap_size, moment = node2_moment, zscore = node2_zscore)
+                    add_node_with_attrs(node2, node2_attrs, G)
                 else:
-                    print(f"ignored node {node2} with z-score {node2_zscore: 0.4f}")
-                ## process edges
-                #add_edge (E, node1, node2)
-                G.add_edge(node1, node2)
+                    print(f"#ignored existing node {node2}")
 
             ## when lowerbound and upperbound z-score pruning is applied
             ## case 2: both lowerbound and upperbound
             elif zscore_ub is not None and zscore_lb is not None:
                 ## node1
-                if node1_zscore >= zscore_lb and node1_zscore <= zscore_ub and not node1 in G.nodes():
-                    G.add_node(node1, rank = node1_rank, size = node1_size, gap_size = node1_gap_size, moment = node1_moment, zscore = node1_zscore)
+                if node1_zscore >= zscore_lb and node1_zscore <= zscore_ub:
+                    if not node1 in G.nodes():
+                        add_node_with_attrs (node1, node1_attrs, G)
+                    else:
+                        print(f"#ignored existing node {node1}")
                 else:
-                    print(f"pruned/ignored node {node1} with z-score {node1_zscore: 0.4f}")
+                    print(f"#pruned node {node1}")
                     pruned_node_count += 1
-
                 ## node2
-                if node2_zscore >= zscore_lb and node2_zscore <= zscore_ub and not node2 in G.nodes():
-                    G.add_node(node2, rank = node2_rank, size = node2_size, gap_size = node2_gap_size, moment = node2_moment, zscore = node2_zscore)
+                if node2_zscore >= zscore_lb and node2_zscore <= zscore_ub:
+                    if not node2 in G.nodes():
+                        add_node_with_attrs (node2, node2_attrs, G)
+                    else:
+                        print(f"#ignored exisiting node {node2}")
                 else:
-                    print(f"pruned/ignored node {node2} with z-score {node2_zscore: 0.4f}")
+                    print(f"#pruned node {node2}")
                     pruned_node_count += 1
-
-                ## process edges
-                #add_edge(E, node1, node2)
-                G.add_edge(node1, node2)
 
             ## case 3: lowerbound only
             elif not zscore_lb is None and zscore_ub is None: # z-score pruning applied
                 ## node1
-                if node1_zscore >= zscore_lb and node1_rank == rank and not node1 in G.nodes():
-                    G.add_node(node1, rank = node1_rank, size = node1_size, gap_size = node1_gap_size, moment = node1_moment, zscore = node1_zscore)
+                if node1_zscore >= zscore_lb and node1_rank == rank:
+                    if not node1 in G.nodes():
+                        add_node_with_attrs (node1, node1_attrs, G)
+                    else:
+                        print(f"#ignored exisiting node {node1}")
                 else:
-                    print(f"pruned/ignored node {node1} with z-score {node1_zscore: 0.4f}")
+                    print(f"#pruned node {node1}")
                     pruned_node_count += 1
-
                 ## node2
-                if node2_zscore >= zscore_lb and not node2 in G.nodes():
-                    G.add_node(node2, rank = node2_rank, size = node2_size, gap_size = node2_gap_size, moment = node2_moment, zscore = node2_zscore)
+                if node2_zscore >= zscore_lb:
+                    if not node2 in G.nodes():
+                        add_node_with_attrs (node2, node2_attrs, G)
+                    else:
+                        print(f"#ignored existing node {node2}")
                 else:
-                    print(f"pruned/ignored node {node2} with z-score {node2_zscore: 0.4f}")
+                    print(f"#pruned node {node2}")
                     pruned_node_count += 1
-
-                ## process edges
-                #add_edge (E, node1, node2)
-                G.add_edge(node1, node2)
 
             ## case 4: upperbound only
             elif not zscore_ub is None and zscore_lb is None:
                 ## node1
-                if node1_zscore <= zscore_ub and not node1 in G.nodes():
-                    G.add_node(node1, rank = node1_rank, size = node1_size, gap_size = node1_gap_size, moment = node1_moment, zscore = node1_zscore)
+                if node1_zscore <= zscore_ub:
+                    if not node1 in G.nodes():
+                        add_node_with_attrs (node1, node1_attrs, G)
+                    else:
+                        print(f"ignored existing node {node1}")
                 else:
-                    print(f"pruned/ignored node {node1} with z-score {node1_zscore: 0.4f}")
+                    print(f"pruned node {node1}")
                     pruned_node_count += 1
                 ## node2
-                if node2_zscore <= zscore_ub and not node2 in G.nodes():
-                    G.add_node(node2, rank = node2_rank, size = node2_size, gap_size = node2_gap_size, moment = node2_moment, zscore = node2_zscore)
+                if node2_zscore <= zscore_ub:
+                    if not node2 in G.nodes():
+                        add_node_with_attrs (node2, node2_attrs, G)
+                    else:
+                        print(f"ignored existing node {node2}")
                 else:
-                    print(f"pruned/ignored node {node2} with z-score {node2_zscore: 0.4f}")
+                    print(f"pruned node {node2}")
                     pruned_node_count += 1
-
-                ## process edges
-                #add_edge(E, node1, node2)
-                G.add_edge(node1, node2)
 
             ## non-existing case
             else:
                 raise ValueError("An undefined situation occurred")
+
+            ## add edge
+            if node1 and node2:
+                G.add_edge (node1, node2)
 
     ## post-process for z-score pruning
     print(f"#pruned/ignored {pruned_node_count} nodes")
@@ -611,133 +640,51 @@ def gen_G_with_zscore_filtering (N, zscores, zscore_lb, zscore_ub, use_directed_
     return G, instances, pruned_node_count
 
 ##
-def draw_graph (N: dict, layout: str, fig_size: tuple = None, node_size: int = None, label_size: int = None, label_sample_n: int = None, zscores: dict = None, use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, scale_factor: float = 3, font_name: str = None, generalized: bool = False, more_generalized: bool = False, use_directed_graph: bool = True, reverse_direction: bool = False, mark_instances: bool = True, gen_G_externally: bool = True, auto_figsizing: bool = False, key_for_MPG: str = 'rank', test: bool = False, check: bool = False) -> None:
+def get_node_color (node, zscore_dict, padding_val: float, use_robust_zscore: bool, check: bool = False):
     """
-    draw layered graph under multi-partite setting
+    generate a value for node color
     """
-
-    if check:
-        print(f"##N with {len(N)} keys")
-        for rank, links in N:
-            print(f"#rank {rank}:\n{links}")
-
-    import networkx as nx
-    import math
-    import matplotlib.pyplot as plt
-    from matplotlib import colormaps
-    #import seaborn as sns # dependency is removed on 2025/01/07
-
+    try:
+        zscore = zscore_dict[node]
+        if check:
+            print(f"#z_value: {z_value: 0.4f}")
+        zscore_normalized = normalize_zscore (zscore, use_robust_zscore = use_robust_zscore)
+        if check:
+            print(f"#zscore_normalized: {zscore_normalized: 0.4f}")
+        node_color = zscore_normalized + padding_val
+    except KeyError:
+        node_color = padding_val
     ##
-    if gen_G_externally:
-        G, instances, pruned_node_count = gen_G_with_zscore_filtering (N, zscores = zscores, zscore_lb = zscore_lb, zscore_ub = zscore_ub, use_directed_graph = use_directed_graph, check = check)
-    else:
-        if use_directed_graph:
-            G = nx.DiGraph()
-        else:
-            G = nx.Graph() # does not accept connectionstyle specification
+    return node_color
 
-        ## preparation
-        try:
-            rank_max = max(int(x[0]) for x in list(N))
-        except ValueError:
-            rank_max = 3
-
-        ## main
-        instances = [ ] # register instances
-        for rank, links in sorted (N, reverse = False): # be careful on list up direction
-            assert rank >= 0
-            for link in links:
-                if check:
-                    print(f"#adding link at rank {rank}: {link}")
-
-                ## get variables
-                gap_mark      = link.gap_mark
-                ## process nodes
-                node1_p = link.left
-                node2_p = link.right
-                tracer = node1_p.tracer
-                ## get ranks for nodes
-                #node1_rank = node1_p.rank # fails to work
-                #node2_rank = node2_p.rank # fails to work
-                node1_rank = node1_p.get_rank()
-                node2_rank = node2_p.get_rank()
-                ## get gap_sizes for nodes
-                node1_gap_size = node1_p.gap_size
-                node2_gap_size = node2_p.gap_size
-                ## node1, node2 are node names and need to be tuples
-                node1, node2  = map (tuple, link.form_paired)
-
-                ## register node for instances
-                if node1_gap_size == 0 and node1 not in instances:
-                    instances.append (node1)
-                if node2_gap_size == 0 and node2 not in instances:
-                    instances.append (node2)
-
-                ## obtain z-scores of node1 and node2
-                try:
-                    node1_zscore = zscores[node1]
-                except KeyError:
-                    node1_zscore = 0
-                try:
-                    node2_zscore = zscores[node2]
-                except KeyError:
-                    node2_zscore = 0
-
-                ## add nodes and edges
-                ## node1
-                if not node1 in G.nodes():
-                    G.add_node(node1, rank = node1_rank, zscore = node1_zscore)
-                    ## register instance node
-                    if node1_gap_size == 0 and node1 not in instances:
-                        instances.append (node1)
-                else:
-                    print(f"ignored node {node1} with z-score {node1_zscore: 0.4f}")
-                ## node2
-                if not node2 in G.nodes():
-                    G.add_node(node2, rank = node2_rank, zscore = node2_zscore)
-                    ## register instance node
-                    if node2_gap_size == 0 and not node2 in instances:
-                        instances.append (node2)
-                ## edge
-                if node1 and node2:
-                    edge = (node1, node2)
-                    if not edge in G.edges():
-                        G.add_edge (node1, node2)
+##
+def get_node_colors_at_once (G, zscores, instances, use_robust_zscore: bool, mark_instances: bool = False, check: bool = False):
 
     ## node color setting
     padding_val = 0
     if mark_instances:
-        padding_val = 0.25
-
-    ## color values
+        padding_val = 0.05
+    ##
     node_colors = []
-    for node in G:
+    for node in (G):
         ## process for mark_instances
         if node in instances:
-            node_colors.append (0)
+            #node_colors.append (0)
+            node_color = 0
         else:
-            try:
-                z_value = zscores[node]
-                if check:
-                    print(f"#z_value: {z_value: 0.4f}")
-                z_normalized = normalize_zscore (z_value, use_robust_zscore = use_robust_zscore)
-                if check:
-                    print(f"#z_normalized: {z_normalized: 0.4f}")
-                node_colors.append (z_normalized + padding_val)
-            except KeyError:
-                ## normalized value falls between 0 and 1.0
-                node_colors.append (0.33 + padding_val)
-                #node_colors.append (0 + padding_val)
+            node_color = get_node_color(node, zscores, padding_val = padding_val, use_robust_zscore = use_robust_zscore)
+        node_colors.append(node_color)
+    ##
+    return node_colors
 
-    ## relabeling nodes: this needs to come after color setting
-    new_labels = { x: as_label(x, sep = " ", add_sep_at_end = True) for x in G }
-    G = nx.relabel_nodes (G, new_labels, copy = False)
+##
+def set_node_positions (G, layout: str, scale_factor: float, key_for_MPG: str = 'gap_size'):
 
-    ## set positions
-    #if use_pyGraphviz:
-    #    nx.nx_agraph.view_pygraphviz(G, prog = 'fdp')
-    #else:
-    ## select layout
+    """
+    set node positions for drawing
+    """
+
+    import networkx as nx
     if layout in [ 'Multipartite', 'Multi_partite', 'multi_partite', 'M', 'MP', 'mp' ]:
         layout_name = "Multi-partite"
         ## scale parameter suddenly gets crucial on 2024/10/30
@@ -789,7 +736,41 @@ def draw_graph (N: dict, layout: str, fig_size: tuple = None, node_size: int = N
     else:
         print(f"Layout is unknown: Multi-partite (default) is used")
         layout_name = "Multi-partite"
-        positions   = nx.multipartite_layout (G, subset_key = "rank", scale = -1)
+        positions   = nx.multipartite_layout (G, subset_key = key_for_MPG, scale = -1)
+    ##
+    return layout_name, positions
+
+##
+def draw_graph (N: dict, layout: str, key_for_MPG: str = None, fig_size: tuple = None, node_size: int = None, label_size: int = None, label_sample_n: int = None, zscores: dict = None, use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, scale_factor: float = 3, font_name: str = None, generalized: bool = False, more_generalized: bool = False, use_directed_graph: bool = True, reverse_direction: bool = False, mark_instances: bool = True, auto_figsizing: bool = False, test: bool = False, check: bool = False) -> None:
+    """
+    draw a graph from a given network data
+    """
+
+    if check:
+        print(f"##N with {len(N)} keys")
+        for rank, links in N:
+            print(f"#rank {rank}:\n{links}")
+
+    ##
+    import networkx as nx
+    import math
+    import matplotlib.pyplot as plt
+    from matplotlib import colormaps
+    #import seaborn as sns # dependency is removed on 2025/01/07
+
+    ## generate G
+    G, instances, pruned_node_count = gen_G (N, zscores = zscores, zscore_lb = zscore_lb, zscore_ub = zscore_ub, use_robust_zscore = use_robust_zscore, use_directed_graph = use_directed_graph, check = check)
+
+    ## color values
+    node_colors = get_node_colors_at_once (G, zscores, instances, use_robust_zscore = use_robust_zscore, mark_instances = mark_instances)
+
+    ## relabeling nodes
+    ## this needs to come after color setting and before layout setting
+    new_labels = { x: as_label(x, sep = " ", add_sep_at_end = True) for x in G }
+    G = nx.relabel_nodes (G, new_labels, copy = False)
+
+    ## set layout and node positions
+    layout_name, positions = set_node_positions (G, layout, scale_factor = scale_factor, key_for_MPG = key_for_MPG)
 
     ### draw
     ## set connection
@@ -798,11 +779,6 @@ def draw_graph (N: dict, layout: str, fig_size: tuple = None, node_size: int = N
     else:
         connectionstyle = "arc"
 
-    ## set colormap
-    my_cmap = colormaps['coolwarm']
-    ## The following requires Seaborn and made obsolete
-    #my_cmap = sns.color_palette("coolwarm", 24, as_cmap = True) # Crucially, as_cmap
-
     ## set figure size
     n_items = len(instances)
     print(f"#n_items: {n_items}")
@@ -810,21 +786,21 @@ def draw_graph (N: dict, layout: str, fig_size: tuple = None, node_size: int = N
     print(f"#max_item_size: {max_item_size}")
     max_n_segs = max([ len(x) for x in instances ])
     print(f"#max_n_segs: {max_n_segs}")
-    if fig_size is None:
-        if auto_figsizing:
-            #graph_width   = max_item_size + 4 + round (9 * math.log(1 + n_items))
-            #graph_height  = 3 + round (9 * max_n_segs)
-            if generalized:
-                width_step = 2
-                height_step = 2
-            else:
-                width_step = 2
-                height_step = 2
-            graph_width   = max_item_size + 3 + round (width_step * math.log(1 + n_items))
-            graph_height  = 3 + round (height_step * max_n_segs)
-            fig_size = (graph_width, graph_height)
+
+    if fig_size is None and auto_figsizing:
+        #graph_width   = max_item_size + 4 + round (9 * math.log(1 + n_items))
+        #graph_height  = 3 + round (9 * max_n_segs)
+        if generalized:
+            width_step = 2
+            height_step = 2
         else:
-            fig_size = (10, 9) # default value
+            width_step = 2
+            height_step = 2
+        graph_width   = max_item_size + 3 + round (width_step * math.log(1 + n_items))
+        graph_height  = 3 + round (height_step * max_n_segs)
+        fig_size = (graph_width, graph_height)
+    else:
+        fig_size = (10, 9) # default value
     print(f"#fig_size: {fig_size}")
     plt.figure(figsize = fig_size)
 
@@ -833,7 +809,7 @@ def draw_graph (N: dict, layout: str, fig_size: tuple = None, node_size: int = N
         if auto_figsizing:
             label_size = 5 + round(3 * math.log(1 + n_items))
         else:
-            label_size = 6 # default value
+            label_size = 7 # default value
     print(f"#label_size: {label_size}")
 
     ## set node size
@@ -854,9 +830,13 @@ def draw_graph (N: dict, layout: str, fig_size: tuple = None, node_size: int = N
     if use_directed_graph and reverse_direction:
         G = G.reverse(copy = False) # offensive?
 
-    ## finally draw
+    ## set colormap
+    my_cmap = colormaps['coolwarm']
+    ## The following requires Seaborn and made obsolete
+    #my_cmap = sns.color_palette("coolwarm", 24, as_cmap = True) # Crucially, as_cmap
 
-    use_old = False
+    ## finally draw
+    use_old = True
     if use_old:
         nx.draw_networkx (G, positions,
             font_family = font_family,
@@ -873,7 +853,7 @@ def draw_graph (N: dict, layout: str, fig_size: tuple = None, node_size: int = N
         )
     else:
         ## Draw nodes
-        nx.draw_networkx_nodes(G, positions,
+        nx.draw_networkx_nodes (G, positions,
         node_size = node_size,
         node_color = node_colors,
         cmap = my_cmap
