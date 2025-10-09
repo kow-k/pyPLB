@@ -124,11 +124,6 @@ def count_items (L: list, item: str, check: bool = False) -> int:
     return len([ x for x in L if x == item ])
 
 ##
-def get_rank_of_list (L: (list, tuple), gap_mark: str):
-    "takes a list and returns the count of its element which are not equal to gap_mark"
-    return len([ x for x in L if len(x) > 0 and x != gap_mark ])
-
-##
 def attr_is_None_free (p, attr: str) -> bool:
     "tests if pattern p has no None in attribute"
     if p is None:
@@ -160,97 +155,5 @@ def pattern_is_None_free (p: list) -> bool:
 #    "exists for compatibility check"
 #    pass
 
-##
-def add_gaps_around (input_list, gap_mark: str  = "_") -> list:
-    """
-    Add underscores at the beginning and/or end of the list.
-    For [a,b,c] => [[_,a,b,c], [a,b,c,_], [_,a,b,c,_]]
-    """
-    result = [
-        [gap_mark] + input_list,           # Add _ at the beginning
-        input_list + [gap_mark],           # Add _ at the end
-        [gap_mark] + input_list + [gap_mark]    # Add _ at both beginning and end
-    ]
-    #
-    return result
-
-##
-def insert_gaps (input_list, gap_mark: str = "_") -> list:
-    """
-    Generate all non-empty subsets of possible underscore insertion positions
-    """
-    from itertools import combinations
-
-    n = len(input_list)
-    if n < 2:
-        return input_list
-
-    # All possible positions to insert gaps (between elements)
-    positions = list(range(1, n))
-
-    # Generate all non-empty subsets of positions
-    result = []
-    for r in range(1, len(positions) + 1):
-        for pos_combo in combinations(positions, r):
-            new_list = input_list[:]
-            # Insert gaps from right to left to maintain indices
-            for pos in reversed(pos_combo):
-                new_list = new_list[:pos] + [gap_mark] + new_list[pos:]
-            result.append(new_list)
-
-    ## Return result
-    return result
-
-##
-def create_displaced_versions (L: list, tracer: str, mask_tracer: bool = True, aggressive: bool = False, check: bool = False) -> list:
-    """
-    Displace each element x in L with every other element y in L if L doesn't contain displaced elements, generating new lists.
-    """
-
-    ## check if any x is already negated
-    if not aggressive:
-        if any([ x for x in L if x[0] == tracer or x == gap_mark ]):
-            return [] # if any x is already negated, return empty list
-    ##
-    R = []
-    insertion_points = range(len(L))
-    for i in insertion_points:
-        x = L[i]
-        if x[0] == tracer:
-            continue # skip if x is already negated
-        M = L.copy()
-        N = L.copy()
-        ## define trace
-        if mask_tracer:
-            trace = f"{gap_mark}" # replace x with gap_mark
-        else:
-            trace = f"{tracer}{x}" # replace x with ~x
-        M[i] = f"{trace}"
-        N[i] = f"{trace}"
-        if check:
-            print(f"M: {M}")
-
-        ## left-preposing
-        for j in range(len(M)):
-            if i < j:
-                A, B = M[:j+1], M[j+1:] # Crucially, j+1 here
-                if check:
-                    print(f"i: {i}, j: {j}; t: {x}, A: {A}, B: {B}")
-                r = A + [x] + B
-                if check:
-                    print(f"r: {r}")
-                R.append(r)
-        ## right-postposing
-        for j in range(len(N)):
-            if j < i:
-                A, B = N[:j], N[j:]
-                if check:
-                    print(f"i: {i}, j: {j}; t: {x}, A: {A}, B: {B}")
-                r = A + [x] + B
-                if check:
-                    print(f"r: {r}")
-                R.append(r)
-    ##
-    return R
 
 ### end of file

@@ -24,9 +24,9 @@ from dataclasses import dataclass
 
 @dataclass
 class NodeAttrs:
-    rank: int
     size: int
     gap_size: int
+    rank: int
     moment: float
     zscore: float
 
@@ -55,7 +55,44 @@ def as_label (T: (list, tuple), sep: str = "", add_sep_at_end: bool = False) -> 
     return result
 
 ##
-def classify_pairs (r: list, l: list, check: bool = False) -> list:
+def register_pairs (r: list, l: list, check: bool = False) -> list:
+    '''
+    tests if a given pair is in IS-A relation and returns classification result as a list of pairs
+    '''
+    gap_mark = r.gap_mark
+    tracer   = r.tracer
+    r_form, l_form = r.form, l.form
+    r_size, l_size = len (r_form), len (l_form)
+    r_rank = get_rank_of_list (r_form, gap_mark)
+    l_rank = get_rank_of_list (l_form, gap_mark)
+    ##
+    sub_pairs = []
+    seen      = []
+
+    ## helper function
+    def register_pair (p, sub_pairs = sub_pairs, seen = seen):
+        if len (p) > 0 and not p in sub_pairs:
+            sub_pairs.append (p)
+        if len (p) > 0 and not p in seen:
+            seen.append (p)
+
+    ##
+    size_diff = l_size - r_size
+
+    if size_diff == 0:
+        if isa_under_size_equality(r_form, l_form, gap_mark = gap_mark, tracer = tracer, check = check):
+            register_pair((l, r))
+    elif size_diff == 1:
+        if isa_under_size_difference(r_form, l_form, gap_mark = gap_mark, tracer = tracer, check = check):
+            register_pair((l, r))
+    else:
+        pass
+
+    ## return result
+    return sub_pairs
+
+##
+def register_pairs_old (r: list, l: list, check: bool = False) -> list:
     '''
     tests if a given pair is in IS-A relation and returns classification result as a list of pairs
     '''
@@ -67,18 +104,22 @@ def classify_pairs (r: list, l: list, check: bool = False) -> list:
     ##
     sub_pairs = []
     seen      = []
+
+    ## helper function
     def register_pair (p, sub_pairs = sub_pairs, seen = seen):
         if len (p) > 0 and not p in sub_pairs:
             sub_pairs.append (p)
         if len (p) > 0 and not p in seen:
             seen.append (p)
+
     ##
-    if abs (l_size - r_size) > 1:
+    size_diff = l_size - r_size
+    if abs (size_diff) > 1:
         if check:
             print(f"#is-a:F0; {l.form} ~~ {r.form}")
         return None
     ##
-    elif l_size == r_size + 1:
+    elif size_diff == 1: #l_size == r_size + 1:
         if l_form[:-1] == r_form and l_form[-1] == gap_mark:
             if check:
                 print(f"#is-a:T1a; {l.form} -> {r.form}")
@@ -92,7 +133,7 @@ def classify_pairs (r: list, l: list, check: bool = False) -> list:
                 print(f"#is-a:F1; {l.form} -> {r.form}")
             return None
     ##
-    elif l_size == r_size:
+    elif size_diff == 0: # l_size == r_size:
         if l_form == r_form:
             if check:
                 print(f"#is-a:F2; {l.form} ~~ {r.form}")
@@ -107,7 +148,8 @@ def classify_pairs (r: list, l: list, check: bool = False) -> list:
                     print(f"#is-a:F3; {l.form} ~~ {r.form}")
                 return None
         #elif check_for_instantiation (r, l, check = False):
-        elif r.instantiates_or_not (l, check = False):
+        #elif r.instantiates_or_not (l, check = False):
+        elif l.subsumes_or_not (r, check = False):
             if check:
                 print(f"#is-a:T2; {l.form} -> {r.form}")
             register_pair ((l, r))
@@ -180,7 +222,8 @@ def classify_relations (R, L, check: bool = False):
                             print(f"#is-a:F3; {l.form} ~~ {r.form}")
                         continue
                 #elif check_for_instantiation (r, l, check = False):
-                elif r.instantiates_or_not (l, check = False):
+                #elif r.instantiates_or_not (l, check = False):
+                elif l.subsumes_or_not (r, check = False):
                     if check:
                         print(f"#is-a:T2; {l.form} -> {r.form}")
                     register_link (PatternLink ((l, r)))
@@ -232,7 +275,7 @@ def classify_relations_mp2 (R, L, gap_mark: str, check: bool = False):
     import os
     import multiprocess as mp
     with mp.Pool(max(os.cpu_count(), 1)) as pool:
-        sub_pairs = pool.starmap (classify_pairs, product (R2, L2)) # seems to work
+        sub_pairs = pool.starmap (register_pairs, product (R2, L2)) # seems to work
     ##
     return [ PatternLink (*p) for p in sub_pairs if p is not None and len(p) > 0 ] # Crucially, len(p) > 0
 
@@ -504,15 +547,15 @@ def gen_G (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_direct
             node1_p = link.left
             node2_p = link.right
 
-            ## get sizes for node1 and node2
-            node1_size = node1_p.get_size()
-            node2_size = node2_p.get_size()
-
             ## set ranks for node1 and node2
             #node1_rank = node1_p.rank # harmful
             #node2_rank = node2_p.rank # harmful
             node1_rank = node1_p.get_rank()
             node2_rank = node2_p.get_rank()
+
+            ## get sizes for node1 and node2
+            node1_size = node1_p.get_size()
+            node2_size = node2_p.get_size()
 
             ## set gap sizes for node1 and node2
             #node1_gap_size = node1_p.gap_size # harmful
@@ -527,12 +570,6 @@ def gen_G (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_direct
             ## node1, node2 are node names and need to be tuples
             node1, node2  = map (tuple, link.form_paired)
 
-            ## register node for instances
-            if node1_gap_size == 0 and node1 not in instances:
-                instances.append (node1)
-            if node2_gap_size == 0 and node2 not in instances:
-                instances.append (node2)
-
             ## get z-scores for node1 and node2
             try:
                 node1_zscore = zscores[node1]
@@ -544,26 +581,32 @@ def gen_G (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_direct
                 node2_zscore = 0
 
             ## Create node attributes
-            node1_attrs = NodeAttrs (node1_rank, node1_size, node1_gap_size, node1_moment, node1_zscore)
-            node2_attrs = NodeAttrs (node2_rank, node2_size, node2_gap_size, node2_moment, node2_zscore)
+            node1_attrs = NodeAttrs (node1_size, node1_gap_size, node1_rank, node1_moment, node1_zscore)
+            node2_attrs = NodeAttrs (node2_size, node2_gap_size, node2_rank, node2_moment, node2_zscore)
+
+            ## register node for instances
+            if node1_gap_size == 0 and node1 not in instances:
+                instances.append (node1)
+            if node2_gap_size == 0 and node2 not in instances:
+                instances.append (node2)
 
             ## add nodes and edges to G
             ## case 1: either lowerbound nor upperbound is applied
             if zscore_ub is None and zscore_lb is None:
                 ## node1
                 if not node1 in G.nodes():
-                    add_node_with_attrs(node1, node1_attrs, G)
+                    add_node_with_attrs (node1, node1_attrs, G)
                 else:
                     print(f"#ignored existing node {node1}")
                 ## node2
                 if not node2 in G.nodes():
-                    add_node_with_attrs(node2, node2_attrs, G)
+                    add_node_with_attrs (node2, node2_attrs, G)
                 else:
                     print(f"#ignored existing node {node2}")
 
             ## when lowerbound and upperbound z-score pruning is applied
             ## case 2: both lowerbound and upperbound
-            elif zscore_ub is not None and zscore_lb is not None:
+            elif zscore_lb is not None and zscore_ub is not None:
                 ## node1
                 if node1_zscore >= zscore_lb and node1_zscore <= zscore_ub:
                     if not node1 in G.nodes():
@@ -584,9 +627,9 @@ def gen_G (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_direct
                     pruned_node_count += 1
 
             ## case 3: lowerbound only
-            elif not zscore_lb is None and zscore_ub is None: # z-score pruning applied
+            elif zscore_lb is not None and zscore_ub is None: # z-score pruning applied
                 ## node1
-                if node1_zscore >= zscore_lb and node1_rank == rank:
+                if node1_zscore >= zscore_lb:
                     if not node1 in G.nodes():
                         add_node_with_attrs (node1, node1_attrs, G)
                     else:
@@ -605,7 +648,7 @@ def gen_G (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_direct
                     pruned_node_count += 1
 
             ## case 4: upperbound only
-            elif not zscore_ub is None and zscore_lb is None:
+            elif zscore_lb is None and zscore_ub is not None:
                 ## node1
                 if node1_zscore <= zscore_ub:
                     if not node1 in G.nodes():
@@ -630,8 +673,17 @@ def gen_G (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_direct
                 raise ValueError("An undefined situation occurred")
 
             ## add edge
-            if node1 and node2:
+            #if node1 and node2:
+            if node1 in G.nodes() and node2 in G.nodes():
                 G.add_edge (node1, node2)
+            else:
+                if check:
+                    if node1 not in G.nodes():
+                        print(f"#skipped edge: node1 {node1} was pruned")
+                    if node2 not in G.nodes():
+                        print(f"#skipped edge: node2 {node2} was pruned")
+    ##
+    #assert len(instances) > 0 # harmful
 
     ## post-process for z-score pruning
     print(f"#pruned/ignored {pruned_node_count} nodes")
@@ -662,15 +714,17 @@ def get_node_colors_at_once (G, zscores, instances, use_robust_zscore: bool, mar
 
     ## node color setting
     padding_val = 0
-    if mark_instances:
-        padding_val = 0.05
+    #if mark_instances:
+    #    padding_val = 0.1
     ##
     node_colors = []
     for node in (G):
         ## process for mark_instances
         if node in instances:
-            #node_colors.append (0)
-            node_color = 0
+            if mark_instances:
+                node_color = - 1.0
+            else:
+                node_color = 0
         else:
             node_color = get_node_color(node, zscores, padding_val = padding_val, use_robust_zscore = use_robust_zscore)
         node_colors.append(node_color)
@@ -678,7 +732,7 @@ def get_node_colors_at_once (G, zscores, instances, use_robust_zscore: bool, mar
     return node_colors
 
 ##
-def set_node_positions (G, layout: str, scale_factor: float, key_for_MPG: str = 'gap_size'):
+def set_node_positions (G, layout: str, MPG_key: str, scale_factor: float):
 
     """
     set node positions for drawing
@@ -688,9 +742,9 @@ def set_node_positions (G, layout: str, scale_factor: float, key_for_MPG: str = 
     if layout in [ 'Multipartite', 'Multi_partite', 'multi_partite', 'M', 'MP', 'mp' ]:
         layout_name = "Multi-partite"
         ## scale parameter suddenly gets crucial on 2024/10/30
-        positions   = nx.multipartite_layout (G, subset_key = key_for_MPG, scale = -1)
-        ## flip x-coordinates
-        if key_for_MPG in ['rank']:
+        positions   = nx.multipartite_layout (G, subset_key = MPG_key, scale = -1)
+        ## flip x-coordinates when rank is used for MPG_key
+        if MPG_key in [ 'rank' ]:
             positions = { node: (-x, y) for node, (x, y) in positions.items() }
     ##
     elif layout in [ 'Graphviz', 'graphviz', 'G' ] :
@@ -734,14 +788,17 @@ def set_node_positions (G, layout: str, scale_factor: float, key_for_MPG: str = 
         positions   = nx.planar_layout(G, scale = scale_factor, dim = 2)
     ##
     else:
-        print(f"Layout is unknown: Multi-partite (default) is used")
+        print(f"Unknown layout: Multi-partite (default) is used")
         layout_name = "Multi-partite"
-        positions   = nx.multipartite_layout (G, subset_key = key_for_MPG, scale = -1)
+        positions   = nx.multipartite_layout (G, subset_key = MPG_key, scale = -1)
+        ##
+        if MPG_key in [ 'rank' ]:
+            positions = { node: (-x, y) for node, (x, y) in positions.items() }
     ##
     return layout_name, positions
 
 ##
-def draw_graph (N: dict, layout: str, key_for_MPG: str = None, fig_size: tuple = None, node_size: int = None, label_size: int = None, label_sample_n: int = None, zscores: dict = None, use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, scale_factor: float = 3, font_name: str = None, generalized: bool = False, more_generalized: bool = False, use_directed_graph: bool = True, reverse_direction: bool = False, mark_instances: bool = True, auto_figsizing: bool = False, test: bool = False, check: bool = False) -> None:
+def draw_graph (N: dict, layout: str, MPG_key: str = None, fig_size: tuple = (11, 9), node_size: int = 8, label_size: int = 8, label_sample_n: int = None, zscores: dict = None, use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generalized: bool = False, more_generalized: bool = False, use_directed_graph: bool = True, reverse_direction: bool = False, auto_figsizing: bool = False, font_name: str = None, test: bool = False, check: bool = False) -> None:
     """
     draw a graph from a given network data
     """
@@ -761,18 +818,28 @@ def draw_graph (N: dict, layout: str, key_for_MPG: str = None, fig_size: tuple =
     ## generate G
     G, instances, pruned_node_count = gen_G (N, zscores = zscores, zscore_lb = zscore_lb, zscore_ub = zscore_ub, use_robust_zscore = use_robust_zscore, use_directed_graph = use_directed_graph, check = check)
 
+    ## define MPG_key_count_max and MPG_group_size
+    MPG_keys = nx.get_node_attributes(G, MPG_key)
+    if len(MPG_keys) > 0:
+        import collections
+        MPG_key_counts = collections.defaultdict(int)
+        for k, v in MPG_keys.items():
+            MPG_key_counts[v] += 1
+        if check:
+            print(f"#MPG_key_counts: {MPG_key_counts}")
+        MPG_key_count_max = max(MPG_key_counts.values())
+        MPG_group_size = len(MPG_key_counts.keys())
+
     ## color values
     node_colors = get_node_colors_at_once (G, zscores, instances, use_robust_zscore = use_robust_zscore, mark_instances = mark_instances)
 
-    ## relabeling nodes
-    ## this needs to come after color setting and before layout setting
+    ## relabeling nodes: this needs to come after color setting and before layout setting
     new_labels = { x: as_label(x, sep = " ", add_sep_at_end = True) for x in G }
     G = nx.relabel_nodes (G, new_labels, copy = False)
 
     ## set layout and node positions
-    layout_name, positions = set_node_positions (G, layout, scale_factor = scale_factor, key_for_MPG = key_for_MPG)
+    layout_name, positions = set_node_positions (G, layout, MPG_key = MPG_key, scale_factor = scale_factor)
 
-    ### draw
     ## set connection
     if layout_name == "Multi-partite":
         connectionstyle = "arc, angleA=0, angleB=180, armA=50, armB=50, rad=15"
@@ -782,42 +849,41 @@ def draw_graph (N: dict, layout: str, key_for_MPG: str = None, fig_size: tuple =
     ## set figure size
     n_items = len(instances)
     print(f"#n_items: {n_items}")
-    max_item_size = max([ len(list(x)) for x in instances ])
-    print(f"#max_item_size: {max_item_size}")
-    max_n_segs = max([ len(x) for x in instances ])
-    print(f"#max_n_segs: {max_n_segs}")
-
-    if fig_size is None and auto_figsizing:
-        #graph_width   = max_item_size + 4 + round (9 * math.log(1 + n_items))
-        #graph_height  = 3 + round (9 * max_n_segs)
-        if generalized:
-            width_step = 2
-            height_step = 2
-        else:
-            width_step = 2
-            height_step = 2
-        graph_width   = max_item_size + 3 + round (width_step * math.log(1 + n_items))
-        graph_height  = 3 + round (height_step * max_n_segs)
-        fig_size = (graph_width, graph_height)
+    if n_items > 0:
+        max_item_size = max([ len(list(x)) for x in instances ])
+        print(f"#max_item_size: {max_item_size}")
+        max_n_segs = max([ len(x) for x in instances ])
+        print(f"#max_n_segs: {max_n_segs}")
     else:
-        fig_size = (10, 9) # default value
+        print(f"#found no genuine instance")
+
+    ## adjust figsize
+    if auto_figsizing:
+        if generalized and more_generalized:
+            width_step  = 0.75
+            height_step = 1.0
+        elif generalized or more_generalized:
+            width_step  = 0.75
+            height_step = 0.75
+        else:
+            width_step  = 0.75
+            height_step = 0.5
+        graph_width   = 9 + width_step * math.log(1 + MPG_group_size)
+        graph_height  = 9 + height_step * math.log(1 + MPG_key_count_max)
+        #graph_height  = 9 + 0.1 * MPG_key_count_max
+        fig_size = (graph_width, graph_height)
     print(f"#fig_size: {fig_size}")
     plt.figure(figsize = fig_size)
 
-    ## set label size
-    if label_size is None:
-        if auto_figsizing:
-            label_size = 5 + round(3 * math.log(1 + n_items))
-        else:
-            label_size = 7 # default value
+    ## adjust label_size
+    resize_coeff = 0.8
+    if auto_figsizing:
+        label_size = 8 - resize_coeff * math.log(1 + n_items)
     print(f"#label_size: {label_size}")
 
-    ## set node size
-    if node_size is None:
-        if auto_figsizing:
-            node_size = 6 + round (3 * math.log (1 + n_items))
-        else:
-            node_size = 8 # default value
+    ## adjust node_size
+    if auto_figsizing:
+        node_size = 8 - resize_coeff * math.log(1 + n_items)
     print(f"#node_size: {node_size}")
 
     ## set font name
@@ -836,7 +902,7 @@ def draw_graph (N: dict, layout: str, key_for_MPG: str = None, fig_size: tuple =
     #my_cmap = sns.color_palette("coolwarm", 24, as_cmap = True) # Crucially, as_cmap
 
     ## finally draw
-    use_old = True
+    use_old = False
     if use_old:
         nx.draw_networkx (G, positions,
             font_family = font_family,
@@ -854,9 +920,9 @@ def draw_graph (N: dict, layout: str, key_for_MPG: str = None, fig_size: tuple =
     else:
         ## Draw nodes
         nx.draw_networkx_nodes (G, positions,
-        node_size = node_size,
-        node_color = node_colors,
-        cmap = my_cmap
+            node_size = node_size,
+            node_color = node_colors,
+            cmap = my_cmap
         )
 
         ## Draw edges with your existing arrow settings
@@ -866,13 +932,13 @@ def draw_graph (N: dict, layout: str, key_for_MPG: str = None, fig_size: tuple =
             arrowsize = 6,
             arrows = True,
             connectionstyle = connectionstyle,
-            min_source_margin = 12,  # These work here
-            min_target_margin = 12
+            min_source_margin = 10,  # These work here
+            min_target_margin = 10
         )
 
         ## Create custom label positions with offset
-        label_offset_x = 0.005  # Adjust these values as needed
-        label_offset_y = 0.01
+        label_offset_x = 0.002  # Adjust these values as needed
+        label_offset_y = 0.005
         label_positions = {
             node: (x + label_offset_x, y + label_offset_y)
             for node, (x, y) in positions.items()
@@ -883,7 +949,7 @@ def draw_graph (N: dict, layout: str, key_for_MPG: str = None, fig_size: tuple =
             font_family = font_family,
             font_color = 'darkblue',
             font_size = label_size,
-            verticalalignment = "bottom",  # or "top", "center"
+            verticalalignment = "top",  # or "top", "center"
             horizontalalignment = "left"   # or "right", "center"
         )
 
@@ -897,21 +963,18 @@ def draw_graph (N: dict, layout: str, key_for_MPG: str = None, fig_size: tuple =
         instance_labels = new_instance_labels
     print(f"#instance_labels {label_count}: {instance_labels}")
 
-    ##
-    print(f"#key_for_MPG: {key_for_MPG}")
-
     ### set title
     if generalized and more_generalized:
-        pl_type = "G3PL"
+        pl_type = "g3PL"
     elif not generalized and more_generalized:
-        pl_type = "G2PL"
+        pl_type = "g2PL"
     elif generalized and not more_generalized:
-        pl_type = "G1PL"
+        pl_type = "g1PL"
     elif not generalized and not more_generalized:
-        pl_type = "G0PL"
+        pl_type = "g0PL"
     ##
     if layout_name in ['Multi-partite']:
-        layout_name = f"{layout_name} [key: {key_for_MPG}]"
+        layout_name = f"{layout_name} [key: {MPG_key}]"
     if use_robust_zscore:
         title_val = f"{pl_type} (layout: {layout_name}; robust z-scores: {zscore_lb} – {zscore_ub}) built from\n{instance_labels} ({label_count} in all)"
     else:
@@ -923,7 +986,9 @@ def draw_graph (N: dict, layout: str, key_for_MPG: str = None, fig_size: tuple =
 
 ## Classes
 class PatternLattice():
-    "definition of PatternLattice class"
+    """
+    definition of PatternLattice class
+    """
 
     ##
     def __init__ (self, pattern, generalized: bool, more_generalized: bool, reflexive: bool = True, reductive: bool = True, check: bool = False):
@@ -931,35 +996,47 @@ class PatternLattice():
         if check:
             print(f"pattern.paired: {pattern.paired}")
         ##
-        self.origin       = pattern
-        self.generalized  = generalized
+        self.origin           = pattern
+        self.generalized      = generalized
         self.more_generalized = more_generalized
-        self.nodes        = pattern.build_lattice_nodes (generalized = generalized, more_generalized = more_generalized, check = check)
-        self.gap_mark     = self.nodes[0].gap_mark
-        self.ranked_nodes = self.group_nodes_by_rank (check = check)
-        ## old code
-        #self.links, self.link_sources, self.link_targets = self.gen_links (reflexive = reflexive, check = check)
-        self.links          = self.gen_links (reflexive = reflexive, check = check)
-        self.ranked_links   = make_links_ranked (self.links, safely = make_links_safely, check = check)
+        self.nodes            = pattern.build_lattice_nodes (generalized = generalized, more_generalized  = more_generalized, check = check)
+        self.gap_mark         = self.nodes[0].gap_mark
+        self.ranked_nodes     = self.group_nodes_by_rank (check = check)
+        self.links            = self.gen_links (reflexive = reflexive, check = check)
+        self.ranked_links     = make_links_ranked (self.links, safely = make_links_safely, check = check)
         self.link_sources, self.link_targets = self.get_link_stats (check = check)
-        self.source_zscores = {}
-        self.target_zscores = {}
+        self.source_zscores  = {}
+        self.target_zscores  = {}
 
     ##
     def __len__(self):
+        """
+        define response to len(...)
+        """
         return (len(self.nodes), len(self.links))
 
     ##
     def __repr__(self):
+        """
+        define response to print(...)
+        """
         return f"{type(self).__name__} ({self.nodes!r})"
 
     ##
     def __iter__(self):
-        return iter (self)
+        """
+        define response to iter(...)
+        """
         #for x in self.nodes: yield x
+        ## the above is replaced by the following
+        return iter (self)
 
     ##
     def print (self):
+        """
+        define response to print(...)
+        """
+
         out = f"{type(self).__name__} ({self.nodes!r})\n"
         out += f"{type(self).__name__} ({self.source_zscores!r})\n"
         return out
@@ -971,9 +1048,9 @@ class PatternLattice():
         """
 
         from collections import defaultdict
-        gap_mark  = self.gap_mark
-        nodes     = self.nodes
-        size      = len(nodes)
+        gap_mark   = self.gap_mark
+        nodes      = self.nodes
+        size       = len(nodes)
 
         ## implementation using itertooks.groupby() failed
         rank_finder = lambda p: len([ x for x in p.form if len(x) > 0 and x != gap_mark ])
@@ -997,6 +1074,7 @@ class PatternLattice():
         """
         takes a PatternLattice P, and generates data for for P.links
         """
+
         ##
         gap_mark   = self.gap_mark
 
@@ -1127,7 +1205,7 @@ class PatternLattice():
         return merged
 
     ##
-    def draw_network (self, generalized: bool, more_generalized: bool, zscores_from_targets: bool, layout: str = None, key_for_MPG: str = None, zscore_lb: float = None, zscore_ub: float = None, use_robust_zscore: bool = False, auto_figsizing: bool = True, fig_size: tuple = None, node_size: int = None, label_size: int = None, label_sample_n: int = None, scale_factor: float = 3, font_name: str = None, test: bool = False, check: bool = False) -> None:
+    def draw_network (self, layout: str = None, MPG_key: str = None, generalized: bool = False, more_generalized: bool = False, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, use_robust_zscore: bool = False, mark_instances: bool = False, auto_figsizing: bool = False, fig_size: tuple = None, node_size: int = None, label_size: int = None, label_sample_n: int = None, scale_factor: float = 3, font_name: str = None, test: bool = False, check: bool = False) -> None:
         """
         draw a lattice digrams from a given PatternLattice L by extracting L.links
         """
@@ -1156,7 +1234,7 @@ class PatternLattice():
                 print(f"node {i:4d} {node} has z-score {v:.4f}")
 
         ## draw PatternLattice
-        draw_graph (ranked_links.items(), generalized = generalized, more_generalized = more_generalized, layout = layout, key_for_MPG = key_for_MPG, auto_figsizing = auto_figsizing, fig_size = fig_size, scale_factor = scale_factor, label_sample_n = label_sample_n, font_name = font_name, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, check = check)
+        draw_graph (ranked_links.items(), generalized = generalized, more_generalized = more_generalized, layout = layout, MPG_key = MPG_key, auto_figsizing = auto_figsizing, fig_size = fig_size, scale_factor = scale_factor, label_sample_n = label_sample_n, font_name = font_name, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, check = check)
 
 
 ### end of file

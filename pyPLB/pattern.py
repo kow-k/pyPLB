@@ -4,6 +4,7 @@
 #import awkward as ak # turned out not to be suited
 
 ## Functions
+
 ##
 def list_encode_for_pattern (L: list) -> list:
     """
@@ -30,6 +31,124 @@ def is_tracing_pair (f: str, g: str, tracer: str, strict: bool = True) -> bool:
             return False
 
 ##
+def insert_gaps (input_list, gap_mark: str = "_") -> list:
+    """
+    Generate all non-empty subsets of possible underscore insertion positions
+    """
+    from itertools import combinations
+
+    n = len(input_list)
+    if n < 2:
+        return input_list
+
+    # All possible positions to insert gaps (between elements)
+    positions = list(range(1, n))
+
+    # Generate all non-empty subsets of positions
+    result = []
+    for r in range(1, len(positions) + 1):
+        for pos_combo in combinations(positions, r):
+            new_list = input_list[:]
+            # Insert gaps from right to left to maintain indices
+            for pos in reversed(pos_combo):
+                new_list = new_list[:pos] + [gap_mark] + new_list[pos:]
+            result.append(new_list)
+    ##
+    return result
+
+##
+def add_gaps_around (input_list, gap_mark: str  = "_") -> list:
+    """
+    Add underscores at the beginning and/or end of the list.
+    For [a,b,c] => [[_,a,b,c], [a,b,c,_], [_,a,b,c,_]]
+    """
+    result = [
+        [gap_mark] + input_list,           # Add _ at the beginning
+        input_list + [gap_mark],           # Add _ at the end
+        [gap_mark] + input_list + [gap_mark]    # Add _ at both beginning and end
+    ]
+    #
+    return result
+
+##
+def create_displaced_versions (L: list, tracer: str, mask_tracer: bool = False, gap_mark: str = "_", aggressive: bool = False, check: bool = False) -> list:
+    """
+    Displace each element x in L with every other element y in L if L doesn't contain displaced elements, generating new lists.
+    """
+
+    ## check if any x is already negated
+    if not aggressive:
+        if any([ x for x in L if x[0] == tracer or x == gap_mark ]):
+            return [] # if any x is already negated, return empty list
+    ##
+    R = []
+    insertion_points = range(len(L))
+    for i in insertion_points:
+        x = L[i]
+        if x[0] == tracer:
+            continue # skip if x is already negated
+        M = L.copy()
+        N = L.copy()
+        ## define trace
+        if mask_tracer:
+            trace = f"{gap_mark}" # replace x with gap_mark
+        else:
+            trace = f"{tracer}{x}" # replace x with ~x
+        M[i] = f"{trace}"
+        N[i] = f"{trace}"
+        if check:
+            print(f"M: {M}")
+
+        ## left-preposing
+        for j in range(len(M)):
+            if i < j:
+                A, B = M[:j+1], M[j+1:] # Crucially, j+1 here
+                if check:
+                    print(f"i: {i}, j: {j}; t: {x}, A: {A}, B: {B}")
+                r = A + [x] + B
+                if check:
+                    print(f"r: {r}")
+                R.append(r)
+        ## right-postposing
+        for j in range(len(N)):
+            if j < i:
+                A, B = N[:j], N[j:]
+                if check:
+                    print(f"i: {i}, j: {j}; t: {x}, A: {A}, B: {B}")
+                r = A + [x] + B
+                if check:
+                    print(f"r: {r}")
+                R.append(r)
+    ##
+    return R
+
+##
+def filter_items (L: list, item: str, check: bool = False) -> int:
+    "returns the list of items in a given list"
+    return [ x for x in L if x == item ]
+
+##
+def get_gaps_of_list (L: list, gap_mark: str, check: bool = False) -> int:
+    "returns the list of gap marks in a given list"
+    return [ x for x in L if x == gap_mark ]
+
+##
+def get_gap_size_of_list (L: list, gap_mark: str, check: bool = False) -> int:
+    "returns the list of gap marks in a given list"
+    return len(get_gaps_of_list(L, gap_mark = gap_mark, check = check))
+
+##
+def get_substance_of_list (L: (list, tuple), gap_mark: str):
+    "takes a list and returns the list of its element which are not gap_mark"
+    return [ x for x in L if len(x) > 0 and x != gap_mark ]
+
+##
+def get_rank_of_list (L: (list, tuple), gap_mark: str):
+    "takes a list and returns the count of its element which are not gap_mark"
+    #return len([ x for x in L if len(x) > 0 and x != gap_mark ])
+    return len(get_substance_of_list(L, gap_mark = gap_mark))
+
+##
 def test_gapping_completion (P: list, gap_mark: str, check: bool = False) -> bool:
     "tests if P, a list of patterns, contains a fully gapped pattern"
     for p in P:
@@ -40,7 +159,7 @@ def test_gapping_completion (P: list, gap_mark: str, check: bool = False) -> boo
     return False
 
 ##
-def isa_under_size_equality (r_form, l_form, gap_mark: str, tracer: str = '~', check: bool = False) -> bool:
+def isa_under_size_equality (r_form, l_form, gap_mark: str, tracer: str = '~', tracer_as_gap: bool = True, check: bool = False) -> bool:
     """
     checks if r_form instantiates l_form under size equality, returning True or False
     """
@@ -51,7 +170,11 @@ def isa_under_size_equality (r_form, l_form, gap_mark: str, tracer: str = '~', c
     if l_form is Pattern:
         l_form = l_form.form
 
-    ##
+    ## exclude a pair of homogeneous forms
+    if r_form == l_form:
+        return False
+
+    ## classify a pair of heterogeneous pairs
     for i, r_seg in enumerate (r_form):
         l_seg = l_form[i]
         ## compare r_seg and l_seg and return False if isa fails to hold
@@ -60,45 +183,67 @@ def isa_under_size_equality (r_form, l_form, gap_mark: str, tracer: str = '~', c
         elif is_tracing_pair (l_seg, r_seg, tracer = tracer):
             pass
         else:
-            if l_seg == gap_mark:
-                pass
-            else:
-                if r_seg != gap_mark and l_seg != r_seg:
-                    print(f"#is-a: {l_form} ~~ {r_form}")
-                    return False
-                else:
+            if l_seg == gap_mark or l_seg[0] == tracer:
+                if tracer_as_gap:
                     pass
-    #if check:
-    print(f"#is-a: {l_form} <= {r_form}")
+                else:
+                    if check:
+                        print(f"#is-a: {l_form} ~~ {r_form}")
+                    return False
+            else:
+                if check:
+                    print(f"#is-a: {l_form} ~~ {r_form}")
+                return False
+    if check:
+        print(f"#is-a: {l_form} <= {r_form}")
     return True
 
 ##
-def gen_L1_generalized_nodes (L, check: bool = False):
+def isa_under_size_difference (r_form, l_form, gap_mark: str, tracer: str = '~', tracer_as_gap: bool = True, check: bool = False) -> bool:
     """
-    creates nodes at level 1 generalization to a given L
+    checks if r_form instantiates l_form under size difference, returning True or False
     """
-    G = []
-    for p in L:
-        for position in [ 'left', 'right', 'both' ]:
-            g = p.add_gaps_around (position)
-            if check:
-                print(f"g: {g}")
-            if g not in G:
-                G.append(g)
-    return G
 
-def gen_L2_generalized_nodes (L, check: bool = False):
-    """
-    creates nodes at level 2 generalization to a given L
-    """
-    G = []
-    for p in L:
-        for i, g in enumerate(p.create_gap_inserted_versions ()):
+    ## handling type mismatch
+    if r_form is Pattern:
+        r_form = r_form.form
+    if l_form is Pattern:
+        l_form = l_form.form
+
+    ## check size difference
+    assert len(l_form) == len(r_form) + 1
+
+    ##
+    l_rank = get_rank_of_list(l_form, gap_mark = gap_mark)
+    r_rank = get_rank_of_list(r_form, gap_mark = gap_mark)
+
+    ##
+    if l_rank == r_rank:
+        l_substance = get_substance_of_list(l_form, gap_mark = gap_mark)
+        r_substance = get_substance_of_list(r_form, gap_mark = gap_mark)
+        if l_substance == r_substance:
             if check:
-                print(f"inserting g{i}: {g}")
-            if g not in G:
-                G.append(g)
-    return G
+                print(f"#is-a: {l_form} <= {r_form}")
+            return True
+        else:
+            if check:
+                print(f"#is-a: {l_form} ~~ {r_form}")
+            return False
+    else: # l_rank + 1 == r_rank
+        l_gap_size = get_gap_size_of_list(l_form, gap_mark = gap_mark)
+        r_gap_size = get_gap_size_of_list(r_form, gap_mark = gap_mark)
+        if l_gap_size == r_gap_size + 1:
+            if isa_under_size_equality (r_form, l_form[1:], gap_mark = gap_mark, tracer = tracer, tracer_as_gap = tracer_as_gap):
+                print(f"#is-a: {l_form} <= {r_form}")
+                return True
+            elif isa_under_size_equality (r_form, l_form[:-1], gap_mark = gap_mark, tracer = tracer, tracer_as_gap = tracer_as_gap):
+                if check:
+                    print(f"#is-a: {l_form} <= {r_form}")
+                return True
+            else:
+                if check:
+                    print(f"#is-a: {l_form} ~~ {r_form}")
+                return False
 
 ##
 def merge_patterns_with_equal_size (form_pairs: list, content_pairs: list, gap_mark: str, boundary_mark: str, check: bool = False):
@@ -624,24 +769,21 @@ class Pattern:
         return sorted (R)
 
     ##
-    def instantiates_or_not_rev (self, other, check: bool = False) -> bool:
+    def subsumes_or_not (self, other, check: bool = False) -> bool:
         """
-        tests if pattern R instantiates another L, i.e., instance(R, L) == part_of(L, R)
+        tests if subsumes(L, R) == instantiates(R, L) from a given (L, R) pair
         """
         gap_mark        = self.gap_mark
         boundary_mark   = self.boundary_mark
 
-        R, L = self, other
-        R_form, L_form  = self.form, other.form
-        R_size, L_size  = len(R.form), len(L.form)
-        R_rank, L_rank  = R.get_rank(), L.get_rank()
-        R_gap_size, L_gap_size  = R.form.get_gap_size(), L.form.get_gap_size()
-        R_content       = self.content
-        L_content       = other.content
-        R_content_size  = len(R_content)
-        L_content_size  = len(L_content)
-        R_substance     = R.get_substance()
-        L_substance     = L.get_substance()
+        L, R = self, other
+        L_form, R_form  = self.form, other.form
+        L_size, R_size  = len(L.form), len(R.form)
+        L_rank, R_rank  = L.get_rank(), R.get_rank()
+        L_substance, R_substance = L.get_substance(), R.get_substance()
+        L_gap_size, R_gap_size   = L.get_gap_size(), R.get_gap_size()
+        L_content, R_content     = self.content, other.content
+        L_content_size, R_content_size   = len(L_content), len(R_content)
 
         if check:
             print(f"===================")
@@ -655,41 +797,21 @@ class Pattern:
         gap_diff  = L_gap_size - R_gap_size
         rank_diff = R_rank - L_rank
 
-        ## L and R have a size difference more than 1
-        if abs(size_diff) > 1:
-            return False
-
         ## L and R have the same size and L's rank is one-segment smaller than R's
-        elif size_diff == 0:
+        if size_diff == 0:
             return isa_under_size_equality (R_form, L_form, gap_mark = gap_mark, check = check)
 
         ## when L is one-segment longer than R
         ## This case needs revision to handle generalizeation level 2
-        elif size_diff == 1 and rank_diff == 1:
-            if L_gap_size == R_gap_size + 1:
-                if L_substance == R_substance:
-                    ## risks overgeneration ...
-                    if check:
-                        print(f"L_substance: {L_substance}")
-                        print(f"R_substance: {R_substance}")
-                    return True
-                else:
-                    if check:
-                        print(f"L_substance: {L_substance}")
-                        print(f"R_substance: {R_substance}")
-                    return False
-            else:
-                if check:
-                    print(f"L_substance: {L_substance}")
-                    print(f"R_substance: {R_substance}")
-                return False
+        elif size_diff == 1 or size_diff == -1:
+            return isa_with_size_difference (R_form, L_form, gap_mark = gap_mark, check = check)
 
-        ## other cases
+        ## other cases: just a fail safe
         else:
             return False
 
     ##
-    def instantiates_or_not_prev (self, other, check: bool = False) -> bool:
+    def instantiates_or_not (self, other, check: bool = False) -> bool:
         """
         tests if pattern R instantiates another L, i.e., instance(R, L) == part_of(L, R)
         """
@@ -746,8 +868,5 @@ class Pattern:
         ## other cases
         else:
             return False
-
-    ## alias
-    instantiates_or_not = instantiates_or_not_prev
 
 ### end of file
