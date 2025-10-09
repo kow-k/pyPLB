@@ -65,39 +65,46 @@ from pattern_lattice import *
 
 ## settings
 import argparse
+def parse_tuple(s):
+    """Converts a string of comma-separated values into a tuple of integers."""
+    try:
+        return tuple(int(x.strip()) for x in s.split(','))
+    except ValueError:
+        raise argparse.ArgumentTypeError("Tuple values must be integers separated by commas.")
+##
 parser  = argparse.ArgumentParser(description = "")
-parser.add_argument('file', type= open, default= None)
+parser.add_argument('file', type=open, default=None)
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 parser.add_argument('-w', '--detailed', action='store_true', default=False)
-parser.add_argument('-f', '--input_field_sep', type=str, default=',')
 parser.add_argument('-c', '--input_comment_escapes', type=list, default=['#', '%'])
-parser.add_argument('-X', '--phrasal', action='store_true', default=False)
 parser.add_argument('-C', '--uncapitalize', action='store_false', default=True)
-parser.add_argument('-P', '--remove_punctuations', action='store_false', default=True)
+parser.add_argument('-d', '--input_field_sep', type=str, default=',')
 parser.add_argument('-H', '--split_hyphenation', action='store_false', default=True)
+parser.add_argument('-P', '--remove_punctuations', action='store_false', default=True)
 parser.add_argument('-g', '--gap_mark', type=str, default='_')
 parser.add_argument('-t', '--tracer', type=str, default='~')
-parser.add_argument('-R', '--unreflexive', action='store_false', default=True)
-#parser.add_argument('-G', '--generalized', action='store_true', default=False)
-parser.add_argument('-G', '--generalization_level', type=int, default=0)
-parser.add_argument('-D', '--add_displaced_versions', action='store_true', default=False)
 parser.add_argument('-m', '--max_size', type=int, default=None)
 parser.add_argument('-n', '--sample_n', type=int, default=None)
+parser.add_argument('-D', '--add_displaced_versions', action='store_true', default=False)
+parser.add_argument('-R', '--unreflexive', action='store_false', default=True)
+parser.add_argument('-G', '--generalization_level', type=int, default=0)
 parser.add_argument('-A', '--auto_figsizing', action='store_true', default=False)
+parser.add_argument('-E', '--scaling_factor', type= float, default=5)
+parser.add_argument('-F', '--fig_size', type=parse_tuple, default=(10,9))
+parser.add_argument('-I', '--draw_individual_lattices', action='store_true', default=False)
 parser.add_argument('-L', '--layout', type= str, default= 'Multi_partite')
+parser.add_argument('-J', '--use_multibyte_chars', action='store_true', default=False)
 parser.add_argument('-K', '--MPG_key', type=str, default='gap_size')
 #parser.add_argument('-S', '--sample_id', type= int, default= 1)
 parser.add_argument('-S', '--build_lattice_stepwise', action='store_true', default=False)
 parser.add_argument('-i', '--mark_instances', action='store_true', default=False)
-parser.add_argument('-I', '--draw_individual_lattices', action='store_true', default=False)
-parser.add_argument('-F', '--scaling_factor', type= float, default= 5)
 parser.add_argument('-zl', '-z', '--zscore_lowerbound', type=float, default=None)
 parser.add_argument('-zu', '--zscore_upperbound', type=float, default= None)
 parser.add_argument('-Z', '--use_robust_zscore', action='store_true', default=False)
 parser.add_argument('-T', '--zscores_from_targets', action='store_true', default=False)
 parser.add_argument('-N', '--print_link_targets', action='store_true', default=False)
-parser.add_argument('-J', '--use_multibyte_chars', action='store_true', default=False)
 parser.add_argument('-o', '--print_forms', action='store_true', default= False)
+parser.add_argument('-X', '--phrasal', action='store_true', default=False)
 
 ##
 args = parser.parse_args()
@@ -124,6 +131,7 @@ build_lattice_stepwise  = args.build_lattice_stepwise
 print_link_targets      = args.print_link_targets
 layout                  = args.layout
 MPG_key                 = args.MPG_key
+fig_size                = args.fig_size
 auto_figsizing          = args.auto_figsizing
 mark_instances          = args.mark_instances
 draw_individually       = args.draw_individual_lattices
@@ -176,6 +184,7 @@ print(f"#instantiation is reflexive: {reflexive}")
 print(f"#generalization_level: {generalization_level}")
 print(f"#mark_instances: {mark_instances}")
 print(f"#auto_figsizing: {auto_figsizing}")
+print(f"#fig_size: {fig_size}")
 print(f"#draw_individually: {draw_individually}")
 print(f"#zscores_from_targets: {zscores_from_targets}")
 print(f"#use_robust_zscore: {use_robust_zscore}")
@@ -430,7 +439,7 @@ if draw_individually:
     print(f"##Drawing diagrams individually")
     for i, patlat in enumerate(L):
         print(f"#drawing diagram from PatternLattice {i+1}")
-        patlat.draw_network (layout = layout, MPG_key = MPG_key, generalized = generalized, more_generalized = more_generalized, zscores_from_targets = zscores_from_targets, mark_instances = mark_instances, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
+        patlat.draw_network (layout = layout, MPG_key = MPG_key, auto_figsizing = auto_figsizing, fig_size = fig_size, generalized = generalized, more_generalized = more_generalized, zscores_from_targets = zscores_from_targets, mark_instances = mark_instances, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
     exit()
 
 ##
@@ -479,7 +488,7 @@ elif build_lattice_stepwise:
             print(f"#node {node} has z-score {zscore: .3f}")
         ##
         print(f"##Results")
-        M.draw_network (layout = layout, generalized = generalized, more_generalized = more_generalized, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, auto_figsizing = auto_figsizing, MPG_key = MPG_key, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+        M.draw_network (layout, MPG_key, auto_figsizing = auto_figsizing, fig_size = fig_size, generalized = generalized, more_generalized = more_generalized, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 else:
     gen_links_internally = False
     M = functools.reduce (lambda La, Lb: La.merge_lattices (Lb, gen_links_internally = gen_links_internally, use_mp = use_mp, generalized = generalized, more_generalized = more_generalized, reflexive = reflexive, reductive = True, check = False), L)
@@ -517,7 +526,7 @@ else:
 
     ## draw diagram of M
     print(f"##Drawing a diagram from the merged PatternLattice")
-    M.draw_network (layout = layout, generalized = generalized, more_generalized = more_generalized, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, auto_figsizing = auto_figsizing, MPG_key = MPG_key, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+    M.draw_network (layout, MPG_key, auto_figsizing = auto_figsizing, fig_size = fig_size, generalized = generalized, more_generalized = more_generalized, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 
 ## conclude
 print(f"##built from {len(S)} sources: {[ as_label(x, sep = ',') for x in S ]}")

@@ -402,6 +402,7 @@ def calc_medians_by_rank (link_dict: dict, ranked_links: dict, check: bool = Fal
 ##
 def calc_MADs_by_rank (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
     "calculate stdevs per rank"
+
     if check:
         print(f"#ranked_links: {ranked_links}")
     ## JIT compiler demand function-internal imports to be externalized
@@ -418,7 +419,10 @@ def calc_MADs_by_rank (link_dict: dict, ranked_links: dict, check: bool = False)
 
 ##
 def calc_zscore (value: float, average: float, stdev: float, median: float = None, MAD: float = None, robust: bool = True) -> float:
-    "returns the z-scores of a value against average, stdev, median, and MAD given"
+    """
+    returns the z-scores of a value against average, stdev, median and MAD given
+    """
+
     ##
     import numpy as np
     import scipy.stats as stats
@@ -799,7 +803,7 @@ def set_node_positions (G, layout: str, MPG_key: str, scale_factor: float):
     return layout_name, positions
 
 ##
-def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", fig_size: tuple = (11, 9), node_size: int = 8, label_size: int = 8, label_sample_n: int = None, zscores: dict = None, use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generalized: bool = False, more_generalized: bool = False, use_directed_graph: bool = True, reverse_direction: bool = False, auto_figsizing: bool = False, font_name: str = None, test: bool = False, check: bool = False) -> None:
+def draw_graph (layout: str, MPG_key: str = "gap_size", auto_figsizing: bool = False, fig_size: tuple = None, N: dict = None, node_size: int = 8, label_size: int = 8, label_sample_n: int = None, zscores: dict = None, use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generalized: bool = False, more_generalized: bool = False, use_directed_graph: bool = True, reverse_direction: bool = False, font_name: str = None, test: bool = False, check: bool = False) -> None:
     """
     draw a graph from a given network data
     """
@@ -1206,7 +1210,7 @@ class PatternLattice():
         return merged
 
     ##
-    def draw_network (self, layout: str = None, MPG_key: str = None, generalized: bool = False, more_generalized: bool = False, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, use_robust_zscore: bool = False, mark_instances: bool = False, auto_figsizing: bool = False, fig_size: tuple = None, node_size: int = None, label_size: int = None, label_sample_n: int = None, scale_factor: float = 3, font_name: str = None, test: bool = False, check: bool = False) -> None:
+    def draw_network (self, layout: str = None, MPG_key: str = None, auto_figsizing: bool = False, fig_size: tuple = None, generalized: bool = False, more_generalized: bool = False, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, use_robust_zscore: bool = False, mark_instances: bool = False, node_size: int = None, label_size: int = None, label_sample_n: int = None, scale_factor: float = 3, font_name: str = None, test: bool = False, check: bool = False) -> None:
         """
         draw a lattice digrams from a given PatternLattice L by extracting L.links
         """
@@ -1235,7 +1239,7 @@ class PatternLattice():
                 print(f"node {i:4d} {node} has z-score {v:.4f}")
 
         ## draw PatternLattice
-        draw_graph (ranked_links.items(), generalized = generalized, more_generalized = more_generalized, layout = layout, MPG_key = MPG_key, auto_figsizing = auto_figsizing, fig_size = fig_size, scale_factor = scale_factor, label_sample_n = label_sample_n, font_name = font_name, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, check = check)
+        draw_graph (layout = layout, MPG_key = MPG_key, auto_figsizing = auto_figsizing, fig_size = fig_size, N = ranked_links.items(), generalized = generalized, more_generalized = more_generalized, scale_factor = scale_factor, label_sample_n = label_sample_n, font_name = font_name, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, check = check)
 
 
 ### end of file
