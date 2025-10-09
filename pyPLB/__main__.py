@@ -40,6 +40,7 @@ modification history
 2025/09/30 implemented generalization level 2;
 2025/10/03 refactored graph drawing algorithm but Multiparite still fails under obscure conditions;
 2025/10/04 added MPG_key option that allows changing 'subset_key' in Multi-partite graph;
+2025/10/09 fixed a bug to calc_zscore() to get robust z-scores;
 
 """
 

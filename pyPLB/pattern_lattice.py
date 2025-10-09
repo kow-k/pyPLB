@@ -417,18 +417,19 @@ def calc_MADs_by_rank (link_dict: dict, ranked_links: dict, check: bool = False)
     return MADs_by_rank
 
 ##
-def calc_zscore (value: float, average: float, stdev: float, median: float, MAD: float, robust: bool = True) -> float:
+def calc_zscore (value: float, average: float, stdev: float, median: float = None, MAD: float = None, robust: bool = True) -> float:
     "returns the z-scores of a value against average, stdev, median, and MAD given"
     ##
     import numpy as np
     import scipy.stats as stats
-    robust_coeff     = 0.6745
+    #robust_coeff     = 0.6745 # This turned out to be wrong.
+    robust_coeff     = 1.4826 # scale factor to make MAD comparable to stdev
     ##
     if stdev == 0 or MAD == 0:
         return 0
     else:
         if robust:
-            return (robust_coeff * (value - median)) / MAD
+            return (value - median) / (MAD * robust_coeff)
         else:
             return (value - average) / stdev
 
