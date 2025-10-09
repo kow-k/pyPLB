@@ -798,7 +798,7 @@ def set_node_positions (G, layout: str, MPG_key: str, scale_factor: float):
     return layout_name, positions
 
 ##
-def draw_graph (N: dict, layout: str, MPG_key: str = None, fig_size: tuple = (11, 9), node_size: int = 8, label_size: int = 8, label_sample_n: int = None, zscores: dict = None, use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generalized: bool = False, more_generalized: bool = False, use_directed_graph: bool = True, reverse_direction: bool = False, auto_figsizing: bool = False, font_name: str = None, test: bool = False, check: bool = False) -> None:
+def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", fig_size: tuple = (11, 9), node_size: int = 8, label_size: int = 8, label_sample_n: int = None, zscores: dict = None, use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generalized: bool = False, more_generalized: bool = False, use_directed_graph: bool = True, reverse_direction: bool = False, auto_figsizing: bool = False, font_name: str = None, test: bool = False, check: bool = False) -> None:
     """
     draw a graph from a given network data
     """

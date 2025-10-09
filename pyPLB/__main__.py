@@ -121,18 +121,18 @@ generalization_level    = args.generalization_level
 add_displaced_versions  = args.add_displaced_versions
 build_lattice_stepwise  = args.build_lattice_stepwise
 print_link_targets      = args.print_link_targets
-auto_figsizing          = args.auto_figsizing
 layout                  = args.layout
-MPG_key             = args.MPG_key
+MPG_key                 = args.MPG_key
+auto_figsizing          = args.auto_figsizing
 mark_instances          = args.mark_instances
 draw_individually       = args.draw_individual_lattices
-print_forms             = args.print_forms
-scale_factor            = args.scaling_factor
 use_multibyte_chars     = args.use_multibyte_chars
+scale_factor            = args.scaling_factor
 zscore_lowerbound       = args.zscore_lowerbound
 zscore_upperbound       = args.zscore_upperbound
 use_robust_zscore       = args.use_robust_zscore
 zscores_from_targets    = args.zscores_from_targets
+print_forms             = args.print_forms
 
 ### implications
 
