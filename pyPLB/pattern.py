@@ -718,8 +718,11 @@ class Pattern:
         return new # yield new fails
 
     ##
-    def build_lattice_nodes (p, generalized: bool, more_generalized: bool, check: bool = False):
-        "takes a pattern and returns a list of lattice nodes"
+    def build_lattice_nodes (p, generality: int = 0, check: bool = False):
+        """
+        takes a pattern and returns a list of lattice nodes
+        """
+
         if check:
             print (f"#p: {p}")
         #
@@ -746,24 +749,6 @@ class Pattern:
             ## check termination
             if test_gapping_completion (R, gap_mark = gap_mark, check = False):
                 completed = True
-
-        ## build generalized lattice
-        #if generalized:
-        #    # level 2
-        #    G2 = []
-        #    if more_generalized:
-        #        for i, g in enumerate(gen_L2_generalized_nodes (R, check = check)):
-        #            print(f"#added g{i} in G2: {g}")
-        #        R.extend(G) # add G2 elements to R
-        #    # level 1
-        #    G1 = R.copy()
-        #    for i, g in enumerate(gen_L1_generalized_nodes (R, check = check)):
-        #        if g not in G1:
-        #            print(f"#added g{i} in G1: {g}")
-        #        G1.append(g)
-        #    R = G1 # update R with G1 values
-        #    if check:
-        #        print(f"#R: {R}")
 
         ## return result
         return sorted (R)
