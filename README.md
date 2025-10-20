@@ -1,6 +1,6 @@
-# pyPLB - (Generalized) Pattern Lattice Builder by Python
+# pyPLB - Python-based (Generalized) Pattern Lattice Builder
 
-A Python implementation of generalized Pattern Lattice Builder (pyPLB) for constructing and analyzing pattern lattices from structured data.
+A Python implementation of generalized Pattern Lattice Builder (gPLB) for constructing and analyzing pattern lattices from structured data.
 
 ## Overview
 
