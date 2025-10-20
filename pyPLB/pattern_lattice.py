@@ -498,14 +498,6 @@ def calc_zscore (value: float, average: float, stdev: float, median: float = Non
             return (value - average) / stdev
 
 ##
-def calc_zscore_old (value: float, average_val: float, stdev_val: float) -> float:
-    "returns z-score given a triple of value, average and stdev"
-    if stdev_val == 0:
-        return 0
-    else:
-        return (value - average_val) / stdev_val
-
-##
 def normalize_zscore (x: float, min_val: float = -3.0, max_val: float = 3.0, normalization_factor: float = 1.2, use_robust_zscore: bool = False) -> float:
     "takes a value in the range of min, max and returns its normalized value"
     ##
