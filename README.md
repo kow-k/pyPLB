@@ -65,8 +65,8 @@ Required packages:
 ## Installation
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/Pattern-Lattice-Builder.git
-cd Pattern-Lattice-Builder
+git clone https://github.com/kow-k/pyPLB.git
+cd pyPLB
 
 # Install dependencies
 pip install -r requirements.txt
@@ -618,7 +618,7 @@ Contributions are welcome! Please feel free to submit issues or pull requests.
 
 ## License
 
-[Add your license information here]
+MIT License
 
 ## Citation
 
@@ -626,10 +626,10 @@ If you use pyPLB in your research, please cite:
 ```bibtex
 @misc{pyPLB,
   author = {Kow Kuroda},
-  title = {pyPLB: Python Pattern Lattice Builder},
+  title = {pyPLB: Python-based (Generalized) Pattern Lattice Builder},
   year = {2024-2025},
   publisher = {GitHub},
-  url = {https://github.com/yourusername/Pattern-Lattice-Builder}
+  url = {https://github.com/kow-k/pyPLB}
 }
 ```
 
@@ -639,4 +639,4 @@ This project builds upon the concepts from RubyPLB, developed by Yoichiro Hasebe
 
 ## Contact
 
-[Add your contact information or links]
+[kow.kuroda@gmail.com]
