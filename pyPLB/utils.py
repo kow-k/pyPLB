@@ -77,6 +77,9 @@ def sort_remove_duplicates (L: list, initial_value: object = None) -> list:
 
 ##
 def simplify_list (A: list, use_mp: bool = False) -> list:
+    """
+    simplify a given list
+    """
     C = []
     if use_mp:
         ## the following turned out to be really slow
@@ -93,7 +96,10 @@ make_list_simplest  = simplify_list
 
 ##
 def make_simplest_merger (A: list, B: list) -> list:
-    "takes a list or a pair of lists and returns a unification of them without reduplication"
+    """
+    takes a list or a pair of lists and returns a unification of them without reduplication
+    """
+
     C = [ ]
     for a in A:
         try:

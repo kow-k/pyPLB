@@ -322,17 +322,15 @@ class Pattern:
         self.tracer        = tracer
         self.boundary_mark = boundary_mark
         ## form
-        self.form          = [ x[0] for x in self.paired ] # revived on 2025/01/05
-        #self.form          = ak.Array([ x[0] for x in self.paired ]) # not work
-        #self.form          = tuple([ x[0] for x in self.paired ]) # works
+        #self.form          = [ x[0] for x in self.paired ] # revived on 2025/01/05
+        self.form          = tuple([ x[0] for x in self.paired ]) # works but makes subsumes_or_not fail
 
         ## form_hash
         self.form_hash     = hash(tuple(self.form))
 
         ## content
-        self.content       = [ x[1] for x in self.paired ] # revived on 2025/01/05
-        #self.content       = ak.Array([ x[1] for x in self.paired ]) # not work
-        #self.content       = tuple([ x[1] for x in self.paired ]) # works
+        #self.content       = [ x[1] for x in self.paired ] # revived on 2025/01/05
+        self.content       = tuple([ x[1] for x in self.paired ]) # works but makes subsumes_or_not fail
 
         ## size and others
         self.size          = len (self.form)
@@ -373,12 +371,12 @@ class Pattern:
 
     ##
     def __lt__ (self, other):
-        #return len(self.form) < len(other.form) # harmful
-        #return self.form < other.form # tricky
-        try:
-            return self.form < other.form # tricky
-        except TypeError:
-            return tuple(self.form) < tuple(other.form)
+        #return self.form < other.form # causes a problem
+        return tuple(self.form) < tuple(other.form)
+        #try:
+        #    return self.form < other.form # tricky
+        #except TypeError:
+        #    return tuple(self.form) < tuple(other.form)
 
     ## Basic list-like properties
     #def __get__item (self, index): # This was a mistake
@@ -439,8 +437,8 @@ class Pattern:
     ##
     def get_form (self):
         "takes a pattern and returns its form as list"
-        #return tuple([ x[0] for x in self.paired ]) # 2025/01/05
-        return [ x[0] for x in self.form ]
+        #return [ x[0] for x in self.form ]
+        return tuple([ x[0] for x in self.paired ]) # 2025/01/05
 
     ##
     def get_form_size (self):
@@ -452,21 +450,21 @@ class Pattern:
     ##
     def get_content (self):
         "takes a pattern and returns its content as a list"
-        #return tuple([ x[1] for x in self.content ]) # stopped using this
-        return [ x[1] for x in self.content ]
+        #return [ x[1] for x in self.content ]
+        return tuple([ x[1] for x in self.content ]) # revived on 2025/10/14
 
     ##
     def get_content_size (self):
         "takes a pattern and returns its content size"
         return len(self.get_content())
+
     ##
     def get_substance (self):
         "takes a pattern and returns the list of non-gap elements in it"
-        #return [ x for x in self.form if x != self.gap_mark and x[0] != self.tracer ]
         return [ x for x in self.form if x != self.gap_mark ]
 
     ##
-    def get_g2_substance (self):
+    def get_substance_with_tracer (self):
         "takes a pattern and returns the list of non-gap elements in it"
         return [ x for x in self.form if x != self.gap_mark and x[0] != self.tracer ]
 
@@ -478,11 +476,11 @@ class Pattern:
     get_rank = get_substance_size
 
     ##
-    def get_g2_substance_size (self):
+    def get_substance_size_with_tracer (self):
         "takes a pattern and returns its rank, i.e., the number of non-gap elements"
-        return len (self.get_g2_substance())
+        return len (self.get_substance_with_tracer())
     ## alias
-    get_g2_rank = get_g2_substance_size
+    get_rank_with_tracer = get_substance_size_with_tracer
 
     ##
     def get_gaps (self):
@@ -492,8 +490,8 @@ class Pattern:
     ##
     def get_gap_size (self):
         "takes a pattern and returns the number of gap_marks in it"
-        return len (self.get_gaps())
 
+        return len (self.get_gaps())
     ## alias
     count_gaps = get_gap_size
 
@@ -563,8 +561,8 @@ class Pattern:
     def update_form (self):
         "updates self.form value of a Pattern given"
         try:
-            #self.form = tuple( [ x[0] for x in self.paired ] )
-            self.form = [ x[0] for x in self.paired ]
+            self.form = tuple( [ x[0] for x in self.paired ] ) # revived on 2025/10/14
+            #self.form = [ x[0] for x in self.paired ]
             return self
         except (AttributeError, TypeError):
             return None
@@ -573,18 +571,20 @@ class Pattern:
     def update_content (self):
         "updates self.content value of a Pattern given"
         try:
-            #self.content = tuple( [ x[1] for x in self.paired ] )
-            self.content = [ x[1] for x in self.paired ]
+            self.content = tuple( [ x[1] for x in self.paired ] ) # revived on 2025/10/14
+            #self.content = [ x[1] for x in self.paired ]
             return self
         except TypeError:
             return None
 
     ##
     def update_paired (self):
-        "updates self.paired value of a Pattern given"
-        #self.paired = tuple( [ (x, y) for x, y in zip (self.form, self.content) ] )
+        """
+        updates self.paired value of a Pattern given
+        """
+
         self.paired = [ (x, y) for x, y in zip (self.form, self.content) ]
-        #return self
+        #self.paired = tuple( [ (x, y) for x, y in zip (self.form, self.content) ] ) # offensive
 
     ##
     def create_gapped_versions (self: list, check: bool = False) -> list:

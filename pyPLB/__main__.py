@@ -41,6 +41,7 @@ modification history
 2025/10/03 refactored graph drawing algorithm but Multiparite still fails under obscure conditions;
 2025/10/04 added MPG_key option that allows changing 'subset_key' in Multi-partite graph;
 2025/10/09 fixed a bug to calc_zscore() to get robust z-scores;
+2025/10/14 retyped Pattern.form and Pattern.content as tuples, making as_tuple() dispensable; implemented gap_size-based z-score calculation;
 
 """
 
@@ -88,6 +89,11 @@ parser.add_argument('-s', '--sample_n', type=int, default=None)
 parser.add_argument('-D', '--add_displaced_versions', action='store_true', default=False)
 parser.add_argument('-R', '--unreflexive', action='store_false', default=True)
 parser.add_argument('-G', '--generality', type=int, default=0)
+parser.add_argument('-p', '--productivity_metric', type=str, default='rank')
+parser.add_argument('-zl', '-z', '--zscore_lowerbound', type=float, default=None)
+parser.add_argument('-zu', '--zscore_upperbound', type=float, default= None)
+parser.add_argument('-Z', '--use_robust_zscore', action='store_false', default=True)
+parser.add_argument('-T', '--zscores_from_targets', action='store_true', default=False)
 parser.add_argument('-A', '--auto_figsizing', action='store_true', default=False)
 parser.add_argument('-E', '--scaling_factor', type= float, default=5)
 parser.add_argument('-F', '--fig_size', type=parse_tuple, default=(10,9))
@@ -98,10 +104,6 @@ parser.add_argument('-K', '--MPG_key', type=str, default='gap_size')
 #parser.add_argument('-S', '--sample_id', type= int, default= 1)
 parser.add_argument('-S', '--build_lattice_stepwise', action='store_true', default=False)
 parser.add_argument('-i', '--mark_instances', action='store_true', default=False)
-parser.add_argument('-zl', '-z', '--zscore_lowerbound', type=float, default=None)
-parser.add_argument('-zu', '--zscore_upperbound', type=float, default= None)
-parser.add_argument('-Z', '--use_robust_zscore', action='store_false', default=True)
-parser.add_argument('-T', '--zscores_from_targets', action='store_true', default=False)
 parser.add_argument('-N', '--print_link_targets', action='store_true', default=False)
 parser.add_argument('-o', '--print_forms', action='store_true', default=False)
 parser.add_argument('-X', '--phrasal', action='store_true', default=False)
@@ -109,38 +111,39 @@ parser.add_argument('-X', '--phrasal', action='store_true', default=False)
 ##
 args = parser.parse_args()
 ##
-file                    = args.file   # process a file when it exists
-verbose                 = args.verbose
-detailed                = args.detailed
-input_comment_escapes   = args.input_comment_escapes
-input_field_sep         = args.input_field_sep
-phrasal                 = args.phrasal
-uncapitalize            = args.uncapitalize
-remove_punctuations     = args.remove_punctuations
-split_hyphenation       = args.split_hyphenation
-gap_mark                = args.gap_mark
-tracer                  = args.tracer
-max_size                = args.max_size
-#sample_id               = args.sample_id
-sample_n                = args.sample_n
-reflexive               = args.unreflexive
-generality              = args.generality
-add_displaced_versions  = args.add_displaced_versions
-build_lattice_stepwise  = args.build_lattice_stepwise
-print_link_targets      = args.print_link_targets
-layout                  = args.layout
-MPG_key                 = args.MPG_key
-auto_figsizing          = args.auto_figsizing
-fig_size                = args.fig_size
-mark_instances          = args.mark_instances
-draw_individually       = args.draw_individual_lattices
-use_multibyte_chars     = args.use_multibyte_chars
-scale_factor            = args.scaling_factor
-zscore_lowerbound       = args.zscore_lowerbound
-zscore_upperbound       = args.zscore_upperbound
-use_robust_zscore       = args.use_robust_zscore
-zscores_from_targets    = args.zscores_from_targets
-print_forms             = args.print_forms
+file                     = args.file   # process a file when it exists
+verbose                  = args.verbose
+detailed                 = args.detailed
+input_comment_escapes    = args.input_comment_escapes
+input_field_sep          = args.input_field_sep
+phrasal                  = args.phrasal
+uncapitalize             = args.uncapitalize
+remove_punctuations      = args.remove_punctuations
+split_hyphenation        = args.split_hyphenation
+gap_mark                 = args.gap_mark
+tracer                   = args.tracer
+max_size                 = args.max_size
+#sample_id                = args.sample_id
+sample_n                 = args.sample_n
+reflexive                = args.unreflexive
+generality               = args.generality
+add_displaced_versions   = args.add_displaced_versions
+build_lattice_stepwise   = args.build_lattice_stepwise
+print_link_targets       = args.print_link_targets
+layout                   = args.layout
+MPG_key                  = args.MPG_key
+p_metric                 = args.productivity_metric
+auto_figsizing           = args.auto_figsizing
+fig_size                 = args.fig_size
+mark_instances           = args.mark_instances
+draw_individually        = args.draw_individual_lattices
+use_multibyte_chars      = args.use_multibyte_chars
+scale_factor             = args.scaling_factor
+zscore_lowerbound        = args.zscore_lowerbound
+zscore_upperbound        = args.zscore_upperbound
+use_robust_zscore        = args.use_robust_zscore
+zscores_from_targets     = args.zscores_from_targets
+print_forms              = args.print_forms
 
 ## inspection paramters
 draw_inspection      = False
@@ -163,14 +166,15 @@ print(f"#split_hyphenation: {split_hyphenation}")
 print(f"#gap_mark: {gap_mark}")
 print(f"#instantiation is reflexive: {reflexive}")
 print(f"#building lattice with generality: {generality}")
-print(f"#mark_instances: {mark_instances}")
-print(f"#auto_figsizing: {auto_figsizing}")
-print(f"#fig_size: {fig_size}")
-print(f"#draw_individually: {draw_individually}")
+print(f"#p_metric [productivity metric]: {p_metric}")
 print(f"#zscores_from_targets: {zscores_from_targets}")
 print(f"#use_robust_zscore: {use_robust_zscore}")
 print(f"#zscore_lowerbound: {zscore_lowerbound}")
 print(f"#zscore_upperbound: {zscore_upperbound}")
+print(f"#mark_instances: {mark_instances}")
+print(f"#auto_figsizing: {auto_figsizing}")
+print(f"#fig_size: {fig_size}")
+print(f"#draw_individually: {draw_individually}")
 
 ### Functions
 
@@ -389,6 +393,7 @@ for i, p in enumerate(Patterns):
     ##
     L.append (patlat)
 #exit()
+
 ##
 if detailed:
     for i, patlat in enumerate(L):
@@ -409,7 +414,7 @@ if draw_individually:
     print(f"##Drawing g{generality}PLs individually")
     for i, patlat in enumerate(L):
         print(f"#Drawing a diagram from g{generality}PL {i+1}")
-        patlat.draw_network (layout = layout, MPG_key = MPG_key, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, zscores_from_targets = zscores_from_targets, mark_instances = mark_instances, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
+        patlat.draw_network (layout = layout, MPG_key = MPG_key, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, p_metric = p_metric, zscores_from_targets = zscores_from_targets, mark_instances = mark_instances, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
     exit()
 
 ##
@@ -424,6 +429,7 @@ if simplified:
         print(f"#Lb: {Lb}")
     M = La.merge_with (Lb, use_mp = use_mp, show_steps = True, check = False)
 
+## Individual draw
 elif build_lattice_stepwise:
     gen_links_internally = True
     print(f"##Mergig g{generality}PLs ...")
@@ -435,15 +441,18 @@ elif build_lattice_stepwise:
             M = M.merge_with (patlat, gen_links_internally = gen_links_internally, use_mp = use_mp, generality = generality, reflexive = reflexive, reductive = True, show_steps = True, check = False)
             ## delete the original
             patplat = None
+
         ## check nodes in M
         print(f"merged g{generality}PL with {len(M.nodes)} nodes")
         for i, p in enumerate(M.nodes):
             print(f"#node {i:3d}: {p.separate_print()}")
+
         ## genenrate links in delay
         if len(M.links) == 0 and not gen_links_internally:
             ## Don't do: M = M.update(...)
-            M.update_links (reflexive = reflexive, check = False) ## Crucially
+            M.update_links (p_metric, reflexive = reflexive, check = False) ## Crucially
         print(f"#generated {len(M.links)} links")
+
         ## checking links in M
         print(f"##Links")
         for i, link in enumerate(M.links):
@@ -453,13 +462,15 @@ elif build_lattice_stepwise:
         if print_link_targets:
             for node, zscore in M.source_zscores.items():
                 print(f"#node {node} has z-score {zscore: .3f}")
+
         ## generate z-scores from link sources
-        gen_zscores_from_sources (M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
+        gen_zscores_from_sources_by (p_metric, M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
         for node, zscore in M.source_zscores.items():
             print(f"#node {node} has z-score {zscore: .3f}")
         ##
         print(f"##Results")
-        M.draw_network (layout, MPG_key, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+        M.draw_network (layout, MPG_key, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+## Draw after integration
 else:
     gen_links_internally = False
     M = functools.reduce (lambda La, Lb: La.merge_with (Lb, gen_links_internally = gen_links_internally, use_mp = use_mp, generality = generality, reflexive = reflexive, reductive = True, check = False), L)
@@ -468,7 +479,7 @@ else:
     if len(M.links) == 0 and not gen_links_internally:
         print(f"##Generating links independently")
         ## Don't do: M = M.update(...)
-        M.update_links (reflexive = reflexive, use_mp = use_mp, check = False)
+        M.update_links (p_metric, reflexive = reflexive, use_mp = use_mp, check = False)
 
     ##
     print(f"##Results")
@@ -487,17 +498,17 @@ else:
     print(f"##Calculating z-scores ...")
     gen_zscores_from_targets (M, gap_mark = gap_mark, tracer = tracer, use_robust_zscore = use_robust_zscore, check = False)
     if print_link_targets:
-        for node, zscore in M.source_zscores.items():
+        for node, zscore in M.target_zscores.items():
             print(f"#node {node} has z-score {zscore: .3f} [n: {M.link_targets[node]:2d}]")
 
     ## get z-scores from link sources
-    gen_zscores_from_sources (M, gap_mark = gap_mark, tracer = tracer, use_robust_zscore = use_robust_zscore, check = False)
+    gen_zscores_from_sources_by (p_metric, M, gap_mark = gap_mark, tracer = tracer, use_robust_zscore = use_robust_zscore, check = False)
     for node, zscore in M.source_zscores.items():
         print(f"#node {node} has z-score {zscore: .3f} (n: {M.link_sources[node]:2d})")
 
     ## draw diagram of M
     print(f"##Drawing a diagram from the merged PL")
-    M.draw_network (layout, MPG_key, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, label_sample_n = label_sample_n, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+    M.draw_network (layout, MPG_key, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 
 ## conclude
 print(f"##built from {len(S)} sources: {[ as_label(x, sep = ',') for x in S ]}")

@@ -15,8 +15,8 @@ except ImportError:
     from pattern_link import *
 
 ## parameters
-make_links_safely = True # False previously
 debugged  = True
+make_links_safely = True # False previously
 
 
 ### Data
@@ -280,6 +280,28 @@ def classify_relations_mp2 (R, L, gap_mark: str, check: bool = False):
     return [ PatternLink (*p) for p in sub_pairs if p is not None and len(p) > 0 ] # Crucially, len(p) > 0
 
 ##
+def group_links_by (metric: str, L: list, gap_mark: str, tracer: str) -> dict:
+    """
+    takes a list of lists and returns a dict whose keys are ranks of the lists
+    """
+
+    assert metric in ['rank', 'gap_size']
+    ##
+    link_dict = {}
+    if metric == 'rank':
+        G = [ get_rank_of_list (l, gap_mark) for l in L ]
+        for metric_val in set(G):
+            link_dict[metric_val] = [ l for l in L if metric_val == Pattern(l, gap_mark, tracer).get_rank() ]
+    elif metric == 'gap_size':
+        G = [ get_gap_size_of_list (l, gap_mark) for l in L ]
+        for metric_val in set(G):
+            link_dict[metric_val] = [ l for l in L if metric_val == Pattern(l, gap_mark, tracer).get_gap_size() ]
+    else:
+        raise ValueError("Unknown metric: should be either 'rank' or 'gap_size'")
+    ##
+    return link_dict
+
+##
 def make_ranked_dict (L: list, gap_mark: str, tracer: str) -> dict:
     "takes a list of lists and returns a dict whose keys are ranks of the lists"
     ##
@@ -321,6 +343,43 @@ def make_links_ranked (L: list, safely: bool, check: bool = False) -> list:
                 ranked_links[rank] = [link]
     ##
     return ranked_links
+
+##
+def make_links_grouped_by (metric: str, L: list, safely: bool = False, check: bool = False) -> list:
+    """
+    takes a list of PatternLinks and returns a dictionary of {metric_val: [link1, link2, ...]}
+    """
+
+    if check:
+        print(f"#metric: {metric}")
+        print(f"#PatternLinks: {L}")
+    ##
+    import collections
+    #grouped_links = {}
+    grouped_links = collections.defaultdict(list)
+    if safely:
+        for link in L:
+            if check:
+                print(f"type(link): {type(link)}")
+            try:
+                if metric == 'rank':
+                    metric_val = link.get_link_rank (use_max = True)
+                elif metric == 'gap_size':
+                    metric_val = link.get_link_gap_size (use_max = True)
+                if not link in grouped_links[metric_val]:
+                    grouped_links[metric_val].append(link)
+            except AttributeError:
+                print (f"#failed link: {link}")
+    else:
+        for link in L:
+            if metric == 'rank':
+                metric_val = link.get_link_rank (use_max = True)
+            elif metric == 'gap_size':
+                metric_val = link.get_link_gap_size (use_max = True)
+            if not link in grouped_links[metric_val]:
+                grouped_links[metric_val].append(link)
+    ##
+    return grouped_links
 
 ##
 def cautiously_merge (A, B, check = False):
@@ -370,6 +429,7 @@ def calc_averages_by_rank (link_dict: dict, ranked_links: dict, check: bool = Fa
     ##
     return averages_by_rank
 
+##
 def calc_stdevs_by_rank (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
     "calculate stdevs per rank"
     if check:
@@ -418,6 +478,87 @@ def calc_MADs_by_rank (link_dict: dict, ranked_links: dict, check: bool = False)
     return MADs_by_rank
 
 ##
+def calc_averages_by (metric: str, link_dict: dict, grouped_links: dict, check: bool = False) -> dict:
+    """
+    calculate averages per a given metric, such as 'rank', 'gap_size'
+    """
+
+    assert metric in ['gap_size', 'rank']
+
+    if check:
+        print(f"#grouped_links: {grouped_links}")
+    ##
+    averages_by = {}
+    for metric_val in grouped_links:
+        members = grouped_links[metric_val]
+        dist = [ link_dict[m] for m in members ]
+        averages_by[metric_val] = sum(dist)/len(dist)
+    ##
+    return averages_by
+
+##
+def calc_stdevs_by (metric: str, link_dict: dict, grouped_links: dict, check: bool = False) -> dict:
+    """
+    calculate stdevs per a given rank such as 'rank', 'gap_size'
+    """
+
+    assert metric in ['rank', 'gap_size']
+
+    if check:
+        print(f"#grouped_links: {grouped_links}")
+    ##
+    import numpy as np
+    stdevs_by = {}
+    for metric_val in grouped_links:
+        members = grouped_links[metric_val]
+        dist = [ link_dict[m] for m in members ]
+        stdevs_by[metric_val] = np.std(dist)
+    ##
+    return stdevs_by
+
+##
+def calc_medians_by (metric: str, link_dict: dict, grouped_links: dict, check: bool = False) -> dict:
+    """
+    calculate stdevs per a given metric such as 'rank', 'gap_size'
+    """
+
+    assert metric in ['rank', 'gap_size']
+    if check:
+        print(f"#grouped_links: {grouped_links}")
+    ##
+    import numpy as np
+    medians_by = {}
+    for metric_val in grouped_links:
+        members = grouped_links[metric_val]
+        dist = [ link_dict[m] for m in members ]
+        medians_by[metric_val] = np.median(dist)
+    ##
+    return medians_by
+
+
+##
+def calc_MADs_by (metric: str, link_dict: dict, grouped_links: dict, check: bool = False) -> dict:
+    """
+    calculate stdevs per a given metric such as 'rank', 'gap_size'
+    """
+
+    assert metric in ['rank', 'gap_size']
+    if check:
+        print(f"#ranked_links: {ranked_links}")
+
+    ## JIT compiler demand function-internal imports to be externalized
+    import numpy as np
+    import scipy.stats as stats
+    ##
+    MADs_by = {}
+    for metric_val in grouped_links:
+        members = grouped_links[metric_val]
+        dist = [ link_dict[m] for m in members ]
+        MADs_by[metric_val] = np.median (stats.median_abs_deviation (dist))
+    ##
+    return MADs_by
+
+##
 def calc_zscore (value: float, average: float, stdev: float, median: float = None, MAD: float = None, robust: bool = True) -> float:
     """
     returns the z-scores of a value against average, stdev, median and MAD given
@@ -426,7 +567,7 @@ def calc_zscore (value: float, average: float, stdev: float, median: float = Non
     ##
     import numpy as np
     import scipy.stats as stats
-    #robust_coeff     = 0.6745 # This turned out to be wrong.
+    #robust_coeff     = 0.6745 # turned out to be wrong.
     robust_coeff     = 1.4826 # scale factor to make MAD comparable to stdev
     ##
     if stdev == 0 or MAD == 0:
@@ -458,25 +599,38 @@ def normalize_zscore (x: float, use_robust_zscore: bool = False, min_val: float 
     return normalizer (x)
 
 ##
-def gen_zscores_from_sources (M, gap_mark: str, tracer: str, use_robust_zscore: bool, check: bool = False):
-    ## adding link source z-scores to M
-    Link_sources     = M.link_sources
+def gen_zscores_from_sources_by (metric: str, M: object, gap_mark: str, tracer: str, use_robust_zscore: bool, check: bool = False) -> None:
+    """
+    adding to M link source z-scores calculated either by rank or gap_size
+    """
+
+    Link_sources = M.link_sources
     if check:
         print(f"##Link_sources")
-    ranked_links     = make_ranked_dict (Link_sources, gap_mark = gap_mark, tracer = tracer)
-    averages_by_rank = calc_averages_by_rank (Link_sources, ranked_links) # returns dict
-    stdevs_by_rank   = calc_stdevs_by_rank (Link_sources, ranked_links) # returns dict
-    medians_by_rank  = calc_medians_by_rank (Link_sources, ranked_links) # returns dict
-    MADs_by_rank     = calc_MADs_by_rank (Link_sources, ranked_links) # returns dict
 
+    ## The following all return list
+    grouped_links = group_links_by (metric, Link_sources, gap_mark = gap_mark, tracer = tracer)
+    assert len(grouped_links)
+    ##
+    averages_by   = calc_averages_by (metric, Link_sources, grouped_links)
+    stdevs_by     = calc_stdevs_by (metric, Link_sources, grouped_links)
+    medians_by    = calc_medians_by (metric, Link_sources, grouped_links)
+    MADs_by       = calc_MADs_by (metric, Link_sources, grouped_links)
+
+    ##
     source_zscores = {}
     for i, link_source in enumerate (Link_sources):
         value  = Link_sources[link_source]
-        rank   = get_rank_of_list (link_source, gap_mark = gap_mark)
+        ##
+        if metric == 'rank':
+            metric_val  = get_rank_of_list (link_source, gap_mark = gap_mark)
+        elif metric == 'gap_size':
+            metric_val  = get_gap_size_of_list (link_source, gap_mark = gap_mark)
+        ##
         if use_robust_zscore:
-            zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = True)
+            zscore = calc_zscore (value, averages_by[metric_val], stdevs_by[metric_val], medians_by[metric_val], MADs_by[metric_val], robust = True)
         else:
-            zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = False)
+            zscore = calc_zscore (value, averages_by[metric_val], stdevs_by[metric_val], medians_by[metric_val], MADs_by[metric_val], robust = False)
         ##
         source_zscores[link_source] = zscore
         if check:
@@ -486,8 +640,6 @@ def gen_zscores_from_sources (M, gap_mark: str, tracer: str, use_robust_zscore: 
     M.source_zscores.update(source_zscores)
     if check:
         print(f"M.source_zscores: {M.source_zscores}")
-    ##
-    #return M
 
 ##
 def gen_zscores_from_targets (M, gap_mark: str, tracer: str, use_robust_zscore: bool, check: bool = False):
@@ -573,7 +725,8 @@ def gen_G (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_direct
             node2_moment = math.log(node2_size + 2)/math.log(node2_rank + 2)
 
             ## node1, node2 are node names and need to be tuples
-            node1, node2  = map (tuple, link.form_paired)
+            #node1, node2  = map (tuple, link.form_paired)
+            node1, node2  = link.form_paired # assumes form_paired is a pair of tuples
 
             ## get z-scores for node1 and node2
             try:
@@ -824,7 +977,7 @@ def set_node_positions (G, layout: str, MPG_key: str, scale_factor: float):
     return layout_name, positions
 
 ##
-def draw_graph (layout: str, MPG_key: str = "gap_size", auto_figsizing: bool = False, fig_size: tuple = None, N: dict = None, node_size: int = 8, label_size: int = 8, label_sample_n: int = None, zscores: dict = None, use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generality: int = 0, use_directed_graph: bool = True, reverse_direction: bool = False, font_name: str = None, test: bool = False, check: bool = False) -> None:
+def draw_graph (layout: str, MPG_key: str = "gap_size", auto_figsizing: bool = False, fig_size: tuple = None, N: dict = None, node_size: int = 9, label_size: int = 8, label_sample_n: int = None, zscores: dict = None, p_metric: str = 'gap_size', use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generality: int = 0, use_directed_graph: bool = True, reverse_direction: bool = False, font_name: str = None, test: bool = False, check: bool = False) -> None:
     """
     draw a graph from a given network data
     """
@@ -846,7 +999,7 @@ def draw_graph (layout: str, MPG_key: str = "gap_size", auto_figsizing: bool = F
 
     ## define MPG_key_count_max and MPG_group_size
     MPG_keys = nx.get_node_attributes(G, MPG_key)
-    if len(MPG_keys) > 0:
+    if MPG_keys:
         import collections
         MPG_key_counts = collections.defaultdict(int)
         for k, v in MPG_keys.items():
@@ -885,20 +1038,25 @@ def draw_graph (layout: str, MPG_key: str = "gap_size", auto_figsizing: bool = F
 
     ## adjust figsize
     if auto_figsizing:
-        width_step = max_instance_size * 0.75
+        width_step = max_instance_size * 1.00
         height_step = 1.00
         if generality in [3]:
-            width_step  = round(width_step * 1.0, 1)
-            height_step = round(height_step * 1.3, 1)
+            width_step  = round(width_step * 1.5, 1)
+            height_step = round(height_step * 3.5, 1)
         elif generality in [1, 2]:
-            width_step  = round(width_step * 1.0, 1)
-            height_step = round(height_step * 1.0, 1)
+            width_step  = round(width_step * 1.3, 1)
+            height_step = round(height_step * 2.5, 1)
         else:
             width_step  = round(width_step * 1.0, 1)
-            height_step = round(height_step * 1.0, 1)
+            height_step = round(height_step * 1.5, 1)
         graph_width   = 7 + round(width_step * math.log(1 + MPG_group_size), 1)
         graph_height  = 7 + round(height_step * math.log(1 + MPG_key_count_max), 1)
-        fig_size = (graph_width, graph_height)
+        #graph_height  = 7 + round(height_step * MPG_key_count_max, 1)
+        #fig_size = (graph_width, fig_size[1])
+        if graph_width > fig_size[0]:
+            fig_size = (graph_width, fig_size[1])
+        if graph_height >  fig_size[1]:
+            fig_size = (fig_size[0], graph_height)
     print(f"#fig_size: {fig_size}")
     plt.figure(figsize = fig_size)
 
@@ -995,9 +1153,9 @@ def draw_graph (layout: str, MPG_key: str = "gap_size", auto_figsizing: bool = F
     if layout_name in ['Multi-partite']:
         layout_name = f"{layout_name} [key: {MPG_key}]"
     if use_robust_zscore:
-        title_val = f"{pl_type} (layout: {layout_name}; robust z-scores: {zscore_lb} – {zscore_ub}) built from\n{instance_labels} ({label_count} in all)"
+        title_val = f"{pl_type} (layout: {layout_name}; robust z-scores [p_metric: {p_metric}]: {zscore_lb} – {zscore_ub}) built from\n{instance_labels} ({label_count} in all)"
     else:
-        title_val = f"{pl_type} (layout: {layout_name}; normal z-scores: {zscore_lb} – {zscore_ub}) built from\n{instance_labels} ({label_count} in all)"
+        title_val = f"{pl_type} (layout: {layout_name}; normal z-scores [p_metric: {p_metric}]: {zscore_lb} – {zscore_ub}) built from\n{instance_labels} ({label_count} in all)"
     plt.title(title_val)
     ##
     plt.show()
@@ -1010,7 +1168,7 @@ class PatternLattice():
     """
 
     ##
-    def __init__ (self, pattern, generality: int = 0, reflexive: bool = True, reductive: bool = True, check: bool = False):
+    def __init__ (self, pattern, generality: int, p_metric: str = 'rank', reflexive: bool = True, reductive: bool = True, check: bool = False):
         """
         initialization of a PatternLattice, or PL
         """
@@ -1020,12 +1178,14 @@ class PatternLattice():
         ##
         self.origin           = pattern
         self.generality       = generality
+        self.p_metric         = p_metric
         self.nodes            = pattern.build_lattice_nodes (generality = generality, check = check)
         self.gap_mark         = self.nodes[0].gap_mark
         self.ranked_nodes     = self.group_nodes_by_rank (check = check)
         self.links            = self.gen_links (reflexive = reflexive, check = check)
-        self.ranked_links     = make_links_ranked (self.links, safely = make_links_safely, check = check)
         self.link_sources, self.link_targets = self.get_link_stats (check = check)
+        #self.ranked_links     = make_links_ranked (self.links, safely = make_links_safely, check = check)
+        self.grouped_links    = make_links_grouped_by (p_metric, self.links, safely = make_links_safely, check = check)
         self.source_zscores  = {}
         self.target_zscores  = {}
 
@@ -1055,12 +1215,69 @@ class PatternLattice():
     ##
     def print (self):
         """
-        define response to print(...)
+        defines response to print(...)
         """
 
         out = f"{type(self).__name__} ({self.nodes!r})\n"
         out += f"{type(self).__name__} ({self.source_zscores!r})\n"
         return out
+
+    ##
+    def merge_with (self, other, **params):
+        """
+        take two PatternLattices and merge them into one.
+        """
+        gen_links_internally = params['gen_links_internally']
+        generality           = params['generality']
+        #p_metric             = params['p_metric']
+        reflexive            = params['reflexive']
+        reductive            = params['reductive']
+        use_mp               = params['use_mp']
+        check                = params['check']
+
+        ## merger nodes of two pattern lattices given
+        main_nodes   = [ p for p in self.nodes if len(p) > 0 ]
+        other_nodes = [ p for p in other.nodes if len(p) > 0 ]
+
+        ## variables
+        #gap_mark = main_nodes[0].gap_mark
+        #tracer   = main_nodesd[0].tracer
+        ## The code above fails when self is a null Pattern Lattice
+        gap_mark = other_nodes[0].gap_mark
+        tracer   = other_nodes[0].tracer
+        p_metric = other.p_metric
+
+        ##
+        if reductive:
+            pool_nodes  = simplify_list (main_nodes)
+            other_nodes = simplify_list (other_nodes)
+        ##
+        main_nodes = make_simplest_merger (main_nodes, other_nodes)
+        if check:
+            for i, node in enumerate(main_nodes):
+                print(f"#main_node {i}: {node.separated_print()}")
+
+        ## define a new pattern lattice and elaborates it
+        dummy_pattern = Pattern([], gap_mark = gap_mark, tracer = tracer, check = check)
+        merged = PatternLattice (dummy_pattern, generality = generality, p_metric = p_metric, reductive = reductive, check = check)
+        ##
+        merged.origin        = dummy_pattern
+        merged.nodes         = main_nodes
+        ## The following was a seriously elusive bug
+        #merged.ranked_nodes  = group_nodes_by_rank (merged.nodes, gap_mark = gap_mark)
+        merged.ranked_nodes  = merged.group_nodes_by_rank (check = check)
+        merged.links         =  []
+        merged.link_source   =  []
+        merged.link_targets  =  []
+
+        ## generate links
+        if gen_links_internally:
+            merged = merged.update_links (p_metric, reflexive = reflexive, use_mp = use_mp, check = check)
+        ##
+        if check:
+            print(f"#merged lattice: {merged}")
+        ##
+        return merged
 
     ##
     def group_nodes_by_rank (self, check: bool = False) -> dict:
@@ -1089,6 +1306,43 @@ class PatternLattice():
         if check:
             print(f"#ranked_nodes: {ranked_nodes}")
         return ranked_nodes
+
+    ##
+    def group_nodes_by (self, metric: str, check: bool = False) -> dict:
+        """
+        takes a list of patterns, P, and generates a dictionary of patterns grouped by p_metric
+        """
+
+        gap_mark   = self.gap_mark
+        nodes      = self.nodes
+        size       = len(nodes)
+
+        ## implementation using itertools.groupby() failed
+        if metric == 'rank':
+            metric_finder = lambda p: len([ x for x in p.form if len(x) > 0 and x != gap_mark ])
+        elif metric == 'gap_size':
+            metric_finder = lambda p: len([ x for x in p.form if len(x) > 0 and x == gap_mark ])
+        else:
+            raise ValueError("Undefined p_metric")
+
+        ## main
+        from collections import defaultdict
+        grouped_nodes = defaultdict(list) # dictionary
+        for pattern in sorted (nodes, key = metric_finder):
+            if metric == 'rank':
+                metric_val = pattern.get_rank ()
+            elif metric == 'gap_size':
+                metric_val = pattern.get_gap_size ()
+            if check:
+                print(f"#rank: {pattern_rank}")
+                print(f"#ranked pattern: {pattern}")
+            if metric_val <= size:
+                grouped_nodes[metric_val].append(pattern)
+
+        ## check and return
+        if check:
+            print(f"#grouped_nodes: {grouped_nodes}")
+        return grouped_nodes
 
     ## generate links
     def gen_links (self: object, reflexive: bool = True, use_mp: bool = True, use_mp2 = True, check: bool = False) -> list:
@@ -1139,7 +1393,7 @@ class PatternLattice():
         return links
 
     ##
-    def update_links (self, reflexive: bool, use_mp: bool = False, check: bool = False):
+    def update_links (self, p_metric: str, reflexive: bool, use_mp: bool = False, check: bool = False):
         """
         takes a PatternLattice P, and updates P.links, P.link_sources and P.link_targets.
         """
@@ -1147,6 +1401,7 @@ class PatternLattice():
         self.links  = self.gen_links (reflexive = reflexive, use_mp = use_mp, check = check)
         ## update ranked_links
         self.ranked_links  = make_links_ranked (self.links, safely = make_links_safely, check = check)
+        self.grouped_links  = make_links_grouped_by (p_metric, self.links, safely = make_links_safely, check = check)
         ## update link_sources, link_targets
         self.link_sources, self.link_targets = self.get_link_stats (check = check)
         ## return result
@@ -1165,67 +1420,13 @@ class PatternLattice():
             if not link in seen:
                 l_form, r_form = tuple(link.left.form), tuple(link.right.form)
                 link_sources[l_form] += 1
-                #if link.rsight.count_gaps() > 0:
-                #    link_targets[r_form] += 1
                 link_targets[r_form] += 1
                 seen.append(link)
         ## return result
         return link_sources, link_targets
 
     ##
-    def merge_with (self, other, **params):
-        """
-        take two PatternLattices and merge them into one.
-        """
-        gen_links_internally = params['gen_links_internally']
-        generality           = params['generality']
-        reductive            = params['reductive']
-        reflexive            = params['reflexive']
-        use_mp               = params['use_mp']
-        check                = params['check']
-
-        ## merger nodes of two pattern lattices given
-        main_nodes   = [ p for p in self.nodes if len(p) > 0 ]
-        nodes_to_add = [ p for p in other.nodes if len(p) > 0 ]
-
-        ## variables
-        gap_mark = main_nodes[0].gap_mark
-        tracer   = main_nodes[0].tracer
-
-        ##
-        if reductive:
-            pool_nodes   = simplify_list (main_nodes)
-            nodes_to_add = simplify_list (nodes_to_add)
-        ##
-        main_nodes = make_simplest_merger (main_nodes, nodes_to_add)
-        if check:
-            for i, node in enumerate(main_nodes):
-                print(f"#main_node {i}: {node.separated_print()}")
-
-        ## define a new pattern lattice and elaborates it
-        dummy_pattern = Pattern([], gap_mark = gap_mark, tracer = tracer, check = check)
-        merged = PatternLattice (dummy_pattern, generality = generality, reductive = reductive, check = check)
-        ##
-        merged.origin        = dummy_pattern
-        merged.nodes         = main_nodes
-        ## The following was a seriously elusive bug
-        #merged.ranked_nodes  = group_nodes_by_rank (merged.nodes, gap_mark = gap_mark)
-        merged.ranked_nodes  = merged.group_nodes_by_rank (check = check)
-        merged.links         =  []
-        merged.link_source   =  []
-        merged.link_targets  =  []
-
-        ## generate links
-        if gen_links_internally:
-            merged = merged.update_links (reflexive = reflexive, use_mp = use_mp, check = check)
-        ##
-        if check:
-            print(f"#merged lattice: {merged}")
-        ##
-        return merged
-
-    ##
-    def draw_network (self, layout: str = None, MPG_key: str = None, auto_figsizing: bool = False, fig_size: tuple = None, generality: int = 0, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, use_robust_zscore: bool = False, mark_instances: bool = False, node_size: int = None, label_size: int = None, label_sample_n: int = None, scale_factor: float = 3, font_name: str = None, test: bool = False, check: bool = False) -> None:
+    def draw_network (self, layout: str = None, MPG_key: str = None, auto_figsizing: bool = False, fig_size: tuple = None, generality: int = 0, p_metric: str = 'gap_size', zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, use_robust_zscore: bool = False, mark_instances: bool = False, node_size: int = None, label_size: int = None, label_sample_n: int = None, scale_factor: float = 3, font_name: str = None, test: bool = False, check: bool = False) -> None:
         """
         draw a lattice digrams from a given PatternLattice L by extracting L.links
         """
@@ -1237,6 +1438,7 @@ class PatternLattice():
         sample_pattern = self.nodes[0]
         gap_mark       = sample_pattern.gap_mark
         ranked_links   = make_links_ranked (links, safely = make_links_safely, check = check)
+        grouped_links   = make_links_grouped_by (p_metric, links, safely = make_links_safely, check = check)
         if check:
             for rank, links in ranked_links.items():
                 print(f"#links at rank {rank}:\n{links}")
@@ -1254,6 +1456,6 @@ class PatternLattice():
                 print(f"node {i:4d} {node} has z-score {v:.4f}")
 
         ## draw PatternLattice
-        draw_graph (layout = layout, MPG_key = MPG_key, auto_figsizing = auto_figsizing, fig_size = fig_size, N = ranked_links.items(), generality = generality, scale_factor = scale_factor, label_sample_n = label_sample_n, font_name = font_name, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, check = check)
+        draw_graph (layout = layout, MPG_key = MPG_key, auto_figsizing = auto_figsizing, fig_size = fig_size, N = ranked_links.items(), generality = generality, scale_factor = scale_factor, label_sample_n = label_sample_n, font_name = font_name, p_metric = p_metric, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, check = check)
 
 ### end of file

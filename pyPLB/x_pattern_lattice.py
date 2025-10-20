@@ -209,6 +209,37 @@ def mp_gen_links_main (links, link_souces, link_targets, x, check: bool = False)
     ## result is None
 
 ##
+def gen_zscores_from_sources_prev (M, gap_mark: str, tracer: str, use_robust_zscore: bool, check: bool = False):
+    ## adding link source z-scores to M
+    Link_sources     = M.link_sources
+    if check:
+        print(f"##Link_sources")
+    ranked_links     = make_ranked_dict (Link_sources, gap_mark = gap_mark, tracer = tracer)
+    averages_by_rank = calc_averages_by_rank (Link_sources, ranked_links) # returns dict
+    stdevs_by_rank   = calc_stdevs_by_rank (Link_sources, ranked_links) # returns dict
+    medians_by_rank  = calc_medians_by_rank (Link_sources, ranked_links) # returns dict
+    MADs_by_rank     = calc_MADs_by_rank (Link_sources, ranked_links) # returns dict
+
+    source_zscores = {}
+    for i, link_source in enumerate (Link_sources):
+        value  = Link_sources[link_source]
+        rank   = get_rank_of_list (link_source, gap_mark = gap_mark)
+        if use_robust_zscore:
+            zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = True)
+        else:
+            zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = False)
+        ##
+        source_zscores[link_source] = zscore
+        if check:
+            print(f"#source {i:3d}: {link_source} has {value} out-going link(s) [{source_zscores[link_source]: .4f} at rank {rank}]")
+
+    ## attach source_zscores to M
+    M.source_zscores.update(source_zscores)
+    if check:
+        print(f"M.source_zscores: {M.source_zscores}")
+
+
+##
 def X():
     ## filter insignificant nodes
     prune_count = 0
