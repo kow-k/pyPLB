@@ -59,10 +59,23 @@ sys.setrecursionlimit(1500)
 #import multiprocessing as mp
 
 ## import other modules
-from utils import *
-from pattern import *
-from pattern_link import *
-from pattern_lattice import *
+try:
+    ## Try relative imports first
+    from .utils import *
+    from .pattern import *
+    from .pattern_link import *
+    from .pattern_lattice import *
+except ImportError:
+    # Fall back to absolute imports (when run as script)
+    import sys
+    import os
+    # Add current directory to path if needed
+    if __name__ == '__main__':
+        sys.path.insert(0, os.path.dirname(__file__))
+    from utils import *
+    from pattern import *
+    from pattern_link import *
+    from pattern_lattice import *
 
 ## settings
 import argparse
@@ -457,8 +470,9 @@ elif build_lattice_stepwise:
         print(f"##Links")
         for i, link in enumerate(M.links):
             link.pprint (indicator = i, paired = True, link_type = "instantiates", check = False)
+
         ## generate z-scores from link targets
-        gen_zscores_from_targets (M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
+        gen_zscores_from_targets_by (p_metric, M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
         if print_link_targets:
             for node, zscore in M.source_zscores.items():
                 print(f"#node {node} has z-score {zscore: .3f}")
@@ -496,7 +510,7 @@ else:
 
     ## get z-scores from link targets
     print(f"##Calculating z-scores ...")
-    gen_zscores_from_targets (M, gap_mark = gap_mark, tracer = tracer, use_robust_zscore = use_robust_zscore, check = False)
+    gen_zscores_from_targets_by (p_metric, M, gap_mark = gap_mark, tracer = tracer, use_robust_zscore = use_robust_zscore, check = False)
     if print_link_targets:
         for node, zscore in M.target_zscores.items():
             print(f"#node {node} has z-score {zscore: .3f} [n: {M.link_targets[node]:2d}]")

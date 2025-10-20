@@ -11,15 +11,14 @@ except ImportError:
 ## Functions
 
 ### Classes
-##
 class PatternLink:
     "definition of PatternLink class"
     def __init__ (self, pair, link_type: str = ""):
-    
+
         """
         generator of PatternLink object
         """
-        
+
         assert len (pair) == 2
         left_p, right_p = pair[0], pair[1]
         self.left            = left_p

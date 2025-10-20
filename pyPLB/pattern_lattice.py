@@ -18,7 +18,6 @@ except ImportError:
 debugged  = True
 make_links_safely = True # False previously
 
-
 ### Data
 from dataclasses import dataclass
 
@@ -55,36 +54,36 @@ def as_label (T: (list, tuple), sep: str = "", add_sep_at_end: bool = False) -> 
     return result
 
 ##
+def register_pair (p, sub_pairs):
+    "helper function for register_pairs()"
+    if len (p) > 0 and not p in sub_pairs:
+        sub_pairs.append (p)
+    #if len (p) > 0 and not p in seen:
+    #    seen.append (p)
+
+##
 def register_pairs (r: list, l: list, check: bool = False) -> list:
-    '''
+    """
     tests if a given pair is in IS-A relation and returns classification result as a list of pairs
-    '''
+    """
     gap_mark = r.gap_mark
     tracer   = r.tracer
     r_form, l_form = r.form, l.form
     r_size, l_size = len (r_form), len (l_form)
     r_rank = get_rank_of_list (r_form, gap_mark)
     l_rank = get_rank_of_list (l_form, gap_mark)
-    ##
-    sub_pairs = []
-    seen      = []
-
-    ## helper function
-    def register_pair (p, sub_pairs = sub_pairs, seen = seen):
-        if len (p) > 0 and not p in sub_pairs:
-            sub_pairs.append (p)
-        if len (p) > 0 and not p in seen:
-            seen.append (p)
 
     ##
     size_diff = l_size - r_size
-
+    sub_pairs = []
     if size_diff == 0:
         if isa_under_size_equality(r_form, l_form, gap_mark = gap_mark, tracer = tracer, check = check):
-            register_pair((l, r))
+            register_pair ((l, r), sub_pairs)
+            #register_pair ((l, r))
     elif size_diff == 1:
         if isa_under_size_difference(r_form, l_form, gap_mark = gap_mark, tracer = tracer, check = check):
-            register_pair((l, r))
+            register_pair ((l, r), sub_pairs)
+            #register_pair ((l, r))
     else:
         pass
 
@@ -92,81 +91,128 @@ def register_pairs (r: list, l: list, check: bool = False) -> list:
     return sub_pairs
 
 ##
-def register_pairs_old (r: list, l: list, check: bool = False) -> list:
-    '''
-    tests if a given pair is in IS-A relation and returns classification result as a list of pairs
-    '''
+def classify_relations_mp2 (R, L, gap_mark: str, check: bool = False):
+    """
+    Alternative multiprocess version using register_pairs instead of test_pairs_for_ISA.
+    """
+
+    from itertools import product
+    import os
+    import multiprocess as mp
+
+    ## sort R and L once
+    R2 = sorted (R, key = lambda x: len(x), reverse = False)
+    L2 = sorted (L, key = lambda x: len(x), reverse = False)
+
+    #pairs = product (R2, L2) # cannot be reused
+    pairs = list(product (R2, L2)) # can be reused; crucially, list(product(..))
+    with mp.Pool(max(os.cpu_count(), 1)) as pool:
+        sub_pairs = pool.starmap (register_pairs, pairs) # seems to work
+    ## Flatten nested structure and create PatternLinks
+    ## sub_pairs is [[pair1], [pair2], [], None, [pair3], ...]
+    links = [ PatternLink(pair) for result in sub_pairs
+                if result is not None and len(result) > 0
+                    for pair in result if len(pair) == 2 ]
+    ##
+    return links
+
+##
+def test_pairs_for_ISA (r: list, l: list, check: bool = False) -> bool:
+    """
+    tests if a given pair of Patterns is in IS-A relation [called from classify_relations_mp1()]
+    """
+
     gap_mark = r.gap_mark
     r_form, l_form = r.form, l.form
     r_size, l_size = len (r_form), len (l_form)
     r_rank = get_rank_of_list (r_form, gap_mark)
     l_rank = get_rank_of_list (l_form, gap_mark)
     ##
-    sub_pairs = []
-    seen      = []
-
-    ## helper function
-    def register_pair (p, sub_pairs = sub_pairs, seen = seen):
-        if len (p) > 0 and not p in sub_pairs:
-            sub_pairs.append (p)
-        if len (p) > 0 and not p in seen:
-            seen.append (p)
-
-    ##
-    size_diff = l_size - r_size
-    if abs (size_diff) > 1:
+    if abs (l_size - r_size) > 1:
         if check:
-            print(f"#is-a:F0; {l.form} ~~ {r.form}")
-        return None
+            print(f"#is-a:F0; {l.form} ~ {r.form}")
+        return False
     ##
-    elif size_diff == 1: #l_size == r_size + 1:
-        if l_form[:-1] == r_form and l_form[-1] == gap_mark:
+    elif l_size == r_size + 1:
+        if l_form[0] == gap_mark and l_form[1:] == r_form:
             if check:
-                print(f"#is-a:T1a; {l.form} -> {r.form}")
-            register_pair ((l, r))
-        elif l_form[1:] == r_form and l_form[0] == gap_mark:
+                print(f"#is-a:T1a; {l.form} <- {r.form}")
+            return True
+        elif  l_form[-1] == gap_mark and l_form[:-1] == r_form:
             if check:
-                print(f"#is-a:T1b; {l.form} -> {r.form}")
-            register_pair ((l, r))
+                print(f"#is-a:T1b; {l.form} <- {r.form}")
+            return True
         else:
             if check:
-                print(f"#is-a:F1; {l.form} -> {r.form}")
-            return None
+                print(f"#is-a:F1; {l.form} <- {r.form}")
+            return False
     ##
-    elif size_diff == 0: # l_size == r_size:
-        if l_form == r_form:
+    elif l_size == r_size:
+        if r_form == l_form:
             if check:
-                print(f"#is-a:F2; {l.form} ~~ {r.form}")
-            return None
+                print(f"#is-a:F2; {l.form} ~ {r.form}")
+            return False
         if r.count_gaps() == 0 and l.count_gaps() == 1:
-            if r.includes (l):
+            if r.includes(l):
                 if check:
-                    print(f"#is-a:T0:instance' {l.form} -> {r.form}")
-                register_pair ((l, r))
+                    print(f"#is-a:T0:instance' {l.form} <- {r.form}")
+                return True
             else:
                 if check:
-                    print(f"#is-a:F3; {l.form} ~~ {r.form}")
-                return None
-        #elif check_for_instantiation (r, l, check = False):
-        #elif r.instantiates_or_not (l, check = False):
-        elif l.subsumes_or_not (r, check = False):
+                    print(f"#is-a:F3; {l.form} ~ {r.form}")
+                return False
+        elif check_for_instantiation (r, l, check = False):
             if check:
-                print(f"#is-a:T2; {l.form} -> {r.form}")
-            register_pair ((l, r))
+                print(f"#is-a:T2; {l.form} <- {r.form}")
+            return True
         else:
             if check:
-                print(f"#is-a:F3; {l.form} ~~ {r.form}")
-            return None
+                print(f"#is-a:F3; {l.form} ~ {r.form}")
+            return False
     ##
     else:
         if check:
-            print(f"#is-a:F4; {l.form} ~~ {r.form}")
-        return None
-    ## return result
-    return sub_pairs
+            print(f"#is-a:F4; {l.form} ~ {r.form}")
+        return False
 
 ##
-def classify_relations (R, L, check: bool = False):
+def classify_relations_mp1 (R, L, gap_mark, check: bool = False):
+    """
+    takes two Patterns, classify their relation and returns the list of is-a cases.
+
+    in logging, "is-a:Ti" means is-a relation is True of case i; "is-a:Fi" means is-a relation is False of case i;
+    """
+    from itertools import product
+    import multiprocess as mp
+    import os
+
+    ## generates a list of Boolean values and sort once
+    R2 = sorted (R, key = lambda x: len(x), reverse = False)
+    L2 = sorted (L, key = lambda x: len(x), reverse = False)
+
+    #pairs = product (R2, L2) # cannot be reused
+    pairs = list(product (L2, R2)) # can be re-used; Crucially, list(product(..))
+    with mp.Pool(max(os.cpu_count(), 1)) as pool:
+        test_values = pool.starmap (test_pairs_for_ISA, pairs)
+
+    ## filter in true cases
+    true_pairs = [ (l, r) for (l, r), is_true in zip(pairs, test_values) if is_true ]
+
+    ## remove duplicates
+    links = [ PatternLink (p) for p in simplify_list (true_pairs) if len(p) == 2 ]
+    ##
+    return links
+
+
+##
+def register_link (link, sub_links, seen):
+    "helper function for classify_relaitons_nmp"
+    if len(link) > 0 and not link in sub_links and not link in seen:
+        sub_links.append (link)
+        seen.append (link)
+
+##
+def classify_relations_nmp (R, L, check: bool = False):
     """
     takes two Patterns, classify their relation and returns the list of is-a cases.
 
@@ -175,10 +221,6 @@ def classify_relations (R, L, check: bool = False):
 
     sub_links = [ ]
     seen      = [ ]
-    def register_link (link, sub_links = sub_links, seen = seen):
-        if len(link) > 0 and not link in sub_links and not link in seen:
-            sub_links.append (link)
-            seen.append (link)
     ##
     for r in sorted (R, key = lambda x: len(x)):
         for l in sorted (L, key = lambda x: len(x)):
@@ -238,46 +280,6 @@ def classify_relations (R, L, check: bool = False):
                 continue
     ##
     return sub_links
-
-
-##
-def classify_relations_mp1 (R, L, gap_mark, check: bool = False):
-    """
-    takes two Patterns, classify their relation and returns the list of is-a cases.
-
-    in logging, "is-a:Ti" means is-a relation is True of case i; "is-a:Fi" means is-a relation is False of case i;
-    """
-    ## generates a list of Boolean values
-    R2 = sorted (R, key = lambda x: len(x), reverse = False)
-    L2 = sorted (L, key = lambda x: len(x), reverse = False)
-    from itertools import product
-    #pairs = product (R2, L2) # cannot be reused
-    import multiprocess as mp
-    import os
-    with mp.Pool(max(os.cpu_count(), 1)) as pool:
-        test_values = pool.starmap (test_pairs_for_ISA, product (R2, L2))
-    #print (f"test_values: {test_values}")
-    true_pairs = [ pair for pair, t in zip ([ (l, r) for r, l in product (R2, L2) ], test_values) if t is True ]
-    #print(f"true_pairs: {true_pairs}")
-    ## remove duplicates
-    links = [ PatternLink (p) for p in simplify_list (true_pairs) if len(p) == 2 ]
-    #print (links)
-    ##
-    return links
-
-##
-def classify_relations_mp2 (R, L, gap_mark: str, check: bool = False):
-    ## generates a list of Boolean values
-    from itertools import product
-    R2 = sorted (R, key = lambda x: len(x), reverse = False)
-    L2 = sorted (L, key = lambda x: len(x), reverse = False)
-    #pairs = product (R2, L2) # cannot be reused
-    import os
-    import multiprocess as mp
-    with mp.Pool(max(os.cpu_count(), 1)) as pool:
-        sub_pairs = pool.starmap (register_pairs, product (R2, L2)) # seems to work
-    ##
-    return [ PatternLink (*p) for p in sub_pairs if p is not None and len(p) > 0 ] # Crucially, len(p) > 0
 
 ##
 def group_links_by (metric: str, L: list, gap_mark: str, tracer: str) -> dict:
@@ -415,148 +417,65 @@ def get_rank_dists (link_dict: dict, ranked_links: dict, check: bool = False) ->
     return rank_dists
 
 ##
-def calc_averages_by_rank (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
-    "calculate averages per rank"
+def calc_statistics_by (metric: str, link_dict: dict, grouped_links: dict,
+                       stat_func, check: bool = False) -> dict:
+    """
+    Calculate statistics per a given metric using stat_func.
 
-    if check:
-        print(f"#ranked_links: {ranked_links}")
-    ##
-    averages_by_rank = {}
-    for rank in ranked_links:
-        members = ranked_links[rank]
-        dist = [ link_dict[m] for m in members ]
-        averages_by_rank[rank] = sum(dist)/len(dist)
-    ##
-    return averages_by_rank
+    Args:
+        metric: Either 'rank' or 'gap_size'
+        link_dict: Dictionary mapping nodes to their link counts
+        grouped_links: Dictionary grouping nodes by metric value
+        stat_func: Function to calculate statistic or string ('mean', 'std', 'median', 'mad')
+        check: If True, print debug information
 
-##
-def calc_stdevs_by_rank (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
-    "calculate stdevs per rank"
-    if check:
-        print(f"#ranked_links: {ranked_links}")
-    ##
-    import numpy as np
-    stdevs_by_rank = {}
-    for rank in ranked_links:
-        members = ranked_links[rank]
-        dist = [ link_dict[m] for m in members ]
-        stdevs_by_rank[rank] = np.std(dist)
-    ##
-    return stdevs_by_rank
+    Returns:
+        Dictionary mapping metric values to calculated statistics
+    """
+    assert metric in ['rank', 'gap_size']
 
-##
-def calc_medians_by_rank (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
-    "calculate stdevs per rank"
-    if check:
-        print(f"#ranked_links: {ranked_links}")
-    ##
-    import numpy as np
-    medians_by_rank = {}
-    for rank in ranked_links:
-        members = ranked_links[rank]
-        dist = [ link_dict[m] for m in members ]
-        medians_by_rank[rank] = np.median(dist)
-    ##
-    return medians_by_rank
-
-##
-def calc_MADs_by_rank (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
-    "calculate stdevs per rank"
-
-    if check:
-        print(f"#ranked_links: {ranked_links}")
-    ## JIT compiler demand function-internal imports to be externalized
     import numpy as np
     import scipy.stats as stats
+
+    ## helper functions
+    MAD_calc = lambda dist: np.median (stats.median_abs_deviation (dist))
+
+    ## Handle string shortcuts
+    if isinstance(stat_func, str):
+        stat_funcs = {
+            'mean'    : np.mean,
+            'average' : np.mean,
+            'std'     : np.std,
+            'stdev'   : np.std,
+            'median'  : np.median,
+            'MAD'     : MAD_calc,
+            'mad'     : MAD_calc,
+        }
+        if stat_func not in stat_funcs:
+            raise ValueError(f"Unknown stat function: {stat_func}")
+        stat_func = stat_funcs[stat_func]
     ##
-    MADs_by_rank = {}
-    for rank in ranked_links:
-        members = ranked_links[rank]
-        dist = [ link_dict[m] for m in members ]
-        MADs_by_rank[rank] = np.median (stats.median_abs_deviation (dist))
-    ##
-    return MADs_by_rank
-
-##
-def calc_averages_by (metric: str, link_dict: dict, grouped_links: dict, check: bool = False) -> dict:
-    """
-    calculate averages per a given metric, such as 'rank', 'gap_size'
-    """
-
-    assert metric in ['gap_size', 'rank']
-
     if check:
         print(f"#grouped_links: {grouped_links}")
     ##
-    averages_by = {}
+    stats_by = {}
     for metric_val in grouped_links:
         members = grouped_links[metric_val]
-        dist = [ link_dict[m] for m in members ]
-        averages_by[metric_val] = sum(dist)/len(dist)
+        dist = [link_dict[m] for m in members]
+        stats_by[metric_val] = stat_func(dist)
     ##
-    return averages_by
+    return stats_by
 
-##
-def calc_stdevs_by (metric: str, link_dict: dict, grouped_links: dict, check: bool = False) -> dict:
-    """
-    calculate stdevs per a given rank such as 'rank', 'gap_size'
-    """
-
-    assert metric in ['rank', 'gap_size']
-
-    if check:
-        print(f"#grouped_links: {grouped_links}")
-    ##
-    import numpy as np
-    stdevs_by = {}
-    for metric_val in grouped_links:
-        members = grouped_links[metric_val]
-        dist = [ link_dict[m] for m in members ]
-        stdevs_by[metric_val] = np.std(dist)
-    ##
-    return stdevs_by
-
-##
-def calc_medians_by (metric: str, link_dict: dict, grouped_links: dict, check: bool = False) -> dict:
-    """
-    calculate stdevs per a given metric such as 'rank', 'gap_size'
-    """
-
-    assert metric in ['rank', 'gap_size']
-    if check:
-        print(f"#grouped_links: {grouped_links}")
-    ##
-    import numpy as np
-    medians_by = {}
-    for metric_val in grouped_links:
-        members = grouped_links[metric_val]
-        dist = [ link_dict[m] for m in members ]
-        medians_by[metric_val] = np.median(dist)
-    ##
-    return medians_by
-
-
-##
-def calc_MADs_by (metric: str, link_dict: dict, grouped_links: dict, check: bool = False) -> dict:
-    """
-    calculate stdevs per a given metric such as 'rank', 'gap_size'
-    """
-
-    assert metric in ['rank', 'gap_size']
-    if check:
-        print(f"#ranked_links: {ranked_links}")
-
-    ## JIT compiler demand function-internal imports to be externalized
-    import numpy as np
-    import scipy.stats as stats
-    ##
-    MADs_by = {}
-    for metric_val in grouped_links:
-        members = grouped_links[metric_val]
-        dist = [ link_dict[m] for m in members ]
-        MADs_by[metric_val] = np.median (stats.median_abs_deviation (dist))
-    ##
-    return MADs_by
+# Keeping the old _by_rank versions for backward compatibility if needed
+calc_averages_by_rank = lambda ld, rl, c=False: calc_statistics_by('rank', ld, rl, 'mean', c)
+calc_stdevs_by_rank = lambda ld, rl, c=False: calc_statistics_by('rank', ld, rl, 'std', c)
+calc_medians_by_rank = lambda ld, rl, c=False: calc_statistics_by('rank', ld, rl, 'median', c)
+calc_MADs_by_rank = lambda ld, rl, c=False: calc_statistics_by('rank', ld, rl, 'mad', c)
+# And for the _by versions
+calc_averages_by = lambda m, ld, gl, c=False: calc_statistics_by(m, ld, gl, 'mean', c)
+calc_stdevs_by = lambda m, ld, gl, c=False: calc_statistics_by(m, ld, gl, 'std', c)
+calc_medians_by = lambda m, ld, gl, c=False: calc_statistics_by(m, ld, gl, 'median', c)
+calc_MADs_by = lambda m, ld, gl, c=False: calc_statistics_by(m, ld, gl, 'mad', c)
 
 ##
 def calc_zscore (value: float, average: float, stdev: float, median: float = None, MAD: float = None, robust: bool = True) -> float:
@@ -587,21 +506,65 @@ def calc_zscore_old (value: float, average_val: float, stdev_val: float) -> floa
         return (value - average_val) / stdev_val
 
 ##
-def normalize_zscore (x: float, use_robust_zscore: bool = False, min_val: float = -2, max_val: float = 2) -> float:
+def normalize_zscore (x: float, min_val: float = -3.0, max_val: float = 3.0, normalization_factor: float = 1.2, use_robust_zscore: bool = False) -> float:
     "takes a value in the range of min, max and returns its normalized value"
     ##
     import matplotlib.colors as colors
     ## re-base when robust z-score is used
     if use_robust_zscore:
-        max_val = round (1.5 * max_val, 0)
+        max_val = round (normalization_factor * max_val, 0)
     ##
     normalizer = colors.Normalize (vmin = min_val, vmax = max_val)
     return normalizer (x)
 
 ##
+def gen_zscores_from_targets_by (metric: str, M: object, gap_mark: str, tracer: str, use_robust_zscore: bool, check: bool = False) -> None:
+    """
+    given a PatternLattice M, creates z-scores from link targets, calculated by metric (rank or gap_size) and attach the result to M.
+    """
+
+    Link_targets = M.link_targets
+    if check:
+        print(f"##Link_targets")
+
+    ## The following all return list
+    grouped_links = group_links_by (metric, Link_targets, gap_mark = gap_mark, tracer = tracer)
+    assert len(grouped_links)
+
+    ##
+    averages_by = calc_statistics_by (metric, Link_targets, grouped_links, 'average')
+    stdevs_by   = calc_statistics_by (metric, Link_targets, grouped_links, 'stdev')
+    medians_by  = calc_statistics_by (metric, Link_targets, grouped_links, 'median')
+    MADs_by     = calc_statistics_by (metric, Link_targets, grouped_links, 'MAD')
+
+    ##
+    target_zscores = {}
+    for i, link_target in enumerate (Link_targets):
+        value  = Link_targets[link_target]
+        ##
+        if metric == 'rank':
+            metric_val  = get_rank_of_list (link_target, gap_mark = gap_mark)
+        elif metric == 'gap_size':
+            metric_val  = get_gap_size_of_list (link_target, gap_mark = gap_mark)
+        ##
+        if use_robust_zscore:
+            zscore = calc_zscore (value, averages_by[metric_val], stdevs_by[metric_val], medians_by[metric_val], MADs_by[metric_val], robust = True)
+        else:
+            zscore = calc_zscore (value, averages_by[metric_val], stdevs_by[metric_val], medians_by[metric_val], MADs_by[metric_val], robust = False)
+        ##
+        target_zscores[link_target] = zscore
+        if check:
+            print(f"#target {i:3d}: {link_target} has {value} in-coming link(s) [{target_zscores[link_target]: .4f} at {metric} {metric_val}]")
+
+    ## attach target_zscores to M
+    M.target_zscores.update(target_zscores)
+    if check:
+        print(f"M.target_zscores: {M.target_zscores}")
+
+##
 def gen_zscores_from_sources_by (metric: str, M: object, gap_mark: str, tracer: str, use_robust_zscore: bool, check: bool = False) -> None:
     """
-    adding to M link source z-scores calculated either by rank or gap_size
+    given a PatternLattice M, creates z-scores from link sources, calculated by metric (rank or gap_size) and attach the result to M.
     """
 
     Link_sources = M.link_sources
@@ -611,11 +574,12 @@ def gen_zscores_from_sources_by (metric: str, M: object, gap_mark: str, tracer: 
     ## The following all return list
     grouped_links = group_links_by (metric, Link_sources, gap_mark = gap_mark, tracer = tracer)
     assert len(grouped_links)
+
     ##
-    averages_by   = calc_averages_by (metric, Link_sources, grouped_links)
-    stdevs_by     = calc_stdevs_by (metric, Link_sources, grouped_links)
-    medians_by    = calc_medians_by (metric, Link_sources, grouped_links)
-    MADs_by       = calc_MADs_by (metric, Link_sources, grouped_links)
+    averages_by = calc_statistics_by (metric, Link_sources, grouped_links, 'average')
+    stdevs_by   = calc_statistics_by (metric, Link_sources, grouped_links, 'stdev')
+    medians_by  = calc_statistics_by (metric, Link_sources, grouped_links, 'median')
+    MADs_by     = calc_statistics_by (metric, Link_sources, grouped_links, 'MAD')
 
     ##
     source_zscores = {}
@@ -634,44 +598,15 @@ def gen_zscores_from_sources_by (metric: str, M: object, gap_mark: str, tracer: 
         ##
         source_zscores[link_source] = zscore
         if check:
-            print(f"#source {i:3d}: {link_source} has {value} out-going link(s) [{source_zscores[link_source]: .4f} at rank {rank}]")
+            print(f"#source {i:3d}: {link_source} has {value} out-going link(s) [{source_zscores[link_source]: .4f} at {metric} {metric_val}]")
 
     ## attach source_zscores to M
     M.source_zscores.update(source_zscores)
     if check:
         print(f"M.source_zscores: {M.source_zscores}")
 
+
 ##
-def gen_zscores_from_targets (M, gap_mark: str, tracer: str, use_robust_zscore: bool, check: bool = False):
-    ## adding link target z-scores to M
-    Link_targets     = M.link_targets
-    if check:
-        print(f"##Link_targets")
-    ranked_links     = make_ranked_dict (Link_targets, gap_mark = gap_mark, tracer = tracer)
-    averages_by_rank = calc_averages_by_rank (Link_targets, ranked_links) # returns dict
-    stdevs_by_rank   = calc_stdevs_by_rank (Link_targets, ranked_links) # returns dict
-    medians_by_rank  = calc_medians_by_rank (Link_targets, ranked_links) # returns dict
-    MADs_by_rank     = calc_MADs_by_rank (Link_targets, ranked_links) # returns dict
-
-    target_zscores = {}
-    for i, link_target in enumerate(Link_targets):
-        value  = Link_targets[link_target]
-        rank   = get_rank_of_list (link_target, gap_mark = gap_mark)
-        if use_robust_zscore:
-            zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = True)
-        else:
-            zscore = calc_zscore (value, averages_by_rank[rank], stdevs_by_rank[rank], medians_by_rank[rank], MADs_by_rank[rank], robust = False)
-        target_zscores[link_target] = zscore
-        if check:
-            print(f"#target {i:3d}: {link_target} has {value} in-coming link(s) [{target_zscores[link_target]: .4f} at rank {rank}]")
-
-    ## attach source_zscores to M
-    M.target_zscores.update(target_zscores)
-    if check:
-        print(f"M.target_zscores: {M.target_zscores}")
-    ##
-    #return M
-
 def gen_G (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_directed_graph: bool, test: bool = True, check: bool = False):
     """
     generate a NetworkX graph G from a given nodes N

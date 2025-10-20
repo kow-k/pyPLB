@@ -1,26 +1,5 @@
 ### Functions
 
-## parallel filter, or pfilter
-def mp_Filter (boolean_func, L: list):
-    """
-    multiprocess verions of Filter (..)
-    """
-    import os
-    import multiprocess as mp
-    with mp.Pool (max(os.cpu_count(), 1)) as pool:
-        boolean_tests = pool.map (boolean_func, L)
-    return [ r for r, t in zip (L, boolean_tests) if t ]
-
-##
-def mp_test_for_inclusion (item, L: (list, tuple))-> bool:
-    "multiprocess-version of membership test: effective only with a large list"
-    import os
-    import multiprocess as mp
-    with mp.Pool(max(os.cpu_count(), 1)) as pool:
-        return any(pool.map (lambda x: x == item, L))
-## alias
-mp_in_test = mp_test_for_inclusion
-
 ##
 def process_hyphenation (W: list):
     R = []
@@ -46,6 +25,11 @@ def as_tuple (L: list) -> tuple:
     return tuple(L)
 
 ##
+def count_items (L: list, item: str, check: bool = False) -> int:
+    "returns the number of items in the given list"
+    return len([ x for x in L if x == item ])
+
+##
 def filter_list (F: list, A: list, check: bool = False) -> list:
     #assert len(F) <= len(A)
     R = [ ]
@@ -60,20 +44,9 @@ def filter_list (F: list, A: list, check: bool = False) -> list:
         print (R)
     return R
 
-##
-def sort_remove_duplicates (L: list, initial_value: object = None) -> list:
-    "takes a list and returns a list with duplicates removed"
-    R    = []
-    prev = initial_value
-    for x in sorted (L):
-        if x == prev:
-            pass
-        else:
-            R.append(x)
-        ## update prev
-        prev = x
-    ## return result
-    return R
+
+#def simplify_list (A:list) -> list:
+#    return remove_duplicates (A, None)
 
 ##
 def simplify_list (A: list, use_mp: bool = False) -> list:
@@ -86,9 +59,6 @@ def simplify_list (A: list, use_mp: bool = False) -> list:
         return [ x for x in A if x is not None and len(x) > 0 and not mp_in_test (x, C) ]
     else:
         return [ x for x in A if x is not None and len(x) > 0 and x not in C ]
-
-#def simplify_list (A:list) -> list:
-#    return remove_duplicates (A, None)
 
 ## alises
 reduce_list         = simplify_list
@@ -125,9 +95,19 @@ def wrapped_make_simplest_list (*args):
     return functools.reduce (make_simplest_list, args)
 
 ##
-def count_items (L: list, item: str, check: bool = False) -> int:
-    "returns the number of items in the given list"
-    return len([ x for x in L if x == item ])
+def sort_remove_duplicates (L: list, initial_value: object = None) -> list:
+    "takes a list and returns a list with duplicates removed"
+    R    = []
+    prev = initial_value
+    for x in sorted (L):
+        if x == prev:
+            pass
+        else:
+            R.append(x)
+        ## update prev
+        prev = x
+    ## return result
+    return R
 
 ##
 def attr_is_None_free (p, attr: str) -> bool:
@@ -160,6 +140,27 @@ def pattern_is_None_free (p: list) -> bool:
 #def pattern_is_None_free (p):
 #    "exists for compatibility check"
 #    pass
+
+## parallel filter, or pfilter
+def mp_Filter (boolean_func, L: list):
+    """
+    multiprocess verions of Filter (..)
+    """
+    import os
+    import multiprocess as mp
+    with mp.Pool (max(os.cpu_count(), 1)) as pool:
+        boolean_tests = pool.map (boolean_func, L)
+    return [ r for r, t in zip (L, boolean_tests) if t ]
+
+##
+def mp_test_for_inclusion (item, L: (list, tuple))-> bool:
+    "multiprocess-version of membership test: effective only with a large list"
+    import os
+    import multiprocess as mp
+    with mp.Pool(max(os.cpu_count(), 1)) as pool:
+        return any(pool.map (lambda x: x == item, L))
+## alias
+mp_in_test = mp_test_for_inclusion
 
 
 ### end of file

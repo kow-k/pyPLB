@@ -3,9 +3,9 @@
 #import numpy as np # turned out not to be suited
 #import awkward as ak # turned out not to be suited
 
-## Functions
+from typing import Union, List, Tuple
 
-##
+## Functions
 def list_encode_for_pattern (L: list) -> list:
     """
     take a list L of segments and returns a list R of (form, content) tuples
@@ -34,6 +34,17 @@ def is_tracing_pair (f: str, g: str, tracer: str, strict: bool = True) -> bool:
 def insert_gaps (input_list, gap_mark: str = "_") -> list:
     """
     Generate all non-empty subsets of possible underscore insertion positions
+
+    Args:
+        input_list: List of elements to insert gaps between
+        gap_mark: Symbol to use for gaps (default: "_")
+
+    Returns:
+        List of lists, each with gaps inserted at different positions
+
+    Example:
+        >>> insert_gaps(['a', 'b', 'c'], '_')
+        [['a', '_', 'b', 'c'], ['a', 'b', '_', 'c'], ['a', '_', 'b', '_', 'c']]
     """
     from itertools import combinations
 
@@ -138,7 +149,7 @@ def get_gap_size_of_list (L: list, gap_mark: str, check: bool = False) -> int:
     return len(get_gaps_of_list(L, gap_mark = gap_mark, check = check))
 
 ##
-def get_substance_of_list (L: (list, tuple), gap_mark: str):
+def get_substance_of_list (L: Union[list, tuple], gap_mark: str) -> list:
     "takes a list and returns the list of its element which are not gap_mark"
     return [ x for x in L if len(x) > 0 and x != gap_mark ]
 
@@ -405,16 +416,22 @@ class Pattern:
         return f"{type(self).__name__} ({self.paired!r})"
 
     ##
-    def copy (self):
+    def copy_old (self):
         """
         implements Pattern.copy()
         """
         import copy
         C = []
         for segment in self.paired:
-            c = copy.deepcopy(segment)
+            #c = copy.deepcopy(segment)
+            c = copy.copy(segment)
             C.append(c)
         return C
+
+    ##
+    def copy (self):
+        # Since paired contains tuples of (str, list), we can optimize
+        return [(f, c[:]) for f, c in self.paired]
 
     ##
     def insert (self, index, value):
@@ -669,7 +686,8 @@ class Pattern:
             elif position in [ 'B', 'Both', 'both', 'b' ]:
                 paired_new.append (gapped_seg)
             else:
-                raise "Specified position is undefined"
+                #raise "Specified position is undefined"
+                raise ValueError(f"Specified position '{position}' is undefined. Use 'L', 'R', or 'B'.")
 
         ## create a new pattern and update with the process above
         result = Pattern([], gap_mark = gap_mark)
