@@ -1,8 +1,5 @@
-# Personal files and directories
-*.html
-*.zip
-*.txt
-!package-dependencies.txt
+## Personal directories and files
+## directories
 dots/
 figs/
 outdated/
@@ -11,6 +8,13 @@ profiled/
 !sources/
 !pyPLB/
 pyPLB/__pycache__/
+## files
+*.html
+*.zip
+*.txt
+!package-dependencies.txt
+
+## python files
 pyPLB/*.py
 !pyPLB/__init__.py
 !pyPLB/__main__.py
@@ -18,6 +22,10 @@ pyPLB/*.py
 !pyPLB/pattern_link.py
 !pyPLB/pattern.py
 !pyPLB/utils.py
+
+## ignore .md files except README.md
+*.md
+!README.md
 
 #
 .DS_Store
