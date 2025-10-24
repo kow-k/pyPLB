@@ -42,6 +42,7 @@ modification history
 2025/10/04 added MPG_key option that allows changing 'subset_key' in Multi-partite graph;
 2025/10/09 fixed a bug to calc_zscore() to get robust z-scores;
 2025/10/14 retyped Pattern.form and Pattern.content as tuples, making as_tuple() dispensable; implemented gap_size-based z-score calculation;
+2025/10/24 added alternative use of input_field_seps ",;": if sep2_is_suppressive is True, segmentation by "," is suppressed, thereby implementing segmentation on a larger scale;
 
 """
 
@@ -56,45 +57,26 @@ import random
 import sys
 sys.setrecursionlimit(1500)
 
-#import multiprocessing as mp
-
-## import other modules
-try:
-    ## Try relative imports first
-    from .utils import *
-    from .pattern import *
-    from .pattern_link import *
-    from .pattern_lattice import *
-except ImportError:
-    # Fall back to absolute imports (when run as script)
-    import sys
-    import os
-    # Add current directory to path if needed
-    if __name__ == '__main__':
-        sys.path.insert(0, os.path.dirname(__file__))
-    from utils import *
-    from pattern import *
-    from pattern_link import *
-    from pattern_lattice import *
-
 ## settings
 import argparse
-def parse_tuple(s):
+def parse_tuple_for_arg (s: str, sep: str = ',') -> tuple:
     """Converts a string of comma-separated values into a tuple of integers."""
     try:
-        return tuple(int(x.strip()) for x in s.split(','))
+        return tuple(int(x.strip()) for x in s.split(sep))
     except ValueError:
         raise argparse.ArgumentTypeError("Tuple values must be integers separated by commas.")
+
 ##
 parser  = argparse.ArgumentParser(description = "")
 parser.add_argument('file', type=open, default=None)
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 parser.add_argument('-w', '--detailed', action='store_true', default=False)
 parser.add_argument('-c', '--input_comment_escapes', type=list, default=['#', '%'])
+parser.add_argument('-d', '--input_field_seps', type=str, default=',;')
+parser.add_argument('-P', '--sep2_is_suppressive', action='store_true', default=False)
 parser.add_argument('-C', '--uncapitalize', action='store_true', default=False)
-parser.add_argument('-d', '--input_field_sep', type=str, default=',')
 parser.add_argument('-H', '--split_hyphenation', action='store_false', default=True)
-parser.add_argument('-P', '--remove_punctuations', action='store_false', default=True)
+parser.add_argument('-X', '--remove_punctuations', action='store_false', default=True)
 parser.add_argument('-g', '--gap_mark', type=str, default='_')
 parser.add_argument('-t', '--tracer', type=str, default='~')
 parser.add_argument('-m', '--max_size', type=int, default=None)
@@ -103,13 +85,13 @@ parser.add_argument('-D', '--add_displaced_versions', action='store_true', defau
 parser.add_argument('-R', '--unreflexive', action='store_false', default=True)
 parser.add_argument('-G', '--generality', type=int, default=0)
 parser.add_argument('-p', '--productivity_metric', type=str, default='rank')
-parser.add_argument('-zl', '-z', '--zscore_lowerbound', type=float, default=None)
+parser.add_argument('-z', '-zl', '--zscore_lowerbound', type=float, default=None)
 parser.add_argument('-zu', '--zscore_upperbound', type=float, default= None)
 parser.add_argument('-Z', '--use_robust_zscore', action='store_false', default=True)
 parser.add_argument('-T', '--zscores_from_targets', action='store_true', default=False)
 parser.add_argument('-A', '--auto_figsizing', action='store_true', default=False)
 parser.add_argument('-E', '--scaling_factor', type= float, default=5)
-parser.add_argument('-F', '--fig_size', type=parse_tuple, default=(10,9))
+parser.add_argument('-F', '--fig_size', type=parse_tuple_for_arg, default=(10,9))
 parser.add_argument('-I', '--draw_individual_lattices', action='store_true', default=False)
 parser.add_argument('-L', '--layout', type= str, default= 'Multi_partite')
 parser.add_argument('-J', '--use_multibyte_chars', action='store_true', default=False)
@@ -117,64 +99,63 @@ parser.add_argument('-K', '--MPG_key', type=str, default='gap_size')
 #parser.add_argument('-S', '--sample_id', type= int, default= 1)
 parser.add_argument('-S', '--build_lattice_stepwise', action='store_true', default=False)
 parser.add_argument('-i', '--mark_instances', action='store_true', default=False)
+parser.add_argument('-M', '--use_mp', action='store_false', default=True)
 parser.add_argument('-N', '--print_link_targets', action='store_true', default=False)
 parser.add_argument('-o', '--print_forms', action='store_true', default=False)
-parser.add_argument('-X', '--phrasal', action='store_true', default=False)
+parser.add_argument('-Y', '--phrasal', action='store_true', default=False)
 
 ##
 args = parser.parse_args()
 ##
-file                     = args.file   # process a file when it exists
-verbose                  = args.verbose
-detailed                 = args.detailed
-input_comment_escapes    = args.input_comment_escapes
-input_field_sep          = args.input_field_sep
-phrasal                  = args.phrasal
-uncapitalize             = args.uncapitalize
-remove_punctuations      = args.remove_punctuations
-split_hyphenation        = args.split_hyphenation
-gap_mark                 = args.gap_mark
-tracer                   = args.tracer
-max_size                 = args.max_size
-#sample_id                = args.sample_id
-sample_n                 = args.sample_n
-reflexive                = args.unreflexive
-generality               = args.generality
-add_displaced_versions   = args.add_displaced_versions
-build_lattice_stepwise   = args.build_lattice_stepwise
-print_link_targets       = args.print_link_targets
-layout                   = args.layout
-MPG_key                  = args.MPG_key
-p_metric                 = args.productivity_metric
-auto_figsizing           = args.auto_figsizing
-fig_size                 = args.fig_size
-mark_instances           = args.mark_instances
-draw_individually        = args.draw_individual_lattices
-use_multibyte_chars      = args.use_multibyte_chars
-scale_factor             = args.scaling_factor
-zscore_lowerbound        = args.zscore_lowerbound
-zscore_upperbound        = args.zscore_upperbound
-use_robust_zscore        = args.use_robust_zscore
-zscores_from_targets     = args.zscores_from_targets
-print_forms              = args.print_forms
+file                   = args.file   # process a file when it exists
+verbose                = args.verbose
+detailed               = args.detailed
+use_mp                 = args.use_mp # controls use of multiprocess
+input_comment_escapes  = args.input_comment_escapes
+input_field_seps       = args.input_field_seps
+sep2_is_suppressive    = args.sep2_is_suppressive # controls the behavior of second sep
+uncapitalize           = args.uncapitalize
+remove_punct           = args.remove_punctuations
+split_hyphenation      = args.split_hyphenation
+gap_mark               = args.gap_mark
+tracer                 = args.tracer
+max_size               = args.max_size
+#sample_id              = args.sample_id
+sample_n               = args.sample_n
+reflexive              = args.unreflexive
+generality             = args.generality
+add_displaced_versions = args.add_displaced_versions
+build_lattice_stepwise = args.build_lattice_stepwise
+print_link_targets     = args.print_link_targets
+layout                 = args.layout
+MPG_key                = args.MPG_key
+p_metric               = args.productivity_metric
+auto_figsizing         = args.auto_figsizing
+fig_size               = args.fig_size
+zscore_lowerbound      = args.zscore_lowerbound
+zscore_upperbound      = args.zscore_upperbound
+use_robust_zscore      = args.use_robust_zscore
+zscores_from_targets   = args.zscores_from_targets
+mark_instances         = args.mark_instances
+draw_individually      = args.draw_individual_lattices
+use_multibyte_chars    = args.use_multibyte_chars
+scale_factor           = args.scaling_factor
+print_forms            = args.print_forms
+phrasal                = args.phrasal
 
 ## inspection paramters
 draw_inspection      = False
-mp_inspection        = False # This disables use of multiprocess
-if mp_inspection:
-    use_mp = False
-else:
-    use_mp = True
 
 ## show paramters
 print(f"##Parameters")
-print(f"#mp_inspection: {mp_inspection}")
+print(f"#use_multiprocess: {use_mp}")
 print(f"#detailed: {detailed}")
 print(f"#verbose: {verbose}")
-print(f"#input_field_sep: {input_field_sep}")
 print(f"#input_comment_escapes: {input_comment_escapes}")
+print(f"#input_field_seps: {input_field_seps}")
+print(f"#sep2_is_suppressive: {sep2_is_suppressive}")
 print(f"#uncapitalize: {uncapitalize}")
-print(f"#remove_punctuations: {remove_punctuations}")
+print(f"#remove_punctuations: {remove_punct}")
 print(f"#split_hyphenation: {split_hyphenation}")
 print(f"#gap_mark: {gap_mark}")
 print(f"#instantiation is reflexive: {reflexive}")
@@ -190,9 +171,39 @@ print(f"#fig_size: {fig_size}")
 print(f"#draw_individually: {draw_individually}")
 
 ### Functions
+##
+def segment_with_levels (lines: list, seps: str, sep2_is_suppressive: bool, remove_punct: bool, split_hyphenation: bool, uncapitalize: bool) -> list:
+
+    assert len(lines) > 0
+    sep_list = list(seps)
+    assert len(sep_list) > 0
+    if sep2_is_suppressive:
+        ignored_sep, primary_sep, *_ = sep_list
+        #lines = [ line.replace(ignored_sep, "").split(primary_sep) for line in lines ]
+        ## The line above fails
+        lines = [ f"{line}{primary_sep}".replace(ignored_sep, "").split(primary_sep) for line in lines ]
+    else:
+        print(f"#seps: {seps}")
+        lines = [ re.split(f"[{seps}]", line) for line in lines ]
+
+    ## remove punctuations from lines
+    punct_symbols = list(",.?!:;/\–~")
+    if remove_punct:
+        lines = [ [ x for x in line if x not in punct_symbols ] for line in lines ]
+
+    ## split hyphenated tokens
+    if split_hyphenation:
+        lines = [ process_hyphenation (line) for line in lines ]
+
+    ## uncapitalize tokens over lines
+    if uncapitalize:
+        lines = [ [ x.lower() for x in line ] for line in lines ]
+
+    ##
+    return lines
 
 ##
-def parse_input (file, comment_escapes: list, field_sep: str, uncapitalize: bool = uncapitalize, remove_punctuations: bool = remove_punctuations, split_hyphenation: bool = split_hyphenation, check: bool = False) -> None:
+def parse_input (file, comment_escapes: list, field_seps: str, remove_punct: bool = remove_punct, split_hyphenation: bool = split_hyphenation, uncapitalize: bool = uncapitalize, check: bool = False) -> list:
     """
     reads a file, splits it into segments using a given separator, removes comments, and forward the result to main
     """
@@ -217,23 +228,11 @@ def parse_input (file, comment_escapes: list, field_sep: str, uncapitalize: bool
     if check:
         print(f"#filtered_lines: {filtered_lines}")
 
-    ## strip extra chars
-    data = [ [ field.strip() for field in re.split(field_sep, line) ] for line in filtered_lines ]
+    ## generate segmentations
+    segmented_lines = segment_with_levels (filtered_lines, seps = field_seps, sep2_is_suppressive = sep2_is_suppressive, remove_punct = remove_punct, split_hyphenation = split_hyphenation, uncapitalize = uncapitalize)
 
-    ## uncapitalize tokens
-    if uncapitalize:
-        data = [ [ x.lower() for x in l ] for l in data ]
-
-    ## remove punctuations from lines
-    punct_symbols = list(",.?!:;/\–~")
-    if remove_punctuations:
-        data = [ [ x for x in l if x not in punct_symbols ] for l in data ]
-
-    ## split hyphenated tokens
-    if split_hyphenation:
-        data = [ process_hyphenation (l) for l in data ]
     ##
-    return data
+    return segmented_lines
 
 ## set font for Japanese character display
 import matplotlib
@@ -268,9 +267,30 @@ else:
 print(f"multibyte_font_name: {multibyte_font_name}")
 print(f"matplotlib.rcParams['font.family']: {matplotlib.rcParams['font.family']}")
 
+## import modules
+try:
+    ## Try relative imports first
+    from .utils import *
+    from .pattern import *
+    from .pattern_link import *
+    from .pattern_lattice import *
+except ImportError:
+    # Fall back to absolute imports (when run as script)
+    import sys
+    import os
+    # Add current directory to path if needed
+    if __name__ == '__main__':
+        sys.path.insert(0, os.path.dirname(__file__))
+    from utils import *
+    from pattern import *
+    from pattern_link import *
+    from pattern_lattice import *
+
 ## process
+S0 = []
 if not file is None:
-    S0 = parse_input (file, comment_escapes = input_comment_escapes, field_sep = input_field_sep, uncapitalize = uncapitalize, remove_punctuations = remove_punctuations, split_hyphenation = split_hyphenation, check = False)
+    input_parses = parse_input (file, comment_escapes = input_comment_escapes, field_seps = input_field_seps, remove_punct = remove_punct, split_hyphenation = split_hyphenation, uncapitalize = uncapitalize, check = False)
+    S0.extend (input_parses)
 else:
     if phrasal: # phrasal source
         Text1 = [ 'a big boy', 'the big boy', 'a big girl', 'the big girl',
@@ -302,14 +322,15 @@ else:
             Words = Words7
         else:
             raise f"sample_id {sample_id} is not defined"
-        S0 = [ [ seg for seg in re.split(r"", t) if len(seg) > 0 ] for t in Words ]
+        sample_S = [ [ seg for seg in re.split(r"", t) if len(seg) > 0 ] for t in Words ]
+        S0.append (sample_S)
 
 ## filter
 if not max_size is None:
     S0 = [ x for x in S0 if len(x) <= max_size and len(x) > 0 ]
 
 ## take a sample
-if sample_n is not None:
+if sample_n is not None and len(S0) > sample_n:
     try:
         S = random.sample (S0, sample_n)
     except ValueError:
@@ -317,16 +338,13 @@ if sample_n is not None:
 else:
     S = S0
 if verbose:
-    print(f"# S: {S}")
+    print(f"#S: {S}")
 
 ## select source
 print(f"##Source lists:")
 for i, s in enumerate(S):
     print (f"#source {i}: {s}")
 
-## apply generalization level
-
-#apply_generalization (generality)
 
 ## generating patterns
 Patterns = [ ]
