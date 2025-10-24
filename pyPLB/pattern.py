@@ -350,8 +350,28 @@ class Pattern:
         self.content_size  = self.get_substance_size()
         #return self # offensive
 
-    ## This is crucial
-    def __eq__ (self, other):
+    ## Crucial for speed up
+    def __hash__(self):
+        """Make Pattern hashable for efficient set/dict operations"""
+        if not hasattr(self, '_hash_cache'):
+            # Cache the hash value since form and content are immutable tuples
+            self._hash_cache = hash((self.form, self.content))
+        return self._hash_cache
+
+    ## Crucial for speed up
+    def __eq__(self, other):
+        """Optimized equality check with hash comparison"""
+        if not isinstance(other, Pattern):
+            return False
+        # Fast path: compare cached hashes first if available
+        if hasattr(self, '_hash_cache') and hasattr(other, '_hash_cache'):
+            if self._hash_cache != other._hash_cache:
+                return False
+        # Full comparison
+        return self.form == other.form and self.content == other.content
+
+    ## This had been crucial but was replaced by the __eq__ above
+    def __eq_old__ (self, other):
         "defines response to '==' operator"
         # Multi-step returns get the judgement significantly faster
         #if self.form_hash != other.form_hash:

@@ -31,8 +31,35 @@ class PatternLink:
         #self.content_paired  = ( left_p.content, right_p.content )
         self.content_paired  = ( tuple(left_p.content), tuple(right_p.content) ) # 2025/10/13
 
-    ## Unimplementation of this method seems the last cause for slow processing
+    ##
+    def __hash__(self):
+        """Make PatternLink hashable for efficient set/dict operations"""
+        if not hasattr(self, '_hash_cache'):
+            # Cache hash based on immutable tuple pairs
+            self._hash_cache = hash((self.form_paired, self.content_paired))
+        return self._hash_cache
+
+    ##
     def __eq__ (self, other):
+        if not isinstance(other, PatternLink):
+            return False
+        # Fast path: compare cached hashes first
+        if hasattr(self, '_hash_cache') and hasattr(other, '_hash_cache'):
+            if self._hash_cache != other._hash_cache:
+                return False
+        # Full comparison
+        if len(self) != len(other):
+            return False
+        if self.left != other.left:
+            return False
+        else:
+            if self.right != other.right:
+                return False
+            else:
+                return True
+
+    ## Unimplementation of this method seems the last cause for slow processing
+    def __eq_old__ (self, other):
         if len(self) != len(other):
             return False
         if self.left != other.left:

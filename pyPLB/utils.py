@@ -44,12 +44,32 @@ def filter_list (F: list, A: list, check: bool = False) -> list:
         print (R)
     return R
 
-
 #def simplify_list (A:list) -> list:
 #    return remove_duplicates (A, None)
 
 ##
 def simplify_list (A: list, use_mp: bool = False) -> list:
+    """
+    Optimized simplify: try set-based dedup first, fall back to list
+    """
+    if not A:
+        return []
+
+    # Try set-based deduplication (O(n) if hashable)
+    try:
+        # Filter None and empty items first
+        filtered = [x for x in A if x is not None and len(x) > 0]
+        return list(dict.fromkeys(filtered))  # Preserves order, O(n)
+    except TypeError:
+        # Fallback for unhashable items
+        C = []
+        if use_mp:
+            return [x for x in A if x is not None and len(x) > 0 and not mp_in_test(x, C)]
+        else:
+            return [x for x in A if x is not None and len(x) > 0 and x not in C]
+
+##
+def simplify_list_old (A: list, use_mp: bool = False) -> list:
     """
     simplify a given list
     """
@@ -66,6 +86,64 @@ make_list_simplest  = simplify_list
 
 ##
 def make_simplest_merger (A: list, B: list) -> list:
+    """
+    OPTIMIZED: takes a list or a pair of lists and returns a unification
+    of them without reduplication. Uses dict for O(1) lookups instead of O(n).
+    """
+    # Fast path: try set operations if items are hashable
+    try:
+        filtered_A = [x for x in A if x is not None and (not hasattr(x, '__len__') or len(x) > 0)]
+        filtered_B = [x for x in B if x is not None and (not hasattr(x, '__len__') or len(x) > 0)]
+
+        # Use dict.fromkeys() to preserve order while removing duplicates (O(n))
+        return list(dict.fromkeys(filtered_A + filtered_B))
+
+    except TypeError:
+        # Fallback: use id-based dict for unhashable objects
+        seen = {}  # key: hash or id, value: object
+        result = []
+
+        for item in A:
+            try:
+                if item is None:
+                    continue
+                if hasattr(item, '__len__') and len(item) == 0:
+                    continue
+
+                # Try to hash, fallback to id
+                try:
+                    key = hash(item)
+                except TypeError:
+                    key = id(item)
+
+                if key not in seen:
+                    seen[key] = item
+                    result.append(item)
+            except (TypeError, AttributeError):
+                pass
+
+        for item in B:
+            try:
+                if item is None:
+                    continue
+                if hasattr(item, '__len__') and len(item) == 0:
+                    continue
+
+                try:
+                    key = hash(item)
+                except TypeError:
+                    key = id(item)
+
+                if key not in seen:
+                    seen[key] = item
+                    result.append(item)
+            except (TypeError, AttributeError):
+                pass
+
+        return result
+
+##
+def make_simplest_merger_old (A: list, B: list) -> list:
     """
     takes a list or a pair of lists and returns a unification of them without reduplication
     """

@@ -85,16 +85,20 @@ python -m pyPLB [OPTIONS] <input_file>
 
 ### Essential Options
 
+#### Processing
+- `-M, --use_mp` - Use multiprocess for speed up (default: enabled)
+
 #### Input Processing
 - `-s, --sample_n [int]` - Number of instances to sample randomly
 - `-m, --max_size [int]` - Maximum number of segments per instance
-- `-d, --input_field_sep [str]` - Field separator (default: `,`)
+- `-d, --input_field_sep [str]` - Field separator (default: `,;`)
 - `-c, --input_comment_escapes [list]` - Comment escape characters (default: `#`, `%`)
 
 #### Pattern Processing
 - `-C, --uncapitalize` - Convert all tokens to lowercase
+- `-P, --sep2_is_suppressive` - Make ';' as main sep and suppress ',' (default: disabled)
 - `-H, --split_hyphenation` - Split hyphenated tokens (default: enabled)
-- `-P, --remove_punctuations` - Remove punctuation marks (default: enabled)
+- `-X, --remove_punctuations` - Remove punctuation marks (default: enabled)
 - `-g, --gap_mark [str]` - Gap symbol (default: `_`)
 
 #### Generalization
@@ -106,7 +110,7 @@ python -m pyPLB [OPTIONS] <input_file>
 
 #### Analysis & Filtering
 - `-p, --productivity_metric [rank|gap_size]` - Metric for productivity calculation (default: `rank`)
-- `-zl, --zscore_lowerbound [float]` - Minimum z-score threshold for node pruning
+- `-zl, -z, --zscore_lowerbound [float]` - Minimum z-score threshold for node pruning
 - `-zu, --zscore_upperbound [float]` - Maximum z-score threshold for node pruning
 - `-Z, --use_robust_zscore` - Use robust (median-based) z-scores instead of mean-based
 
