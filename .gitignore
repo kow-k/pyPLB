@@ -5,6 +5,7 @@ figs/
 outdated/
 outputs/
 profiled/
+pyPLB-rev/
 !sources/
 !pyPLB/
 pyPLB/__pycache__/
