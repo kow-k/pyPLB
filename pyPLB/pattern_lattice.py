@@ -977,7 +977,6 @@ def draw_graph (layout: str, MPG_key: str = "gap_size", auto_figsizing: bool = F
     node_colors = assign_node_colors (G, zscores, instances, use_robust_zscore = use_robust_zscore, mark_instances = mark_instances)
 
     ## relabeling nodes: this needs to come after color setting and before layout setting
-    #new_labels = { x: as_label(x, sep = " ", add_sep_at_end = True) for x in G }
     literals = [ x for x in nx.get_node_attributes(G, "literal") ]
     #print(f"literals: {literals}")
     new_labels = { x: as_label(y) for x, y in zip(G, literals) }
@@ -1107,7 +1106,7 @@ def draw_graph (layout: str, MPG_key: str = "gap_size", auto_figsizing: bool = F
         )
 
     ## set labels used in title
-    instance_labels = [ as_label (x, sep = ",") for x in instances ]
+    instance_labels = [ as_label (x, sep = ", ") for x in instances ]
     label_count = len (instance_labels)
     if label_sample_n is not None and label_count > label_sample_n:
         new_instance_labels = instance_labels[:label_sample_n - 1]

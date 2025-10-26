@@ -340,8 +340,11 @@ class Pattern:
         self.boundary_mark = boundary_mark
         ## form
         #self.form          = [ x[0] for x in self.paired ] # revived on 2025/01/05
-        self.form          = tuple([ x[0] for x in self.paired ])
-        self.form_alt      = tuple([ remove_parentheticals(x[0]) for x in self.form ])
+        if accept_truncation:
+            self.form      = tuple([ remove_parentheticals(x[0]) for x in self.paired ])
+        else:
+            self.form      = tuple([ x[0] for x in self.paired ])
+        self.form_alt      = tuple([ x[0] for x in self.paired ])
         ## content
         #self.content       = [ x[1] for x in self.paired ] # revived on 2025/01/05
         self.content       = tuple([ x[1] for x in self.paired ]) # works but makes subsumes_or_not fail
@@ -358,7 +361,8 @@ class Pattern:
         """Make Pattern hashable for efficient set/dict operations"""
         if not hasattr(self, '_hash_cache'):
             # Cache the hash value since form and content are immutable tuples
-            self._hash_cache = hash((self.form, self.content))
+            #self._hash_cache = hash((self.form, self.content))
+            self._hash_cache = hash(self.form)
         return self._hash_cache
 
     ## Crucial for speed up

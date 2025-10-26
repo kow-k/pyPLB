@@ -35,7 +35,8 @@ class PatternLink:
         """Make PatternLink hashable for efficient set/dict operations"""
         if not hasattr(self, '_hash_cache'):
             # Cache hash based on immutable tuple pairs
-            self._hash_cache = hash((self.form_paired, self.content_paired, self.form_alt_paired))
+            #self._hash_cache = hash((self.form_paired, self.content_paired))
+            self._hash_cache = hash(self.form_paired)
         return self._hash_cache
 
     ##

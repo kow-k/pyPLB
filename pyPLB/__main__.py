@@ -43,6 +43,7 @@ modification history
 2025/10/09 fixed a bug to calc_zscore() to get robust z-scores;
 2025/10/14 retyped Pattern.form and Pattern.content as tuples, making as_tuple() dispensable; implemented gap_size-based z-score calculation;
 2025/10/24 added alternative use of input_field_seps ",;": if sep2_is_suppressive is True, segmentation by "," is suppressed, thereby implementing segmentation on a larger scale;
+2025/10/25 implemented truncation in input: "a(b),c" is treated as "a,c" while node "a(b),c" appears at node;
 
 """
 
@@ -68,7 +69,7 @@ parser.add_argument('file', type=open, default=None)
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 parser.add_argument('-w', '--detailed', action='store_true', default=False)
 parser.add_argument('--recursion_limit_factor', type=float, default=1.0)
-parser.add_argument('-mp', '--use_mp', action='store_false', default=True)
+parser.add_argument('-M', '--use_mp', action='store_false', default=True)
 parser.add_argument('-c', '--input_comment_escapes', type=list, default=['#', '%'])
 parser.add_argument('-d', '--input_field_seps', type=str, default=',;')
 parser.add_argument('-P', '--sep2_is_suppressive', action='store_true', default=False)
@@ -80,11 +81,12 @@ parser.add_argument('-t', '--tracer', type=str, default='~')
 parser.add_argument('-m', '--max_size', type=int, default=None)
 parser.add_argument('-s', '--sample_n', type=int, default=None)
 parser.add_argument('-D', '--add_displaced_versions', action='store_true', default=False)
+parser.add_argument('-Q', '--accept_truncation', action='store_false', default=True)
 parser.add_argument('-R', '--unreflexive', action='store_false', default=True)
 parser.add_argument('-G', '--generality', type=int, default=0)
 parser.add_argument('-p', '--productivity_metric', type=str, default='rank')
-parser.add_argument('-z', '-zl', '--zscore_lowerbound', type=float, default=None)
-parser.add_argument('-zu', '--zscore_upperbound', type=float, default= None)
+parser.add_argument('-l', '--zscore_lowerbound', type=float, default=None)
+parser.add_argument('-u', '--zscore_upperbound', type=float, default=None)
 parser.add_argument('-Z', '--use_robust_zscore', action='store_false', default=True)
 parser.add_argument('-T', '--zscores_from_targets', action='store_true', default=False)
 parser.add_argument('-A', '--auto_figsizing', action='store_true', default=False)
@@ -112,6 +114,7 @@ use_mp                 = args.use_mp # controls use of multiprocess
 input_comment_escapes  = args.input_comment_escapes
 input_field_seps       = args.input_field_seps
 sep2_is_suppressive    = args.sep2_is_suppressive # controls the behavior of second sep
+accept_truncation      = args.accept_truncation
 uncapitalize           = args.uncapitalize
 remove_punct           = args.remove_punctuations
 split_hyphenation      = args.split_hyphenation
@@ -152,6 +155,7 @@ print(f"#verbose: {verbose}")
 print(f"#input_comment_escapes: {input_comment_escapes}")
 print(f"#input_field_seps: {input_field_seps}")
 print(f"#sep2_is_suppressive: {sep2_is_suppressive}")
+print(f"#accept_truncation: {accept_truncation}")
 print(f"#uncapitalize: {uncapitalize}")
 print(f"#remove_punctuations: {remove_punct}")
 print(f"#split_hyphenation: {split_hyphenation}")
@@ -379,9 +383,9 @@ for s in S:
     for s in T:
         print(f"#processing: {s}")
         try:
-            p = Pattern(s, gap_mark = gap_mark)
+            p = Pattern(s, gap_mark = gap_mark, accept_truncation = accept_truncation)
         except TypeError:
-            p = Pattern(s, gap_mark = gap_mark, tracer = tracer)
+            p = Pattern(s, gap_mark = gap_mark, tracer = tracer, accept_truncation = accept_truncation)
         if detailed:
             print(f"#p: {p}")
         Patterns.append(p)
