@@ -23,6 +23,14 @@ from dataclasses import dataclass
 
 @dataclass
 class NodeAttrs:
+    literal: tuple
+    size: int
+    gap_size: int
+    rank: int
+    moment: float
+    zscore: float
+
+class NodeAttrs_old:
     size: int
     gap_size: int
     rank: int
@@ -41,7 +49,7 @@ def add_node_with_attrs (node_name, attrs: NodeAttrs, Gx, check: bool = False):
     Gx.add_node (node_name, **vars(attrs))
 
 ##
-def as_label (T: (list, tuple), sep: str = "", add_sep_at_end: bool = False) -> str:
+def as_label (T: (list, tuple), sep: str = " ", add_sep_at_end: bool = False) -> str:
     """
     convert a given tuple to a string by concatenating its elements
     """
@@ -320,7 +328,6 @@ def make_links_ranked (L: list, safely: bool, use_max: bool = False, check: bool
     """
     takes a list of PatternLinks and returns a dictionary of {rank: [link1, link2, ...]}
     """
-
     ranked_links = {}
     if safely:
         for link in L:
@@ -334,7 +341,8 @@ def make_links_ranked (L: list, safely: bool, use_max: bool = False, check: bool
                 except KeyError:
                     ranked_links[rank] = [link]
             except AttributeError:
-                print (f"failed link: {link}")
+                #print (f"failed link: {link}")
+                pass
     else:
         for link in L:
             rank = link.get_link_rank (use_max = False)
@@ -371,7 +379,8 @@ def make_links_grouped_by (metric: str, L: list, safely: bool = False, use_max: 
                 if not link in grouped_links[metric_val]:
                     grouped_links[metric_val].append(link)
             except AttributeError:
-                print (f"failed link: {link}")
+                #print (f"failed link: {link}")
+                pass
     else:
         for link in L:
             if metric == 'rank':
@@ -498,18 +507,6 @@ def calc_zscore (value: float, average: float, stdev: float, median: float = Non
             return (value - average) / stdev
 
 ##
-def normalize_zscore (x: float, min_val: float = -3.0, max_val: float = 3.0, normalization_factor: float = 1.2, use_robust_zscore: bool = False) -> float:
-    "takes a value in the range of min, max and returns its normalized value"
-    ##
-    import matplotlib.colors as colors
-    ## re-base when robust z-score is used
-    if use_robust_zscore:
-        max_val = round (normalization_factor * max_val, 0)
-    ##
-    normalizer = colors.Normalize (vmin = min_val, vmax = max_val)
-    return normalizer (x)
-
-##
 def gen_zscores_from_targets_by (metric: str, M: object, gap_mark: str, tracer: str, use_robust_zscore: bool = True, check: bool = False) -> None:
     """
     given a PatternLattice M, creates z-scores from link targets, calculated by metric (rank or gap_size) and attach the result to M.
@@ -545,8 +542,7 @@ def gen_zscores_from_targets_by (metric: str, M: object, gap_mark: str, tracer: 
             zscore = calc_zscore (value, averages_by[metric_val], stdevs_by[metric_val], medians_by[metric_val], MADs_by[metric_val], robust = False)
         ##
         target_zscores[link_target] = zscore
-        if check:
-            print(f"#target {i:3d}: {link_target} has {value} in-coming link(s) [{target_zscores[link_target]: .4f} at {metric} {metric_val}]")
+        print(f"#target {i:3d}: {link_target} has {value} in-link(s) at {metric} {metric_val} [z-score: {target_zscores[link_target]:.3f}]")
 
     ## attach target_zscores to M
     if use_robust_zscore: # robust z-scores
@@ -584,9 +580,9 @@ def gen_zscores_from_sources_by (metric: str, M: object, gap_mark: str, tracer: 
         value  = Link_sources[link_source]
         ##
         if metric == 'rank':
-            metric_val  = get_rank_of_list (link_source, gap_mark = gap_mark)
+            metric_val = get_rank_of_list (link_source, gap_mark = gap_mark)
         elif metric == 'gap_size':
-            metric_val  = get_gap_size_of_list (link_source, gap_mark = gap_mark)
+            metric_val = get_gap_size_of_list (link_source, gap_mark = gap_mark)
         ##
         if use_robust_zscore:
             zscore = calc_zscore (value, averages_by[metric_val], stdevs_by[metric_val], medians_by[metric_val], MADs_by[metric_val], robust = True)
@@ -594,8 +590,7 @@ def gen_zscores_from_sources_by (metric: str, M: object, gap_mark: str, tracer: 
             zscore = calc_zscore (value, averages_by[metric_val], stdevs_by[metric_val], medians_by[metric_val], MADs_by[metric_val], robust = False)
         ##
         source_zscores[link_source] = zscore
-        if check:
-            print(f"#source {i:3d}: {link_source} has {value} out-going link(s) [{source_zscores[link_source]: .4f} at {metric} {metric_val}]")
+        print(f"#source {i:3d}: {link_source} has {value} out-link(s) at {metric} {metric_val} [z-score: {source_zscores[link_source]:.3f}]")
 
     ## attach source_zscores to M
     if use_robust_zscore:
@@ -627,11 +622,11 @@ def gen_G (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_direct
     instances = [ ] # register instances
     pruned_node_count = 0
 
-    for rank, links in sorted (N, reverse = False): # be careful on list up direction
-        assert rank >= 0
+    for key, links in sorted (N, reverse = False): # be careful on list up direction
+        assert key >= 0
         for link in links:
             if check:
-                print(f"#adding link at rank {rank}: {link}")
+                print(f"#adding link at group {key}: {link}")
 
             ## get variables
             gap_mark      = link.gap_mark
@@ -660,9 +655,14 @@ def gen_G (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_direct
             node1_moment = math.log(node1_size + 2)/math.log(node1_rank + 2)
             node2_moment = math.log(node2_size + 2)/math.log(node2_rank + 2)
 
+            ## node names
             ## node1, node2 are node names and need to be tuples
-            #node1, node2  = map (tuple, link.form_paired)
-            node1, node2  = link.form_paired # assumes form_paired is a pair of tuples
+            node1, node2  = link.form_paired # assumes a pair of tuples
+
+            ## handle truncated node names
+            node1_alt, node2_alt  = link.form_alt_paired # assumes a pair of tuples
+            node1_alt_gap_size = count_items (node1_alt, gap_mark)
+            node2_alt_gap_size = count_items (node2_alt, gap_mark)
 
             ## get z-scores for node1 and node2
             try:
@@ -675,14 +675,28 @@ def gen_G (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_direct
                 node2_zscore = 0
 
             ## Create node attributes
-            node1_attrs = NodeAttrs (node1_size, node1_gap_size, node1_rank, node1_moment, node1_zscore)
-            node2_attrs = NodeAttrs (node2_size, node2_gap_size, node2_rank, node2_moment, node2_zscore)
+            node1_attrs = NodeAttrs (node1_alt, node1_size, node1_gap_size, node1_rank, node1_moment, node1_zscore)
+            node2_attrs = NodeAttrs (node2_alt, node2_size, node2_gap_size, node2_rank, node2_moment, node2_zscore)
+            if node1 != node1_alt:
+                print(f"#node1_alt: {node1_alt}")
+            if node2 != node2_alt:
+                print(f"#node2_alt: {node2_alt}")
 
             ## register node for instances
-            if node1_gap_size == 0 and node1 not in instances:
-                instances.append (node1)
-            if node2_gap_size == 0 and node2 not in instances:
-                instances.append (node2)
+            if node1 == node1_alt:
+                if node1_gap_size == 0 and node1 not in instances:
+                    instances.append (node1)
+            else:
+                if len(node1_alt) > 0 and node1_alt_gap_size == 0:
+                    if node1_alt not in instances:
+                        instances.append (node1_alt)
+            if node2 == node2_alt:
+                if node2_gap_size == 0 and node2 not in instances:
+                    instances.append (node2)
+            else:
+                if len(node2_alt) > 0 and node2_alt_gap_size == 0:
+                    if node2_alt not in instances:
+                        instances.append (node2_alt)
 
             ## add nodes and edges to G
             ## case 1: either lowerbound nor upperbound is applied
@@ -691,12 +705,14 @@ def gen_G (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_direct
                 if not node1 in G.nodes():
                     add_node_with_attrs (node1, node1_attrs, G)
                 else:
-                    print(f"#ignored existing node {node1}")
+                    if check:
+                        print(f"#ignored existing node {node1}")
                 ## node2
                 if not node2 in G.nodes():
                     add_node_with_attrs (node2, node2_attrs, G)
                 else:
-                    print(f"#ignored existing node {node2}")
+                    if check:
+                        print(f"#ignored existing node {node2}")
 
             ## when lowerbound and upperbound z-score pruning is applied
             ## case 2: both lowerbound and upperbound
@@ -706,7 +722,8 @@ def gen_G (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_direct
                     if not node1 in G.nodes():
                         add_node_with_attrs (node1, node1_attrs, G)
                     else:
-                        print(f"#ignored existing node {node1}")
+                        if check:
+                            print(f"#ignored existing node {node1}")
                 else:
                     ## add instance exceptionally
                     if node1_gap_size == 0 and not node1 in G.nodes():
@@ -719,7 +736,8 @@ def gen_G (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_direct
                     if not node2 in G.nodes():
                         add_node_with_attrs (node2, node2_attrs, G)
                     else:
-                        print(f"#ignored exisiting node {node2}")
+                        if check:
+                            print(f"#ignored exisiting node {node2}")
                 else:
                     ## add instance exceptionally
                     if node2_gap_size == 0 and not node2 in G.nodes():
@@ -735,7 +753,8 @@ def gen_G (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_direct
                     if not node1 in G.nodes():
                         add_node_with_attrs (node1, node1_attrs, G)
                     else:
-                        print(f"#ignored exisiting node {node1}")
+                        if check:
+                            print(f"#ignored exisiting node {node1}")
                 else:
                     ## add instance exceptionally
                     if node1_gap_size == 0 and not node1 in G.nodes():
@@ -748,7 +767,8 @@ def gen_G (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_direct
                     if not node2 in G.nodes():
                         add_node_with_attrs (node2, node2_attrs, G)
                     else:
-                        print(f"#ignored existing node {node2}")
+                        if check:
+                            print(f"#ignored existing node {node2}")
                 else:
                     ## add instance exceptionally
                     if node2_gap_size == 0 and not node2 in G.nodes():
@@ -764,7 +784,8 @@ def gen_G (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_direct
                     if not node1 in G.nodes():
                         add_node_with_attrs (node1, node1_attrs, G)
                     else:
-                        print(f"ignored existing node {node1}")
+                        if check:
+                            print(f"ignored existing node {node1}")
                 else:
                     print(f"pruned node {node1}")
                     pruned_node_count += 1
@@ -773,7 +794,8 @@ def gen_G (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_direct
                     if not node2 in G.nodes():
                         add_node_with_attrs (node2, node2_attrs, G)
                     else:
-                        print(f"ignored existing node {node2}")
+                        if check:
+                            print(f"ignored existing node {node2}")
                 else:
                     ## add instance exceptionally
                     if node2_gap_size == 0 and not node2 in G.nodes():
@@ -786,16 +808,18 @@ def gen_G (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_direct
             else:
                 raise ValueError("An undefined situation occurred")
 
-            ## add edge
-            #if node1 and node2:
+            ### add edges
+            ## regular form
             if node1 in G.nodes() and node2 in G.nodes():
                 G.add_edge (node1, node2)
-            else:
-                if check:
-                    if node1 not in G.nodes():
-                        print(f"#skipped edge: node1 {node1} was pruned")
-                    if node2 not in G.nodes():
-                        print(f"#skipped edge: node2 {node2} was pruned")
+            ## alt form: unnecessary?
+            #if node1_alt in G.nodes() and node2_alt in G.nodes():
+            #    G.add_edge (node1_alt, node2_alt)
+            if check:
+                if node1 not in G.nodes():
+                    print(f"#skipped edge: node1 {node1} was not found")
+                if node2 not in G.nodes():
+                    print(f"#skipped edge: node2 {node2} was not found")
     ##
     #assert len(instances) > 0 # harmful
 
@@ -806,49 +830,53 @@ def gen_G (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_direct
     return G, instances, pruned_node_count
 
 ##
-def get_node_color (node, zscore_dict, padding_val: float = 0, use_robust_zscore: bool = True, check: bool = False):
+def normalize_zscore (x: float, use_robust_zscore: bool, min_val: float = -5.0, max_val: float = 5.0) -> float:
+    "takes a value in the range of min, max and returns its normalized value"
+    ##
+    import matplotlib.colors as colors
+    normalizer = colors.Normalize (vmin = min_val, vmax = max_val)
+    return normalizer (x)
+
+##
+def get_node_color (node, zscore_dict, use_robust_zscore: bool, normalize_score: bool, check: bool = False):
     """
-    generate a value for node color
+    generate a value for node color, with or without color normalization.
     """
     try:
         zscore = zscore_dict[node]
         if check:
-            print(f"#z_value: {z_value: 0.4f}")
-        zscore_normalized = normalize_zscore (zscore, use_robust_zscore = use_robust_zscore)
-        if check:
-            print(f"#zscore_normalized: {zscore_normalized: 0.4f}")
-        node_color = zscore_normalized + padding_val
+            print(f"#zscore: {zscore:0.3f}")
+        if normalize_score:
+            zscore_normalized = normalize_zscore (zscore, use_robust_zscore = use_robust_zscore)
+            if check:
+                print(f"#zscore_normalized: {zscore_normalized:0.3f}")
+            zscore = zscore_normalized
+        ##
+        node_color = zscore
     except KeyError:
-       # node_color = padding_val
         node_color = 0
     ##
     return node_color
 
 ##
-def get_node_colors_at_once (G, zscores, instances, use_robust_zscore: bool, mark_instances: bool = False, check: bool = False):
-
+def assign_node_colors (G, zscores, instances, use_robust_zscore: bool, normalize_score: bool = False, mark_instances: bool = False, check: bool = False):
+    """
+    assign colors to nodes using their z-scores
+    """
     ## node color setting
     padding_val = 0
     if mark_instances:
-        padding_val = 0.1
+        padding_val = 0.0
     ##
     node_colors = []
     for node in G.nodes():
-        ## process for mark_instances
-        #if node in instances:
-        #    if mark_instances:
-        #        node_color = -0.5
-        #    else:
-        #        node_color = 0
-        #else:
-        node_color = get_node_color (node, zscores, padding_val = padding_val, use_robust_zscore = use_robust_zscore)
+        node_color = get_node_color (node, zscores, use_robust_zscore = use_robust_zscore, normalize_score = normalize_score)
         node_colors.append(node_color)
     ##
     return node_colors
 
 ##
 def set_node_positions (G, layout: str, MPG_key: str, scale_factor: float):
-
     """
     set node positions for drawing
     """
@@ -920,8 +948,8 @@ def draw_graph (layout: str, MPG_key: str = "gap_size", auto_figsizing: bool = F
 
     if check:
         print(f"##N with {len(N)} keys")
-        for rank, links in N:
-            print(f"#rank {rank}:\n{links}")
+        for group_key, links in N:
+            print(f"#group {group_key}:\n{links}")
 
     ##
     import networkx as nx
@@ -946,10 +974,14 @@ def draw_graph (layout: str, MPG_key: str = "gap_size", auto_figsizing: bool = F
         MPG_group_size = len(MPG_key_counts.keys())
 
     ## color values
-    node_colors = get_node_colors_at_once (G, zscores, instances, use_robust_zscore = use_robust_zscore, mark_instances = mark_instances)
+    node_colors = assign_node_colors (G, zscores, instances, use_robust_zscore = use_robust_zscore, mark_instances = mark_instances)
 
     ## relabeling nodes: this needs to come after color setting and before layout setting
-    new_labels = { x: as_label(x, sep = " ", add_sep_at_end = True) for x in G }
+    #new_labels = { x: as_label(x, sep = " ", add_sep_at_end = True) for x in G }
+    literals = [ x for x in nx.get_node_attributes(G, "literal") ]
+    #print(f"literals: {literals}")
+    new_labels = { x: as_label(y) for x, y in zip(G, literals) }
+    #print(f"new_labels: {new_labels}")
     G = nx.relabel_nodes (G, new_labels, copy = False)
 
     ## set layout and node positions
@@ -1118,9 +1150,9 @@ class PatternLattice():
         self.nodes            = pattern.build_lattice_nodes (generality = generality, check = check)
         self.gap_mark         = self.nodes[0].gap_mark
         self.ranked_nodes     = self.get_nodes_grouped_by_rank (check = check)
-        self.links            = self.gen_links (reflexive = reflexive, check = check)
+        self.links            = self.gen_links (p_metric, reflexive = reflexive, check = check)
         self.link_sources, self.link_targets = self.get_link_stats (check = check)
-        #self.ranked_links     = make_links_ranked (self.links, safely = make_links_safely, check = check)
+        self.ranked_links     = make_links_ranked (self.links, safely = make_links_safely, check = check)
         self.grouped_links    = make_links_grouped_by (p_metric, self.links, safely = make_links_safely, check = check)
         ## z-scores
         self.source_zscores  = {}
@@ -1272,10 +1304,10 @@ class PatternLattice():
         size       = len(nodes)
 
         ## implementation using itertools.groupby() failed
-        if metric == 'rank':
-            metric_finder = lambda p: len([ x for x in p.form if len(x) > 0 and x != gap_mark ])
-        elif metric == 'gap_size':
+        if metric == 'gap_size':
             metric_finder = lambda p: len([ x for x in p.form if len(x) > 0 and x == gap_mark ])
+        elif metric == 'rank':
+            metric_finder = lambda p: len([ x for x in p.form if len(x) > 0 and x != gap_mark ])
         else:
             raise ValueError("Undefined p_metric")
 
@@ -1283,10 +1315,10 @@ class PatternLattice():
         from collections import defaultdict
         grouped_nodes = defaultdict(list) # dictionary
         for pattern in sorted (nodes, key = metric_finder):
-            if metric == 'rank':
-                metric_val = pattern.get_rank ()
-            elif metric == 'gap_size':
+            if metric == 'gap_size':
                 metric_val = pattern.get_gap_size ()
+            elif metric == 'rank':
+                metric_val = pattern.get_rank ()
             if check:
                 print(f"#rank: {pattern_rank}")
                 print(f"#ranked pattern: {pattern}")
@@ -1299,7 +1331,7 @@ class PatternLattice():
         return grouped_nodes
 
     ## generate links
-    def gen_links (self: object, reflexive: bool = True, use_mp: bool = True, use_mp2 = True, check: bool = False) -> list:
+    def gen_links (self: object, p_metric: str, reflexive: bool = True, use_mp: bool = True, use_mp2 = True, check: bool = False) -> list:
         """
         takes a PatternLattice P, and generates data for for P.links
         """
@@ -1314,15 +1346,23 @@ class PatternLattice():
         ##
         links =  [ ]
         ranks = ranked_nodes.keys()
+
+        # Determine increment based on metric
+        if p_metric == 'gap_size':
+            increment = -1  # More gaps → fewer gaps
+        else:  # rank
+            increment = 1   # Lower rank → higher rank
+
+        ##
         for rank in sorted (ranks, reverse = False):
             selected_links = [ ]
             try:
                 L = simplify_list (ranked_nodes[rank])
                 if check:
                     print(f"#L rank {rank} nodes: {L}")
-                R = simplify_list (ranked_nodes[rank + 1])
+                R = simplify_list (ranked_nodes[rank + increment])
                 if check:
-                    print(f"#R rank {rank + 1} nodes: {R}")
+                    print(f"#R rank {rank + increment} nodes: {R}")
                 ## make R reflexive
                 if reflexive:
                     supplement = [ ]
@@ -1351,9 +1391,9 @@ class PatternLattice():
         takes a PatternLattice P, and updates P.links, P.link_sources and P.link_targets.
         """
         ## update links
-        self.links  = self.gen_links (reflexive = reflexive, use_mp = use_mp, check = check)
+        self.links  = self.gen_links (p_metric, reflexive = reflexive, use_mp = use_mp, check = check)
         ## update ranked_links
-        self.ranked_links  = make_links_ranked (self.links, safely = make_links_safely, check = check)
+        #self.ranked_links  = make_links_ranked (self.links, safely = make_links_safely, check = check)
         self.grouped_links  = make_links_grouped_by (p_metric, self.links, safely = make_links_safely, check = check)
         ## update link_sources, link_targets
         self.link_sources, self.link_targets = self.get_link_stats (check = check)
@@ -1381,7 +1421,7 @@ class PatternLattice():
     ##
     def draw_network (self, layout: str = None, MPG_key: str = None, auto_figsizing: bool = False, fig_size: tuple = None, generality: int = 0, p_metric: str = 'gap_size', use_robust_zscore: bool = True, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, mark_instances: bool = False, node_size: int = None, label_size: int = None, label_sample_n: int = None, scale_factor: float = 3, font_name: str = None, test: bool = False, check: bool = False) -> None:
         """
-        draw a lattice digrams from a given PatternLattice L by extracting L.links
+        draws a lattice digrams from a given PatternLattice L by extracting L.links
         """
         ##
         links  = self.links
@@ -1393,7 +1433,7 @@ class PatternLattice():
         ranked_links   = make_links_ranked (links, safely = make_links_safely, check = check)
         grouped_links  = make_links_grouped_by (p_metric, links, safely = make_links_safely, check = check)
         if check:
-            for rank, links in ranked_links.items():
+            for rank, links in grouped_links.items():
                 print(f"#links at rank {rank}:\n{links}")
 
         ## handle z-scores
@@ -1414,6 +1454,9 @@ class PatternLattice():
                 print(f"node {i:4d} {node} has z-score {v:.4f}")
 
         ## draw PatternLattice
-        draw_graph (layout = layout, MPG_key = MPG_key, auto_figsizing = auto_figsizing, fig_size = fig_size, N = ranked_links.items(), generality = generality, scale_factor = scale_factor, label_sample_n = label_sample_n, font_name = font_name, p_metric = p_metric, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, check = check)
+        draw_graph (layout = layout, MPG_key = MPG_key, auto_figsizing = auto_figsizing, fig_size = fig_size,
+        N = ranked_links.items(),
+        #N = grouped_links.items(), # This disables p = gap_size
+        generality = generality, scale_factor = scale_factor, label_sample_n = label_sample_n, font_name = font_name, p_metric = p_metric, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, check = check)
 
 ### end of file

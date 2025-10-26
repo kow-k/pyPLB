@@ -6,13 +6,19 @@
 from typing import Union, List, Tuple
 
 ## Functions
-def list_encode_for_pattern (L: list) -> list:
+def remove_parentheticals(t):
+    "remove paentheticals in a string given."
+    import re
+    return re.sub(r'\([^)]*\)', '', str(t))
+
+##
+def gen_pattern_base_from_list (L: list) -> list:
     """
     take a list L of segments and returns a list R of (form, content) tuples
     R needs to be a list because it needs to be expanded later at building generalized PatternLattice
     """
     # Crucially, strip(..)
-    return [ (str(x).strip(), [str(x).strip()] ) for x in L if len(x) > 0 ]
+    return [ ( str(x).strip(), [str(x).strip()] ) for x in L if len(x) > 0 ]
 
 ##
 def is_tracing_pair (f: str, g: str, tracer: str, strict: bool = True) -> bool:
@@ -323,22 +329,19 @@ class Pattern:
     """
     Definitions for Pattern object
     """
-    def __init__ (self, L: (list, tuple), gap_mark: str, tracer: str, boundary_mark: str = '#', check: bool = False):
+    def __init__ (self, L: (list, tuple), gap_mark: str, tracer: str, boundary_mark: str = '#', accept_truncation: bool = True, check: bool = False):
         """
         creates a Pattern object from a given L, a list of elements, or from a paired
         """
 
-        self.paired        = list_encode_for_pattern (L)
+        self.paired        = gen_pattern_base_from_list (L)
         self.gap_mark      = gap_mark
         self.tracer        = tracer
         self.boundary_mark = boundary_mark
         ## form
         #self.form          = [ x[0] for x in self.paired ] # revived on 2025/01/05
-        self.form          = tuple([ x[0] for x in self.paired ]) # works but makes subsumes_or_not fail
-
-        ## form_hash
-        self.form_hash     = hash(tuple(self.form))
-
+        self.form          = tuple([ x[0] for x in self.paired ])
+        self.form_alt      = tuple([ remove_parentheticals(x[0]) for x in self.form ])
         ## content
         #self.content       = [ x[1] for x in self.paired ] # revived on 2025/01/05
         self.content       = tuple([ x[1] for x in self.paired ]) # works but makes subsumes_or_not fail

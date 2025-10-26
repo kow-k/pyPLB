@@ -26,17 +26,16 @@ class PatternLink:
         self.gap_mark        = left_p.gap_mark
         self.link_type       = link_type
         self.paired          = ( left_p, right_p )
-        #self.form_paired     = ( tuple(left_p.form), tuple(right_p.form) )
         self.form_paired     = ( tuple(left_p.form), tuple(right_p.form) ) # 2025/10/13
-        #self.content_paired  = ( left_p.content, right_p.content )
         self.content_paired  = ( tuple(left_p.content), tuple(right_p.content) ) # 2025/10/13
+        self.form_alt_paired = ( tuple(left_p.form_alt), tuple(right_p.form_alt) ) # 2025/10/25
 
     ##
     def __hash__(self):
         """Make PatternLink hashable for efficient set/dict operations"""
         if not hasattr(self, '_hash_cache'):
             # Cache hash based on immutable tuple pairs
-            self._hash_cache = hash((self.form_paired, self.content_paired))
+            self._hash_cache = hash((self.form_paired, self.content_paired, self.form_alt_paired))
         return self._hash_cache
 
     ##

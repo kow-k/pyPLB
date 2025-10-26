@@ -53,10 +53,6 @@ import functools
 import pprint as pp
 import random
 
-## increase recursion limit
-import sys
-sys.setrecursionlimit(1500)
-
 ## settings
 import argparse
 def parse_tuple_for_arg (s: str, sep: str = ',') -> tuple:
@@ -71,6 +67,8 @@ parser  = argparse.ArgumentParser(description = "")
 parser.add_argument('file', type=open, default=None)
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 parser.add_argument('-w', '--detailed', action='store_true', default=False)
+parser.add_argument('--recursion_limit_factor', type=float, default=1.0)
+parser.add_argument('-mp', '--use_mp', action='store_false', default=True)
 parser.add_argument('-c', '--input_comment_escapes', type=list, default=['#', '%'])
 parser.add_argument('-d', '--input_field_seps', type=str, default=',;')
 parser.add_argument('-P', '--sep2_is_suppressive', action='store_true', default=False)
@@ -90,19 +88,18 @@ parser.add_argument('-zu', '--zscore_upperbound', type=float, default= None)
 parser.add_argument('-Z', '--use_robust_zscore', action='store_false', default=True)
 parser.add_argument('-T', '--zscores_from_targets', action='store_true', default=False)
 parser.add_argument('-A', '--auto_figsizing', action='store_true', default=False)
+parser.add_argument('-k', '--MPG_key', type=str, default='gap_size')
 parser.add_argument('-E', '--scaling_factor', type= float, default=5)
 parser.add_argument('-F', '--fig_size', type=parse_tuple_for_arg, default=(10,9))
 parser.add_argument('-I', '--draw_individual_lattices', action='store_true', default=False)
 parser.add_argument('-L', '--layout', type= str, default= 'Multi_partite')
 parser.add_argument('-J', '--use_multibyte_chars', action='store_true', default=False)
-parser.add_argument('-K', '--MPG_key', type=str, default='gap_size')
-#parser.add_argument('-S', '--sample_id', type= int, default= 1)
 parser.add_argument('-S', '--build_lattice_stepwise', action='store_true', default=False)
 parser.add_argument('-i', '--mark_instances', action='store_true', default=False)
-parser.add_argument('-M', '--use_mp', action='store_false', default=True)
 parser.add_argument('-N', '--print_link_targets', action='store_true', default=False)
 parser.add_argument('-o', '--print_forms', action='store_true', default=False)
 parser.add_argument('-Y', '--phrasal', action='store_true', default=False)
+parser.add_argument('--sample_id', type= int, default=1)
 
 ##
 args = parser.parse_args()
@@ -110,6 +107,7 @@ args = parser.parse_args()
 file                   = args.file   # process a file when it exists
 verbose                = args.verbose
 detailed               = args.detailed
+recursion_limit_factor = args.recursion_limit_factor
 use_mp                 = args.use_mp # controls use of multiprocess
 input_comment_escapes  = args.input_comment_escapes
 input_field_seps       = args.input_field_seps
@@ -170,6 +168,12 @@ print(f"#auto_figsizing: {auto_figsizing}")
 print(f"#fig_size: {fig_size}")
 print(f"#draw_individually: {draw_individually}")
 
+## increase recursion limit
+if recursion_limit_factor != 1.0:
+    import sys
+    sys.setrecursionlimit(round(recursion_limit_increase_factor * 1000))
+
+
 ### Functions
 ##
 def segment_with_levels (lines: list, seps: str, sep2_is_suppressive: bool, remove_punct: bool, split_hyphenation: bool, uncapitalize: bool) -> list:
@@ -178,10 +182,10 @@ def segment_with_levels (lines: list, seps: str, sep2_is_suppressive: bool, remo
     sep_list = list(seps)
     assert len(sep_list) > 0
     if sep2_is_suppressive:
-        ignored_sep, primary_sep, *_ = sep_list
+        sep1, sep2, *_ = sep_list
         #lines = [ line.replace(ignored_sep, "").split(primary_sep) for line in lines ]
         ## The line above fails
-        lines = [ f"{line}{primary_sep}".replace(ignored_sep, "").split(primary_sep) for line in lines ]
+        lines = [ f"{line}{sep2}".replace(sep1, "").split(sep2) for line in lines ]
     else:
         print(f"#seps: {seps}")
         lines = [ re.split(f"[{seps}]", line) for line in lines ]
