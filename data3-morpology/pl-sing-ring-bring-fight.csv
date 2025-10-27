@@ -1,0 +1,13 @@
+r;a,n;g
+r;i,n;g
+r;u,n;g
+s;a,n;g
+s;i,n;g
+s;u,n;g
+b,r;i,n;g
+b,r;o,u,g,h;t # possibility 1
+b,r;o,u;g,h,t # possibility 2
+f;i,g,h;t # possibility 1
+f;i;g,h,t # possibility 2
+f;o,u,g,h;t # possibility 1
+f;o,u;g,h,t # possibility 2
