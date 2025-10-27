@@ -91,7 +91,7 @@ python -m pyPLB [OPTIONS] <input_file>
 #### Input Processing
 - `-s, --sample_n [int]` - Number of instances to sample randomly
 - `-m, --max_size [int]` - Maximum number of segments per instance
-- `-d, --input_field_sep [str]` - Field separator (default: `,;`)
+- `-d, --input_field_sep [str]` - Field separator (default: `,;`: `;` for major, `,` for minor)
 - `-c, --input_comment_escapes [list]` - Comment escape characters (default: `#`, `%`)
 
 #### Pattern Processing
@@ -110,9 +110,9 @@ python -m pyPLB [OPTIONS] <input_file>
 
 #### Analysis & Filtering
 - `-p, --productivity_metric [rank|gap_size]` - Metric for productivity calculation (default: `rank`)
-- `-zl, -z, --zscore_lowerbound [float]` - Minimum z-score threshold for node pruning
-- `-zu, --zscore_upperbound [float]` - Maximum z-score threshold for node pruning
-- `-Z, --use_robust_zscore` - Use robust (median-based) z-scores instead of mean-based
+- `-l, --zscore_lowerbound [float]` - Minimum z-score threshold for node pruning
+- `-u, --zscore_upperbound [float]` - Maximum z-score threshold for node pruning
+- `-Z, --use_robust_zscore` - Suppress use of robust (median-based) z-scores
 
 #### Visualization
 - `-L, --layout [str]` - Graph layout algorithm (default: `Multi_partite`)
@@ -155,16 +155,22 @@ python -m pyPLB -G 2 data.csv
 python -m pyPLB -s 50 -v data.csv
 ```
 
+#### Input Filtering
+```bash
+# Run in "phrasal" mode (segments by ";" only, ignoring segments by ",")
+python -m pyPLB -G 2 -P data.csv
+```
+
 #### Advanced Filtering
 ```bash
 # Filter nodes by z-score (keep nodes with z-score > -0.5)
-python -m pyPLB -G 2 -zl -0.5 data.csv
+python -m pyPLB -G 2 -l -0.5 data.csv
 
 # Use robust z-scores with upper and lower bounds
-python -m pyPLB -G 2 -Z -zl -0.5 -zu 2.0 data.csv
+python -m pyPLB -G 2 -Z -l -0.5 -u 2.0 data.csv
 
 # Filter by gap_size metric instead of rank
-python -m pyPLB -G 2 -p gap_size -zl 0.0 data.csv
+python -m pyPLB -G 2 -p gap_size -l 0.0 data.csv
 ```
 
 #### Visualization Customization
@@ -176,7 +182,7 @@ python -m pyPLB -G 2 -L KK -A data.csv
 python -m pyPLB -L G -F 15,12 data.csv
 
 # Multi-partite layout grouped by rank
-python -m pyPLB -L MP -K rank data.csv
+python -m pyPLB -L MP -k rank data.csv
 ```
 
 #### Processing Options
