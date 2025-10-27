@@ -23,6 +23,86 @@ def as_tuple (L: list) -> tuple:
     "convert a list into a tuple"
     #return (*L,)
     return tuple(L)
+
+##
+def segment_with_levels (line: list, seps: str, sep2_is_suppressive: bool, split_hyphenation: bool = False, uncapitalize: bool = False, normalize: bool = True) -> list:
+
+    """
+    returns a level-aware segmentation from given a list of lines.
+    """
+
+    sep_list = list(seps)
+    assert len(sep_list) > 0
+    ##
+    if normalize:
+        from unicodedata import normalize as normalizer
+        flag = 'NFC'
+    ##
+    if sep2_is_suppressive:
+        sep1, sep2, *_ = sep_list
+        if normalize:
+            result = f"{normalizer(flag, line)}{sep2}".replace(sep1, "").split(sep2)
+        else:
+            result = f"{line}{sep2}".replace(sep1, "").split(sep2)
+    else:
+        print(f"#seps: {seps}")
+        if normalize:
+            result = re.split(f"[{seps}]", normalizer(flag, line))
+        else:
+            result = re.split(f"[{seps}]", line)
+
+    ## uncapitalize tokens over lines
+    if uncapitalize:
+        result = result.lower()
+
+    ## split hyphenated tokens
+    if split_hyphenation:
+        result = process_hyphenation (result)
+
+    ##
+    return [ x for x in result if len(x) > 0 ]
+
+##
+def segment_with_levels_on_lines (lines: list, seps: str, sep2_is_suppressive: bool, split_hyphenation: bool = False, uncapitalize: bool = False, normalize: bool = True) -> list:
+
+    """
+    returns a level-aware segmentation from given a list of lines.
+    """
+
+    assert len(lines) > 0
+    sep_list = list(seps)
+    assert len(sep_list) > 0
+    ##
+    if normalize:
+        from unicodedata import normalize as normalizer
+        flag = 'NFC'
+    ##
+    if sep2_is_suppressive:
+        sep1, sep2, *_ = sep_list
+        #lines = [ line.replace(ignored_sep, "").split(primary_sep) for line in lines ]
+        ## The line above fails
+        if normalize:
+            lines = [ f"{normalizer(flag, line)}{sep2}".replace(sep1, "").split(sep2) for line in lines ]
+        else:
+            lines = [ f"{line}{sep2}".replace(sep1, "").split(sep2) for line in lines ]
+    else:
+        print(f"#seps: {seps}")
+        if normalize:
+            lines = [ re.split(f"[{seps}]", normalizer(flag, line)) for line in lines ]
+        else:
+            lines = [ re.split(f"[{seps}]", line) for line in lines ]
+
+    ## uncapitalize tokens over lines
+    if uncapitalize:
+        lines = [ [ x.lower() for x in line ] for line in lines ]
+
+    ## split hyphenated tokens
+    if split_hyphenation:
+        lines = [ process_hyphenation (line) for line in lines ]
+
+    ##
+    return [ line for line in lines if len(line) > 0 ]
+
 ##
 def count_items (L: list, item: str, check: bool = False) -> int:
     "returns the number of items in the given list"

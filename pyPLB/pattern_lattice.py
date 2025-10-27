@@ -932,9 +932,9 @@ def set_node_positions (G, layout: str, MPG_key: str, scale_factor: float):
     return layout_name, positions
 
 ##
-def draw_graph (layout: str, MPG_key: str = "gap_size", auto_figsizing: bool = False, fig_size: tuple = None, N: dict = None, node_size: int = 9, label_size: int = 8, label_sample_n: int = None, zscores: dict = None, p_metric: str = 'gap_size', use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generality: int = 0, use_directed_graph: bool = True, reverse_direction: bool = False, font_name: str = None, graphics_backend: str = "qt", test: bool = False, check: bool = False) -> None:
+def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_inline: bool = False, auto_figsizing: bool = False, fig_size: tuple = None, node_size: int = 9, label_size: int = 8, label_sample_n: int = None, zscores: dict = None, p_metric: str = 'gap_size', use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generality: int = 0, use_directed_graph: bool = True, reverse_direction: bool = False, font_name: str = None, graphics_backend: str = "qt", test: bool = False, check: bool = False) -> None:
     """
-    draw a graph from a given network data
+    draw a graph from a given network data.
     """
 
     if check:
@@ -946,17 +946,20 @@ def draw_graph (layout: str, MPG_key: str = "gap_size", auto_figsizing: bool = F
     import math
     import networkx as nx
     ## select graphics backend
-    import matplotlib
-    if graphics_backend == 'qt':
-        matplotlib.use('Qt5Agg') # effective
-    elif graphics_backend == 'tk':
-        matplotlib.use('TkAgg') # default and not effective
-    elif graphics_backend == 'gtk':
-        matplotlib.use('GTK3Agg') # requires install
-    elif graphics_backend == 'wx':
-        matplotlib.use('WXAgg') # requires install and not effective
-    else:
-        matplotlib.use('Qt5Agg')
+    if not draw_inline:
+        import matplotlib
+        if graphics_backend is None:
+            matplotlib.use('Agg')
+        elif graphics_backend == 'qt':
+            matplotlib.use('Qt5Agg') # effective
+        elif graphics_backend == 'tk':
+            matplotlib.use('TkAgg') # default and not effective
+        elif graphics_backend == 'gtk':
+            matplotlib.use('GTK3Agg') # requires install
+        elif graphics_backend == 'wx':
+            matplotlib.use('WXAgg') # requires install and not effective
+        else:
+            matplotlib.use('Qt5Agg')
     import matplotlib.pyplot as plt
     from matplotlib import colormaps
     #import seaborn as sns # dependency is removed on 2025/01/07
@@ -1418,7 +1421,7 @@ class PatternLattice():
         return link_sources, link_targets
 
     ##
-    def draw_network (self, layout: str = None, MPG_key: str = None, auto_figsizing: bool = False, fig_size: tuple = None, generality: int = 0, p_metric: str = 'gap_size', make_links_safely: bool = False, use_robust_zscore: bool = True, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, mark_instances: bool = False, node_size: int = None, label_size: int = None, label_sample_n: int = None, scale_factor: float = 3, font_name: str = None, test: bool = False, check: bool = False) -> None:
+    def draw_network (self, layout: str = None, MPG_key: str = None, draw_inline: bool = False, auto_figsizing: bool = False, fig_size: tuple = None, generality: int = 0, p_metric: str = 'gap_size', make_links_safely: bool = False, use_robust_zscore: bool = True, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, mark_instances: bool = False, node_size: int = None, label_size: int = None, label_sample_n: int = None, scale_factor: float = 3, graphics_backend: str = 'qt', font_name: str = None, test: bool = False, check: bool = False) -> None:
         """
         draws a lattice digrams from a given PatternLattice L by extracting L.links
         """
@@ -1454,9 +1457,6 @@ class PatternLattice():
                 print(f"node {i:4d} {node} has z-score {v:.4f}")
 
         ## draw PatternLattice
-        draw_graph (layout = layout, MPG_key = MPG_key, auto_figsizing = auto_figsizing, fig_size = fig_size,
-        N = ranked_links.items(),
-        #N = grouped_links.items(), # This disables p = gap_size
-        generality = generality, scale_factor = scale_factor, label_sample_n = label_sample_n, font_name = font_name, p_metric = p_metric, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, check = check)
+        draw_graph (ranked_links.items(), layout = layout, MPG_key = MPG_key, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, scale_factor = scale_factor, label_sample_n = label_sample_n, graphics_backend = graphics_backend, font_name = font_name, p_metric = p_metric, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, check = check)
 
 ### end of file

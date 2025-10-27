@@ -75,7 +75,6 @@ parser.add_argument('-d', '--input_field_seps', type=str, default=',;')
 parser.add_argument('-P', '--sep2_is_suppressive', action='store_true', default=False)
 parser.add_argument('-C', '--uncapitalize', action='store_true', default=False)
 parser.add_argument('-H', '--split_hyphenation', action='store_false', default=True)
-parser.add_argument('-X', '--remove_punctuations', action='store_false', default=True)
 parser.add_argument('-g', '--gap_mark', type=str, default='_')
 parser.add_argument('-t', '--tracer', type=str, default='~')
 parser.add_argument('-m', '--max_size', type=int, default=None)
@@ -116,7 +115,6 @@ input_field_seps       = args.input_field_seps
 sep2_is_suppressive    = args.sep2_is_suppressive # controls the behavior of second sep
 accept_truncation      = args.accept_truncation
 uncapitalize           = args.uncapitalize
-remove_punct           = args.remove_punctuations
 split_hyphenation      = args.split_hyphenation
 gap_mark               = args.gap_mark
 tracer                 = args.tracer
@@ -144,8 +142,9 @@ scale_factor           = args.scaling_factor
 print_forms            = args.print_forms
 phrasal                = args.phrasal
 
-## inspection paramters
+## script parameters
 draw_inspection      = False
+draw_inline          = False
 
 ## show paramters
 print(f"##Parameters")
@@ -157,7 +156,6 @@ print(f"#input_field_seps: {input_field_seps}")
 print(f"#sep2_is_suppressive: {sep2_is_suppressive}")
 print(f"#accept_truncation: {accept_truncation}")
 print(f"#uncapitalize: {uncapitalize}")
-print(f"#remove_punctuations: {remove_punct}")
 print(f"#split_hyphenation: {split_hyphenation}")
 print(f"#gap_mark: {gap_mark}")
 print(f"#instantiation is reflexive: {reflexive}")
@@ -167,10 +165,11 @@ print(f"#zscores_from_targets: {zscores_from_targets}")
 print(f"#use_robust_zscore: {use_robust_zscore}")
 print(f"#zscore_lowerbound: {zscore_lowerbound}")
 print(f"#zscore_upperbound: {zscore_upperbound}")
-print(f"#mark_instances: {mark_instances}")
+print(f"#draw_inline: {draw_inline}")
 print(f"#auto_figsizing: {auto_figsizing}")
 print(f"#fig_size: {fig_size}")
 print(f"#draw_individually: {draw_individually}")
+print(f"#mark_instances: {mark_instances}")
 
 ## increase recursion limit
 if recursion_limit_factor != 1.0:
@@ -189,40 +188,30 @@ if check:
 else:
     make_links_safely = False
 
+## import modules
+try:
+    ## Try relative imports first
+    from .utils import *
+    from .pattern import *
+    from .pattern_link import *
+    from .pattern_lattice import *
+except ImportError:
+    # Fall back to absolute imports (when run as script)
+    import sys
+    import os
+    # Add current directory to path if needed
+    if __name__ == '__main__':
+        sys.path.insert(0, os.path.dirname(__file__))
+    from utils import *
+    from pattern import *
+    from pattern_link import *
+    from pattern_lattice import *
+
 ### Functions
 ##
-def segment_with_levels (lines: list, seps: str, sep2_is_suppressive: bool, remove_punct: bool, split_hyphenation: bool, uncapitalize: bool) -> list:
-
-    assert len(lines) > 0
-    sep_list = list(seps)
-    assert len(sep_list) > 0
-    if sep2_is_suppressive:
-        sep1, sep2, *_ = sep_list
-        #lines = [ line.replace(ignored_sep, "").split(primary_sep) for line in lines ]
-        ## The line above fails
-        lines = [ f"{line}{sep2}".replace(sep1, "").split(sep2) for line in lines ]
-    else:
-        print(f"#seps: {seps}")
-        lines = [ re.split(f"[{seps}]", line) for line in lines ]
-
-    ## remove punctuations from lines
-    punct_symbols = list(",.?!:;/\–~")
-    if remove_punct:
-        lines = [ [ x for x in line if x not in punct_symbols ] for line in lines ]
-
-    ## split hyphenated tokens
-    if split_hyphenation:
-        lines = [ process_hyphenation (line) for line in lines ]
-
-    ## uncapitalize tokens over lines
-    if uncapitalize:
-        lines = [ [ x.lower() for x in line ] for line in lines ]
-
-    ##
-    return lines
 
 ##
-def parse_input (file, comment_escapes: list, field_seps: str, remove_punct: bool = remove_punct, split_hyphenation: bool = split_hyphenation, uncapitalize: bool = uncapitalize, check: bool = False) -> list:
+def parse_input (file, comment_escapes: list, field_seps: str, split_hyphenation: bool = split_hyphenation, uncapitalize: bool = uncapitalize, check: bool = False) -> list:
     """
     reads a file, splits it into segments using a given separator, removes comments, and forward the result to main
     """
@@ -248,7 +237,7 @@ def parse_input (file, comment_escapes: list, field_seps: str, remove_punct: boo
         print(f"#filtered_lines: {filtered_lines}")
 
     ## generate segmentations
-    segmented_lines = segment_with_levels (filtered_lines, seps = field_seps, sep2_is_suppressive = sep2_is_suppressive, remove_punct = remove_punct, split_hyphenation = split_hyphenation, uncapitalize = uncapitalize)
+    segmented_lines = [ segment_with_levels (line, seps = field_seps, sep2_is_suppressive = sep2_is_suppressive, split_hyphenation = split_hyphenation, uncapitalize = uncapitalize) for line in filtered_lines ]
 
     ##
     return segmented_lines
@@ -286,29 +275,10 @@ else:
 print(f"multibyte_font_name: {multibyte_font_name}")
 print(f"matplotlib.rcParams['font.family']: {matplotlib.rcParams['font.family']}")
 
-## import modules
-try:
-    ## Try relative imports first
-    from .utils import *
-    from .pattern import *
-    from .pattern_link import *
-    from .pattern_lattice import *
-except ImportError:
-    # Fall back to absolute imports (when run as script)
-    import sys
-    import os
-    # Add current directory to path if needed
-    if __name__ == '__main__':
-        sys.path.insert(0, os.path.dirname(__file__))
-    from utils import *
-    from pattern import *
-    from pattern_link import *
-    from pattern_lattice import *
-
 ## process
 S0 = []
 if not file is None:
-    input_parses = parse_input (file, comment_escapes = input_comment_escapes, field_seps = input_field_seps, remove_punct = remove_punct, split_hyphenation = split_hyphenation, uncapitalize = uncapitalize, check = False)
+    input_parses = parse_input (file, comment_escapes = input_comment_escapes, field_seps = input_field_seps, split_hyphenation = split_hyphenation, uncapitalize = uncapitalize, check = False)
     S0.extend (input_parses)
 else:
     if phrasal: # phrasal source
@@ -464,7 +434,7 @@ if draw_individually:
     print(f"##Drawing g{generality}PLs individually")
     for i, patlat in enumerate(L):
         print(f"#Drawing a diagram from g{generality}PL {i+1}")
-        patlat.draw_network (layout = layout, MPG_key = MPG_key, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, p_metric = p_metric, make_links_safely = make_links_safely, zscores_from_targets = zscores_from_targets, mark_instances = mark_instances, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
+        patlat.draw_network (layout = layout, MPG_key = MPG_key, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, p_metric = p_metric, make_links_safely = make_links_safely, zscores_from_targets = zscores_from_targets, mark_instances = mark_instances, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
     exit()
 
 ##
@@ -520,7 +490,7 @@ elif build_lattice_stepwise:
             print(f"#node {node} has z-score {zscore: .3f}")
         ##
         print(f"##Results")
-        M.draw_network (layout, MPG_key, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+        M.draw_network (layout, MPG_key, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 ## Draw after integration
 else:
     gen_links_internally = False
@@ -559,7 +529,7 @@ else:
 
     ## draw diagram of M
     print(f"##Drawing a diagram from the merged PL")
-    M.draw_network (layout, MPG_key, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+    M.draw_network (layout, MPG_key, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 
 ## conclude
 print(f"##built from {len(S)} sources: {[ as_label(x, sep = ',') for x in S ]}")
