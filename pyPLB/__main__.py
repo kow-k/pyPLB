@@ -125,14 +125,14 @@ max_size               = args.max_size
 sample_n               = args.sample_n
 reflexive              = args.unreflexive
 generality             = args.generality
+p_metric               = args.productivity_metric
 add_displaced_versions = args.add_displaced_versions
 build_lattice_stepwise = args.build_lattice_stepwise
 print_link_targets     = args.print_link_targets
 layout                 = args.layout
 MPG_key                = args.MPG_key
-p_metric               = args.productivity_metric
-auto_figsizing         = args.auto_figsizing
 fig_size               = args.fig_size
+auto_figsizing         = args.auto_figsizing
 zscore_lowerbound      = args.zscore_lowerbound
 zscore_upperbound      = args.zscore_upperbound
 use_robust_zscore      = args.use_robust_zscore
@@ -177,6 +177,17 @@ if recursion_limit_factor != 1.0:
     import sys
     sys.setrecursionlimit(round(recursion_limit_increase_factor * 1000))
 
+## implications
+if verbose:
+    check = True
+else:
+    check = False
+
+##
+if check:
+    make_links_safely = True # False previously
+else:
+    make_links_safely = False
 
 ### Functions
 ##
@@ -406,7 +417,7 @@ L = [ ]
 for i, p in enumerate(Patterns):
     print(f"#generating g{generality}PL {i+1} from {p}")
     ## main
-    patlat = PatternLattice (p, generality = generality, reflexive = reflexive, check = False)
+    patlat = PatternLattice (p, generality = generality, reflexive = reflexive, make_links_safely = make_links_safely, check = False)
     if detailed:
         pp.pprint(patlat)
     ##
@@ -453,7 +464,7 @@ if draw_individually:
     print(f"##Drawing g{generality}PLs individually")
     for i, patlat in enumerate(L):
         print(f"#Drawing a diagram from g{generality}PL {i+1}")
-        patlat.draw_network (layout = layout, MPG_key = MPG_key, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, p_metric = p_metric, zscores_from_targets = zscores_from_targets, mark_instances = mark_instances, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
+        patlat.draw_network (layout = layout, MPG_key = MPG_key, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, p_metric = p_metric, make_links_safely = make_links_safely, zscores_from_targets = zscores_from_targets, mark_instances = mark_instances, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
     exit()
 
 ##
@@ -489,7 +500,7 @@ elif build_lattice_stepwise:
         ## genenrate links in delay
         if len(M.links) == 0 and not gen_links_internally:
             ## Don't do: M = M.update(...)
-            M.update_links (p_metric, reflexive = reflexive, check = False) ## Crucially
+            M.update_links (reflexive = reflexive, check = False) ## Crucially
         print(f"#generated {len(M.links)} links")
 
         ## checking links in M
@@ -509,7 +520,7 @@ elif build_lattice_stepwise:
             print(f"#node {node} has z-score {zscore: .3f}")
         ##
         print(f"##Results")
-        M.draw_network (layout, MPG_key, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+        M.draw_network (layout, MPG_key, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 ## Draw after integration
 else:
     gen_links_internally = False
@@ -518,8 +529,8 @@ else:
     # The following process was isolated for memory conservation
     if len(M.links) == 0 and not gen_links_internally:
         print(f"##Generating links independently")
-        ## Don't do: M = M.update(...)
-        M.update_links (p_metric, reflexive = reflexive, use_mp = use_mp, check = False)
+        ## N.B. 1) Don't do: M = M.update(...); 2) update_links() is rank-based
+        M.update_links (reflexive = reflexive, use_mp = use_mp, check = False)
 
     ##
     print(f"##Results")
@@ -548,7 +559,7 @@ else:
 
     ## draw diagram of M
     print(f"##Drawing a diagram from the merged PL")
-    M.draw_network (layout, MPG_key, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+    M.draw_network (layout, MPG_key, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 
 ## conclude
 print(f"##built from {len(S)} sources: {[ as_label(x, sep = ',') for x in S ]}")

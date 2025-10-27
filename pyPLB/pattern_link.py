@@ -35,7 +35,7 @@ class PatternLink:
         """Make PatternLink hashable for efficient set/dict operations"""
         if not hasattr(self, '_hash_cache'):
             # Cache hash based on immutable tuple pairs
-            #self._hash_cache = hash((self.form_paired, self.content_paired))
+            #self._hash_cache = hash((self.form_paired, self.content_paired)) # harmful
             self._hash_cache = hash(self.form_paired)
         return self._hash_cache
 
@@ -95,8 +95,8 @@ class PatternLink:
             yield x
 
     ##
-    def get_link_rank (self: object, use_max: bool = True) -> int:
-        "takes a PatternLink and returns the rank of it"
+    def get_link_rank (self: object, use_max: bool = False) -> int:
+        """takes a PatternLink and returns its rank."""
         left, right  = self.left, self.right
         gap_mark     = self.gap_mark
         l_size = len ([ x for x in left.form if x != gap_mark ])
@@ -105,6 +105,18 @@ class PatternLink:
             return max (l_size, r_size)
         else:
             return min (l_size, r_size) # produces null merger
+
+    ##
+    def get_link_gap_size (self: object, use_max: bool = True) -> int:
+        """takes a PatternLink and returns its gap_size."""
+        left, right  = self.left, self.right
+        gap_mark     = self.gap_mark
+        l_gap_size = len ([ x for x in left.form if x == gap_mark ])
+        r_gap_size = len ([ x for x in right.form if x == gap_mark ])
+        if use_max:
+            return max (l_gap_size, r_gap_size)
+        else:
+            return min (l_gap_size, r_gap_size) # produces null merger
 
     ##
     def pprint (self, indicator = None, link_type = None, condition = None , paired: bool = False, pair_mark: str = "//", check: bool = False) -> None:

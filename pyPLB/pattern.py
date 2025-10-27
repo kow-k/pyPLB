@@ -140,11 +140,6 @@ def create_displaced_versions (L: list, tracer: str, mask_tracer: bool = False, 
     return R
 
 ##
-def filter_items (L: list, item: str, check: bool = False) -> int:
-    "returns the list of items in a given list"
-    return [ x for x in L if x == item ]
-
-##
 def get_gaps_of_list (L: list, gap_mark: str, check: bool = False) -> int:
     "returns the list of gap marks in a given list"
     return [ x for x in L if x == gap_mark ]
@@ -361,7 +356,7 @@ class Pattern:
         """Make Pattern hashable for efficient set/dict operations"""
         if not hasattr(self, '_hash_cache'):
             # Cache the hash value since form and content are immutable tuples
-            #self._hash_cache = hash((self.form, self.content))
+            #self._hash_cache = hash((self.form, self.content)) # harmful
             self._hash_cache = hash(self.form)
         return self._hash_cache
 

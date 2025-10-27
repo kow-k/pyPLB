@@ -23,11 +23,15 @@ def as_tuple (L: list) -> tuple:
     "convert a list into a tuple"
     #return (*L,)
     return tuple(L)
-
 ##
 def count_items (L: list, item: str, check: bool = False) -> int:
     "returns the number of items in the given list"
     return len([ x for x in L if x == item ])
+
+##
+def filter_items (L: list, item: str, check: bool = False) -> list:
+    "returns the list of items in a given list"
+    return [ x for x in L if x == item ]
 
 ##
 def filter_list (F: list, A: list, check: bool = False) -> list:

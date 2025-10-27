@@ -15,8 +15,7 @@ except ImportError:
     from pattern_link import *
 
 ## parameters
-debugged  = True
-make_links_safely = True # False previously
+debugged  = False
 
 ### Data
 from dataclasses import dataclass
@@ -24,13 +23,6 @@ from dataclasses import dataclass
 @dataclass
 class NodeAttrs:
     literal: tuple
-    size: int
-    gap_size: int
-    rank: int
-    moment: float
-    zscore: float
-
-class NodeAttrs_old:
     size: int
     gap_size: int
     rank: int
@@ -66,8 +58,6 @@ def register_pair (p, sub_pairs):
     "helper function for register_pairs()"
     if len (p) > 0 and not p in sub_pairs:
         sub_pairs.append (p)
-    #if len (p) > 0 and not p in seen:
-    #    seen.append (p)
 
 ##
 def register_pairs (r: list, l: list, check: bool = False) -> list:
@@ -87,11 +77,9 @@ def register_pairs (r: list, l: list, check: bool = False) -> list:
     if size_diff == 0:
         if isa_under_size_equality(r_form, l_form, gap_mark = gap_mark, tracer = tracer, check = check):
             register_pair ((l, r), sub_pairs)
-            #register_pair ((l, r))
     elif size_diff == 1:
         if isa_under_size_difference(r_form, l_form, gap_mark = gap_mark, tracer = tracer, check = check):
             register_pair ((l, r), sub_pairs)
-            #register_pair ((l, r))
     else:
         pass
 
@@ -341,8 +329,7 @@ def make_links_ranked (L: list, safely: bool, use_max: bool = False, check: bool
                 except KeyError:
                     ranked_links[rank] = [link]
             except AttributeError:
-                #print (f"failed link: {link}")
-                pass
+                print (f"#failed to add link: {link}")
     else:
         for link in L:
             rank = link.get_link_rank (use_max = False)
@@ -355,7 +342,7 @@ def make_links_ranked (L: list, safely: bool, use_max: bool = False, check: bool
     return ranked_links
 
 ##
-def make_links_grouped_by (metric: str, L: list, safely: bool = False, use_max: bool = False, check: bool = False) -> list:
+def make_links_grouped_by (metric: str, L: list, use_max: bool, safely: bool = False, check: bool = False) -> list:
     """
     takes a list of PatternLinks and returns a dictionary of {metric_val: [link1, link2, ...]}
     """
@@ -365,28 +352,28 @@ def make_links_grouped_by (metric: str, L: list, safely: bool = False, use_max: 
         print(f"#PatternLinks: {L}")
     ##
     import collections
-    #grouped_links = {}
     grouped_links = collections.defaultdict(list)
     if safely:
         for link in L:
             if check:
                 print(f"#type(link): {type(link)}")
             try:
-                if metric == 'rank':
+                if   metric == 'rank':
                     metric_val = link.get_link_rank (use_max = use_max)
                 elif metric == 'gap_size':
-                    metric_val = link.get_link_gap_size (use_max = use_max)
+                    metric_val = link.get_link_gap_size (use_max = not(use_max))
                 if not link in grouped_links[metric_val]:
                     grouped_links[metric_val].append(link)
             except AttributeError:
-                #print (f"failed link: {link}")
-                pass
+                print (f"#failed to add link: {link}")
     else:
         for link in L:
-            if metric == 'rank':
-                metric_val = link.get_link_rank (use_max = True)
+            if check:
+                    print(f"#type(link): {type(link)}")
+            if   metric == 'rank':
+                metric_val = link.get_link_rank (use_max = use_max)
             elif metric == 'gap_size':
-                metric_val = link.get_link_gap_size (use_max = True)
+                metric_val = link.get_link_gap_size (use_max = not(use_max))
             if not link in grouped_links[metric_val]:
                 grouped_links[metric_val].append(link)
     ##
@@ -660,7 +647,10 @@ def gen_G (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_direct
             node1, node2  = link.form_paired # assumes a pair of tuples
 
             ## handle truncated node names
-            node1_alt, node2_alt  = link.form_alt_paired # assumes a pair of tuples
+            #node1_alt, node2_alt  = link.form_alt_paired # assumes a pair of tuples
+            ## The code above does not work properly
+            node1_alt = node1_p.form_alt
+            node2_alt = node2_p.form_alt
             node1_alt_gap_size = count_items (node1_alt, gap_mark)
             node2_alt_gap_size = count_items (node2_alt, gap_mark)
 
@@ -677,10 +667,11 @@ def gen_G (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_direct
             ## Create node attributes
             node1_attrs = NodeAttrs (node1_alt, node1_size, node1_gap_size, node1_rank, node1_moment, node1_zscore)
             node2_attrs = NodeAttrs (node2_alt, node2_size, node2_gap_size, node2_rank, node2_moment, node2_zscore)
-            if node1 != node1_alt:
-                print(f"#node1_alt: {node1_alt}")
-            if node2 != node2_alt:
-                print(f"#node2_alt: {node2_alt}")
+            if check:
+                if node1 != node1_alt:
+                    print(f"#node1_alt: {node1_alt}")
+                if node2 != node2_alt:
+                    print(f"#node2_alt: {node2_alt}")
 
             ## register node for instances
             if node1 == node1_alt:
@@ -941,7 +932,7 @@ def set_node_positions (G, layout: str, MPG_key: str, scale_factor: float):
     return layout_name, positions
 
 ##
-def draw_graph (layout: str, MPG_key: str = "gap_size", auto_figsizing: bool = False, fig_size: tuple = None, N: dict = None, node_size: int = 9, label_size: int = 8, label_sample_n: int = None, zscores: dict = None, p_metric: str = 'gap_size', use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generality: int = 0, use_directed_graph: bool = True, reverse_direction: bool = False, font_name: str = None, test: bool = False, check: bool = False) -> None:
+def draw_graph (layout: str, MPG_key: str = "gap_size", auto_figsizing: bool = False, fig_size: tuple = None, N: dict = None, node_size: int = 9, label_size: int = 8, label_sample_n: int = None, zscores: dict = None, p_metric: str = 'gap_size', use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generality: int = 0, use_directed_graph: bool = True, reverse_direction: bool = False, font_name: str = None, graphics_backend: str = "qt", test: bool = False, check: bool = False) -> None:
     """
     draw a graph from a given network data
     """
@@ -952,8 +943,20 @@ def draw_graph (layout: str, MPG_key: str = "gap_size", auto_figsizing: bool = F
             print(f"#group {group_key}:\n{links}")
 
     ##
-    import networkx as nx
     import math
+    import networkx as nx
+    ## select graphics backend
+    import matplotlib
+    if graphics_backend == 'qt':
+        matplotlib.use('Qt5Agg') # effective
+    elif graphics_backend == 'tk':
+        matplotlib.use('TkAgg') # default and not effective
+    elif graphics_backend == 'gtk':
+        matplotlib.use('GTK3Agg') # requires install
+    elif graphics_backend == 'wx':
+        matplotlib.use('WXAgg') # requires install and not effective
+    else:
+        matplotlib.use('Qt5Agg')
     import matplotlib.pyplot as plt
     from matplotlib import colormaps
     #import seaborn as sns # dependency is removed on 2025/01/07
@@ -1135,7 +1138,7 @@ class PatternLattice():
     """
 
     ##
-    def __init__ (self, pattern, generality: int, p_metric: str = 'rank', reflexive: bool = True, reductive: bool = True, check: bool = False):
+    def __init__ (self, pattern, generality: int, p_metric: str = 'rank', reflexive: bool = True, reductive: bool = True, make_links_safely: bool = False, check: bool = False):
         """
         initialization of a PatternLattice, or PL
         """
@@ -1148,11 +1151,15 @@ class PatternLattice():
         self.p_metric         = p_metric
         self.nodes            = pattern.build_lattice_nodes (generality = generality, check = check)
         self.gap_mark         = self.nodes[0].gap_mark
-        self.ranked_nodes     = self.get_nodes_grouped_by_rank (check = check)
-        self.links            = self.gen_links (p_metric, reflexive = reflexive, check = check)
+        ## gen_links, and instantiation_check assume the following
+        #self.ranked_nodes     = self.get_nodes_grouped_by_rank (check = check)
+        self.ranked_nodes     = self.get_nodes_grouped_by ('rank', check = check)
+        ## gen_link() needs to be rank-based
+        self.links            = self.gen_links (reflexive = reflexive, check = check)
         self.link_sources, self.link_targets = self.get_link_stats (check = check)
-        self.ranked_links     = make_links_ranked (self.links, safely = make_links_safely, check = check)
-        self.grouped_links    = make_links_grouped_by (p_metric, self.links, safely = make_links_safely, check = check)
+        #self.ranked_links     = make_links_ranked (self.links, safely = make_links_safely, check = check)
+        self.ranked_links     = make_links_grouped_by ('rank', self.links, use_max = False, safely = make_links_safely, check = check)
+        self.gap_sized_links    = make_links_grouped_by ('gap_size', self.links, use_max = False, safely = make_links_safely, check = check)
         ## z-scores
         self.source_zscores  = {}
         self.target_zscores  = {}
@@ -1206,7 +1213,6 @@ class PatternLattice():
         """
         gen_links_internally = params['gen_links_internally']
         generality           = params['generality']
-        #p_metric             = params['p_metric']
         reflexive            = params['reflexive']
         reductive            = params['reductive']
         use_mp               = params['use_mp']
@@ -1257,40 +1263,12 @@ class PatternLattice():
 
         ## generate links
         if gen_links_internally:
-            merged = merged.update_links (p_metric, reflexive = reflexive, use_mp = use_mp, check = check)
+            merged = merged.update_links (reflexive = reflexive, use_mp = use_mp, check = check)
         ##
         if check:
             print(f"#merged lattice: {merged}")
         ##
         return merged
-
-    ##
-    def get_nodes_grouped_by_rank (self, check: bool = False) -> dict:
-        """
-        takes a list of patterns, P, and generates a dictionary of patterns grouped by their ranks
-        """
-
-        from collections import defaultdict
-        gap_mark   = self.gap_mark
-        nodes      = self.nodes
-        size       = len(nodes)
-
-        ## implementation using itertooks.groupby() failed
-        rank_finder = lambda p: len([ x for x in p.form if len(x) > 0 and x != gap_mark ])
-
-        ## main
-        ranked_nodes = defaultdict(list) # dictionary
-        for pattern in sorted (nodes, key = rank_finder):
-            pattern_rank = pattern.get_rank ()
-            if check:
-                print(f"#rank: {pattern_rank}")
-                print(f"#ranked pattern: {pattern}")
-            if pattern_rank <= size:
-                ranked_nodes[pattern_rank].append(pattern)
-        ##
-        if check:
-            print(f"#ranked_nodes: {ranked_nodes}")
-        return ranked_nodes
 
     ##
     def get_nodes_grouped_by (self, metric: str, check: bool = False) -> dict:
@@ -1329,8 +1307,36 @@ class PatternLattice():
             print(f"#grouped_nodes: {grouped_nodes}")
         return grouped_nodes
 
-    ## generate links
-    def gen_links (self: object, p_metric: str, reflexive: bool = True, use_mp: bool = True, use_mp2 = True, check: bool = False) -> list:
+    ##
+    def get_nodes_grouped_by_rank (self, check: bool = False) -> dict:
+        """
+        takes a list of patterns, P, and generates a dictionary of patterns grouped by their ranks
+        """
+
+        from collections import defaultdict
+        gap_mark   = self.gap_mark
+        nodes      = self.nodes
+        size       = len(nodes)
+
+        ## implementation using itertooks.groupby() failed
+        rank_finder = lambda p: len([ x for x in p.form if len(x) > 0 and x != gap_mark ])
+
+        ## main
+        ranked_nodes = defaultdict(list) # dictionary
+        for pattern in sorted (nodes, key = rank_finder):
+            pattern_rank = pattern.get_rank ()
+            if check:
+                print(f"#rank: {pattern_rank}")
+                print(f"#ranked pattern: {pattern}")
+            if pattern_rank <= size:
+                ranked_nodes[pattern_rank].append(pattern)
+        ##
+        if check:
+            print(f"#ranked_nodes: {ranked_nodes}")
+        return ranked_nodes
+
+    ## generate links: instantiation check not accept gap_size
+    def gen_links (self: object, reflexive: bool = True, use_mp: bool = True, use_mp2 = True, check: bool = False) -> list:
         """
         takes a PatternLattice P, and generates data for for P.links
         """
@@ -1346,13 +1352,8 @@ class PatternLattice():
         links =  [ ]
         ranks = ranked_nodes.keys()
 
-        # Determine increment based on metric
-        if p_metric == 'gap_size':
-            increment = -1  # More gaps → fewer gaps
-        else:  # rank
-            increment = 1   # Lower rank → higher rank
-
         ##
+        increment = 1
         for rank in sorted (ranks, reverse = False):
             selected_links = [ ]
             try:
@@ -1384,16 +1385,15 @@ class PatternLattice():
         ##
         return links
 
-    ##
-    def update_links (self, p_metric: str, reflexive: bool, use_mp: bool = False, check: bool = False):
+    ## update_links() needs to be rank-based
+    def update_links (self, reflexive: bool, use_mp: bool = False, make_links_safely: bool = False, check: bool = False):
         """
         takes a PatternLattice P, and updates P.links, P.link_sources and P.link_targets.
         """
         ## update links
-        self.links  = self.gen_links (p_metric, reflexive = reflexive, use_mp = use_mp, check = check)
-        ## update ranked_links
-        #self.ranked_links  = make_links_ranked (self.links, safely = make_links_safely, check = check)
-        self.grouped_links  = make_links_grouped_by (p_metric, self.links, safely = make_links_safely, check = check)
+        self.links  = self.gen_links (reflexive = reflexive, use_mp = use_mp, check = check)
+        ## update ranked_links: metric needs to be 'rank'
+        self.ranked_links  = make_links_grouped_by ('rank', self.links, use_max = False, safely = make_links_safely, check = check)
         ## update link_sources, link_targets
         self.link_sources, self.link_targets = self.get_link_stats (check = check)
         ## return result
@@ -1418,7 +1418,7 @@ class PatternLattice():
         return link_sources, link_targets
 
     ##
-    def draw_network (self, layout: str = None, MPG_key: str = None, auto_figsizing: bool = False, fig_size: tuple = None, generality: int = 0, p_metric: str = 'gap_size', use_robust_zscore: bool = True, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, mark_instances: bool = False, node_size: int = None, label_size: int = None, label_sample_n: int = None, scale_factor: float = 3, font_name: str = None, test: bool = False, check: bool = False) -> None:
+    def draw_network (self, layout: str = None, MPG_key: str = None, auto_figsizing: bool = False, fig_size: tuple = None, generality: int = 0, p_metric: str = 'gap_size', make_links_safely: bool = False, use_robust_zscore: bool = True, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, mark_instances: bool = False, node_size: int = None, label_size: int = None, label_sample_n: int = None, scale_factor: float = 3, font_name: str = None, test: bool = False, check: bool = False) -> None:
         """
         draws a lattice digrams from a given PatternLattice L by extracting L.links
         """
@@ -1429,8 +1429,9 @@ class PatternLattice():
         ##
         sample_pattern = self.nodes[0]
         gap_mark       = sample_pattern.gap_mark
-        ranked_links   = make_links_ranked (links, safely = make_links_safely, check = check)
-        grouped_links  = make_links_grouped_by (p_metric, links, safely = make_links_safely, check = check)
+        #ranked_links   = make_links_ranked (links, safely = make_links_safely, check = check)
+        ranked_links  = make_links_grouped_by ('rank', links, use_max = False, safely = make_links_safely, check = check)
+        gap_sized_links  = make_links_grouped_by ('gap_size', links, use_max = True, safely = make_links_safely, check = check)
         if check:
             for rank, links in grouped_links.items():
                 print(f"#links at rank {rank}:\n{links}")
