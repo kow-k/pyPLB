@@ -25,7 +25,7 @@ def as_tuple (L: list) -> tuple:
     return tuple(L)
 
 ##
-def segment_with_levels (line: list, seps: str, sep2_is_suppressive: bool, split_hyphenation: bool = False, uncapitalize: bool = False, normalize: bool = True) -> list:
+def segment_with_levels (line: str, seps: str, sep2_is_suppressive: bool, split_hyphenation: bool = False, uncapitalize: bool = False, normalize: bool = True) -> list:
 
     """
     returns a level-aware segmentation from given a list of lines.
@@ -33,23 +33,27 @@ def segment_with_levels (line: list, seps: str, sep2_is_suppressive: bool, split
 
     sep_list = list(seps)
     assert len(sep_list) > 0
-    ##
+    
+    ## normalize
     if normalize:
         from unicodedata import normalize as normalizer
         flag = 'NFC'
+        line = normalizer(flag, line)
+    
+    ## remove spaces
+    line = line.replace(' ','')
+    
     ##
     if sep2_is_suppressive:
         sep1, sep2, *_ = sep_list
-        if normalize:
-            result = f"{normalizer(flag, line)}{sep2}".replace(sep1, "").split(sep2)
+        if line[-1] == sep2:
+            result = f"{line}".replace(sep1, "").split(sep2)
         else:
             result = f"{line}{sep2}".replace(sep1, "").split(sep2)
     else:
+        import re
         print(f"#seps: {seps}")
-        if normalize:
-            result = re.split(f"[{seps}]", normalizer(flag, line))
-        else:
-            result = re.split(f"[{seps}]", line)
+        result = re.split(f"[{seps}]\s*", line)
 
     ## uncapitalize tokens over lines
     if uncapitalize:

@@ -647,7 +647,7 @@ def gen_G (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_direct
             node1, node2  = link.form_paired # assumes a pair of tuples
 
             ## handle truncated node names
-            #node1_alt, node2_alt  = link.form_alt_paired # assumes a pair of tuples
+            #node1_alt, node2_alt  = link.form_alt_paired
             ## The code above does not work properly
             node1_alt = node1_p.form_alt
             node2_alt = node2_p.form_alt
@@ -674,20 +674,10 @@ def gen_G (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_direct
                     print(f"#node2_alt: {node2_alt}")
 
             ## register node for instances
-            if node1 == node1_alt:
-                if node1_gap_size == 0 and node1 not in instances:
-                    instances.append (node1)
-            else:
-                if len(node1_alt) > 0 and node1_alt_gap_size == 0:
-                    if node1_alt not in instances:
-                        instances.append (node1_alt)
-            if node2 == node2_alt:
-                if node2_gap_size == 0 and node2 not in instances:
-                    instances.append (node2)
-            else:
-                if len(node2_alt) > 0 and node2_alt_gap_size == 0:
-                    if node2_alt not in instances:
-                        instances.append (node2_alt)
+            if node1_gap_size == 0 and node1_alt not in instances:
+                    instances.append (node1_alt)
+            if node2_gap_size == 0 and node2_alt not in instances:
+                instances.append (node2_alt)
 
             ## add nodes and edges to G
             ## case 1: either lowerbound nor upperbound is applied
