@@ -387,6 +387,22 @@ def cautiously_merge (A, B, check = False):
     if len(C) > 0:
         return C # yield C fails
 
+def merge_pattern_lattices (Ls: list, generality: int, gen_links_internally: bool = True, use_mp: bool = True, reflexive: bool = True, reductive: bool = True, check: bool = False):
+    """takes a list of PatternLattices and returns its merger."""
+
+    print(f"merging {len(Ls)} PLs...")
+    import functools
+    M = functools.reduce (lambda La, Lb: La.merge_with (Lb, gen_links_internally = gen_links_internally, use_mp = use_mp, generality = generality, reflexive = reflexive, reductive = reductive, check = check), Ls)
+
+    # The following process was isolated for memory conservation
+    if gen_links_internally:
+        print(f"##updating links...")
+        ## N.B. 1) Don't do: M = M.update(...); 2) update_links() is rank-based
+        M.update_links (reflexive = reflexive, use_mp = use_mp, check = check)
+    ##
+    return M
+
+
 ##
 def get_rank_dists (link_dict: dict, ranked_links: dict, check: bool = False) -> dict:
     "calculate essential statistics of the rank distribution given"
