@@ -434,7 +434,7 @@ if draw_individually:
     print(f"##Drawing g{generality}PLs individually")
     for i, patlat in enumerate(L):
         print(f"#Drawing a diagram from g{generality}PL {i+1}")
-        patlat.draw_network (layout = layout, MPG_key = MPG_key, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, p_metric = p_metric, make_links_safely = make_links_safely, zscores_from_targets = zscores_from_targets, mark_instances = mark_instances, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
+        patlat.draw_lattice (layout = layout, MPG_key = MPG_key, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, p_metric = p_metric, make_links_safely = make_links_safely, zscores_from_targets = zscores_from_targets, mark_instances = mark_instances, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
     exit()
 
 ##
@@ -490,7 +490,7 @@ elif build_lattice_stepwise:
             print(f"#node {node} has z-score {zscore: .3f}")
         ##
         print(f"##Results")
-        M.draw_network (layout, MPG_key, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+        M.draw_lattice (layout, MPG_key, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 ## Draw after integration
 else:
     gen_links_internally = False
@@ -529,7 +529,7 @@ else:
 
     ## draw diagram of M
     print(f"##Drawing a diagram from the merged PL")
-    M.draw_network (layout, MPG_key, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+    M.draw_lattice (layout, MPG_key, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 
 ## conclude
 print(f"##built from {len(S)} sources: {[ as_label(x, sep = ',') for x in S ]}")

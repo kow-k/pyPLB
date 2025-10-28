@@ -25,6 +25,17 @@ def as_tuple (L: list) -> tuple:
     return tuple(L)
 
 ##
+def strip_comment (line: str, comment_escapes: list, check: bool = False) -> str:
+    ## remove in-line comments
+    pos = [ line.find(ce) for ce in comment_escapes ]
+    if check:
+        print(f"pos: {pos}")
+    if pos[0] >= 0:
+        return line[:pos[0]].strip()
+    else:
+        return line
+
+##
 def segment_with_levels (line: str, seps: str, sep2_is_suppressive: bool, split_hyphenation: bool = False, uncapitalize: bool = False, normalize: bool = True) -> list:
 
     """

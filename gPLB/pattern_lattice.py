@@ -922,7 +922,7 @@ def set_node_positions (G, layout: str, MPG_key: str, scale_factor: float):
     return layout_name, positions
 
 ##
-def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_inline: bool = False, auto_figsizing: bool = False, fig_size: tuple = None, node_size: int = 9, label_size: int = 8, label_sample_n: int = None, zscores: dict = None, p_metric: str = 'gap_size', use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generality: int = 0, use_directed_graph: bool = True, reverse_direction: bool = False, font_name: str = None, graphics_backend: str = "qt", test: bool = False, check: bool = False) -> None:
+def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_inline: bool = False, auto_figsizing: bool = False, fig_size: tuple = (10,9), node_size: int = 9, label_size: int = 8, label_sample_n: int = None, zscores: dict = None, p_metric: str = 'gap_size', use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generality: int = 0, use_directed_graph: bool = True, reverse_direction: bool = False, font_name: str = None, graphics_backend: str = "qt", test: bool = False, check: bool = False) -> None:
     """
     draw a graph from a given network data.
     """
@@ -1001,25 +1001,25 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_inline: bo
 
     ## adjust figsize
     if auto_figsizing:
-        width_step = max_instance_size * 1.00
+        width_step = max_instance_size * .4
         height_step = 1.00
         if generality in [3]:
-            width_step  = round(width_step * 1.5, 1)
-            height_step = round(height_step * 3.5, 1)
+            width_step  = round(width_step * 1.0, 1)
+            height_step = round(height_step * 2.0, 1)
         elif generality in [1, 2]:
-            width_step  = round(width_step * 1.3, 1)
-            height_step = round(height_step * 2.5, 1)
+            width_step  = round(width_step * 1.0, 1)
+            height_step = round(height_step * 1.5, 1)
         else:
             width_step  = round(width_step * 1.0, 1)
             height_step = round(height_step * 1.5, 1)
-        graph_width   = 7 + round(width_step * math.log(1 + MPG_group_size), 1)
-        graph_height  = 7 + round(height_step * math.log(1 + MPG_key_count_max), 1)
+        graph_width   = 4 + round(width_step * math.log(1 + MPG_group_size), 1)
+        graph_height  = 3 + round(height_step * math.log(1 + MPG_key_count_max), 1)
         #graph_height  = 7 + round(height_step * MPG_key_count_max, 1)
-        #fig_size = (graph_width, fig_size[1])
-        if graph_width > fig_size[0]:
-            fig_size = (graph_width, fig_size[1])
-        if graph_height >  fig_size[1]:
-            fig_size = (fig_size[0], graph_height)
+        if graph_width < 4:
+            graph_width = 4
+        if graph_height < 4:
+            graph_height = 4
+        fig_size = (graph_width, graph_height)
     print(f"#fig_size: {fig_size}")
     plt.figure(figsize = fig_size)
 
@@ -1411,7 +1411,7 @@ class PatternLattice():
         return link_sources, link_targets
 
     ##
-    def draw_network (self, layout: str = None, MPG_key: str = None, draw_inline: bool = False, auto_figsizing: bool = False, fig_size: tuple = None, generality: int = 0, p_metric: str = 'gap_size', make_links_safely: bool = False, use_robust_zscore: bool = True, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, mark_instances: bool = False, node_size: int = None, label_size: int = None, label_sample_n: int = None, scale_factor: float = 3, graphics_backend: str = 'qt', font_name: str = None, test: bool = False, check: bool = False) -> None:
+    def draw_lattice (self, layout: str = None, MPG_key: str = None, draw_inline: bool = False, auto_figsizing: bool = False, fig_size: tuple = None, generality: int = 0, p_metric: str = 'rank', make_links_safely: bool = False, use_robust_zscore: bool = True, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, mark_instances: bool = False, node_size: int = None, label_size: int = None, label_sample_n: int = None, scale_factor: float = 3, graphics_backend: str = 'qt', font_name: str = None, test: bool = False, check: bool = False) -> None:
         """
         draws a lattice digrams from a given PatternLattice L by extracting L.links
         """
