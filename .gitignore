@@ -7,8 +7,8 @@ outputs/
 profiled/
 pyPLB-rev/
 !sources/
-!pyPLB/
-pyPLB/__pycache__/
+!gPLB/
+gPLB/__pycache__/
 ## files
 *.html
 *.zip
@@ -16,13 +16,13 @@ pyPLB/__pycache__/
 !package-dependencies.txt
 
 ## python files
-pyPLB/*.py
-!pyPLB/__init__.py
-!pyPLB/__main__.py
-!pyPLB/pattern_lattice.py
-!pyPLB/pattern_link.py
-!pyPLB/pattern.py
-!pyPLB/utils.py
+gPLB/*.py
+!gPLB/__init__.py
+!gPLB/__main__.py
+!gPLB/pattern_lattice.py
+!gPLB/pattern_link.py
+!gPLB/pattern.py
+!gPLB/utils.py
 
 ## ignore .md files except README.md
 *.md
@@ -114,9 +114,10 @@ target/
 # Jupyter Notebook
 *.ipynb
 .ipynb_checkpoints
+!gPLB-basics.ipynb
 !gPLB-runner.ipynb
+!gPLB-stepwise-runner.ipynb
 !gPLB-runner-on-bare-items.ipynb
-!plb-tester.ipynb
 
 # IPython
 profile_default/
