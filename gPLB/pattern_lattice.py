@@ -26,8 +26,8 @@ class NodeAttrs:
     size: int
     gap_size: int
     rank: int
-    moment: float
     zscore: float
+    moment: float
 
 ### Functions
 
@@ -43,7 +43,7 @@ def add_node_with_attrs (node_name, attrs: NodeAttrs, Gx, check: bool = False):
 ##
 def as_label (T: (list, tuple), sep: str = " ", add_sep_at_end: bool = False) -> str:
     """
-    convert a given tuple to a string by concatenating its elements
+    converts a given tuple to a string by concatenating its elements
     """
 
     result = ""
@@ -606,7 +606,116 @@ def gen_zscores_from_sources_by (metric: str, M: object, gap_mark: str, tracer: 
             print(f"M.source_zscores: {M.source_zscores}")
 
 ##
-def gen_G (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_directed_graph: bool, test: bool = True, check: bool = False):
+def gen_G (N, zscores, use_directed_graph: bool, test: bool = True, check: bool = False):
+    """
+    generate a NetworkX graph G from a given nodes N
+    """
+
+    ## modules to use
+    import networkx as nx
+    import math
+
+    ## define a graph object
+    if use_directed_graph:
+        G = nx.DiGraph()
+    else:
+        G = nx.Graph() # does not accept connectionstyle specification
+
+    ## main
+    instances = [ ] # register instances
+
+    for key, links in sorted (N, reverse = False): # be careful on list up direction
+        assert key >= 0
+        for link in links:
+            if check:
+                print(f"#adding link at group {key}: {link}")
+
+            ## get variables
+            gap_mark      = link.gap_mark
+
+            ## get patterns for node1 and node2
+            node1_p = link.left
+            node2_p = link.right
+
+            ## set ranks for node1 and node2
+            #node1_rank = node1_p.rank # harmful
+            #node2_rank = node2_p.rank # harmful
+            node1_rank = node1_p.get_rank()
+            node2_rank = node2_p.get_rank()
+
+            ## get sizes for node1 and node2
+            node1_size = node1_p.get_size()
+            node2_size = node2_p.get_size()
+
+            ## set gap sizes for node1 and node2
+            #node1_gap_size = node1_p.gap_size # harmful
+            #node2_gap_size = node2_p.gap_size # harmful
+            node1_gap_size = node1_p.get_gap_size()
+            node2_gap_size = node2_p.get_gap_size()
+
+            ## set moment
+            node1_moment = math.log(node1_size + 2)/math.log(node1_rank + 2)
+            node2_moment = math.log(node2_size + 2)/math.log(node2_rank + 2)
+
+            ## node names
+            ## node1, node2 are node names and need to be tuples
+            node1, node2  = link.form_paired # assumes a pair of tuples
+
+            ## handle truncated node names
+            #node1_alt, node2_alt  = link.form_alt_paired
+            ## The code above does not work properly
+            node1_alt = node1_p.form_alt
+            node2_alt = node2_p.form_alt
+            
+            ## get z-scores for node1 and node2
+            try:
+                node1_zscore = zscores[node1]
+            except KeyError:
+                node1_zscore = 0
+            try:
+                node2_zscore = zscores[node2]
+            except KeyError:
+                node2_zscore = 0
+
+            ## Create node attributes
+            node1_attrs = NodeAttrs (node1_alt, node1_size, node1_gap_size, node1_rank, node1_zscore, node1_moment)
+            node2_attrs = NodeAttrs (node2_alt, node2_size, node2_gap_size, node2_rank, node2_zscore, node2_moment)
+            
+            ## register node for instances
+            if node1_gap_size == 0 and node1_alt not in instances:
+                    instances.append (node1_alt)
+            if node2_gap_size == 0 and node2_alt not in instances:
+                instances.append (node2_alt)
+
+            ## add nodes and edges to G
+            ## z-score filtering is moved into draw_graph()
+            if not node1 in G.nodes():
+                add_node_with_attrs (node1, node1_attrs, G)
+            else:
+                if check:
+                    print(f"#ignored existing node {node1}")
+            ## node2
+            if not node2 in G.nodes():
+                add_node_with_attrs (node2, node2_attrs, G)
+            else:
+                if check:
+                    print(f"#ignored existing node {node2}")
+
+            ### add edges
+            if node1 in G.nodes() and node2 in G.nodes():
+                G.add_edge (node1, node2)
+            if check:
+                if node1 not in G.nodes():
+                    print(f"#skipped edge: node1 {node1} not found")
+                if node2 not in G.nodes():
+                    print(f"#skipped edge: node2 {node2} not found")
+    ##
+    #assert len(instances) > 0 # harmful
+    ##
+    return G, instances
+
+##
+def gen_G_old (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_directed_graph: bool, test: bool = True, check: bool = False):
     """
     generate a NetworkX graph G from a given nodes N
     """
@@ -879,7 +988,7 @@ def set_node_positions (G, layout: str, MPG_key: str, scale_factor: float):
     """
 
     import networkx as nx
-    if layout in [ 'Multipartite', 'Multi_partite', 'multi_partite', 'M', 'MP', 'mp' ]:
+    if layout in [ 'Multipartite', 'Multi-partite', 'Multi_partite', 'multi_partite', 'M', 'MP', 'mp' ]:
         layout_name = "Multi-partite"
         ## scale parameter suddenly gets crucial on 2024/10/30
         positions   = nx.multipartite_layout (G, subset_key = MPG_key, scale = -1)
@@ -938,7 +1047,7 @@ def set_node_positions (G, layout: str, MPG_key: str, scale_factor: float):
     return layout_name, positions
 
 ##
-def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_inline: bool = False, auto_figsizing: bool = False, fig_size: tuple = (10,9), node_size: int = 9, label_size: int = 8, label_sample_n: int = None, zscores: dict = None, p_metric: str = 'gap_size', use_robust_zscore: bool = False, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generality: int = 0, use_directed_graph: bool = True, reverse_direction: bool = False, font_name: str = None, graphics_backend: str = "qt", test: bool = False, check: bool = False) -> None:
+def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", save_instead_of_draw: bool = True, draw_inline: bool = False, auto_figsizing: bool = False, fig_size: tuple = (9,9), fig_dpi: int = 360, node_size: int = None, label_size: int = None, label_sample_n: int = None, zscores: dict = None, p_metric: str = 'rank', use_robust_zscore: bool = True, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generality: int = 0, use_directed_graph: bool = True, reverse_direction: bool = False, font_name: str = None, graphics_backend: str = "qt", check: bool = False) -> None:
     """
     draw a graph from a given network data.
     """
@@ -968,10 +1077,31 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_inline: bo
             matplotlib.use('Qt5Agg')
     import matplotlib.pyplot as plt
     from matplotlib import colormaps
-    #import seaborn as sns # dependency is removed on 2025/01/07
 
     ## generate G
-    G, instances, pruned_node_count = gen_G (N, zscores = zscores, zscore_lb = zscore_lb, zscore_ub = zscore_ub, use_robust_zscore = use_robust_zscore, use_directed_graph = use_directed_graph, check = check)
+    #G, instances, pruned_node_count = gen_G (N, zscores = zscores, zscore_lb = zscore_lb, zscore_ub = zscore_ub, use_robust_zscore = use_robust_zscore, use_directed_graph = use_directed_graph, check = check)
+    G, instances = gen_G (N, zscores = zscores, use_directed_graph = use_directed_graph, check = check)
+        ## create a subgraph if needed
+    
+    ## subgraph creation by z-score filtering
+    ## This needs to be applied color assignment
+    n_original_nodes = len(G.nodes())
+    if zscore_ub is not None and zscore_lb is not None:
+        filtered_nodes1 = [ n for n, attr in G.nodes(data = True) if ((attr.get('zscore') >= zscore_lb) and attr.get('zscore') <= zscore_ub)]
+        G = G.subgraph (filtered_nodes1).copy()
+        #G = G.subgraph (filtered_nodes1) # fails to work
+    elif zscore_lb is not None:
+        filtered_nodes2 = [ n for n, attr in G.nodes(data = True) if (attr.get('zscore') >= zscore_lb) ]
+        G = G.subgraph (filtered_nodes2).copy()
+        #G = G.subgraph (filtered_nodes2) # fails to work
+    elif zscore_ub is not None:
+        filtered_nodes3 = [ n for n, attr in G.nodes(data = True) if (attr.get('zscore') <= zscore_ub) ]
+        G = G.subgraph (filtered_nodes3).copy()
+        #G = G.subgraph (filtered_nodes3) # fails to work
+    
+    ## define pruned_node_count
+    n_nodes = len(G.nodes())
+    pruned_node_count = n_original_nodes - n_nodes
 
     ## define MPG_key_count_max and MPG_group_size
     MPG_keys = nx.get_node_attributes(G, MPG_key)
@@ -991,21 +1121,22 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_inline: bo
     ## relabeling nodes: this needs to come after color setting and before layout setting
     literals = [ x for x in nx.get_node_attributes(G, "literal") ]
     #print(f"literals: {literals}")
-    new_labels = { x: as_label(y) for x, y in zip(G, literals) }
-    #print(f"new_labels: {new_labels}")
-    G = nx.relabel_nodes (G, new_labels, copy = False)
+    new_labels = { x: as_label(y, sep = " ") for x, y in zip(G, literals) }
+    print(f"new_labels: {new_labels}")
+    G = nx.relabel_nodes (G, new_labels, copy=True) # copy=False turned out offensive at connectionstyling
 
     ## set layout and node positions
     layout_name, positions = set_node_positions (G, layout, MPG_key = MPG_key, scale_factor = scale_factor)
 
     ## set connection
-    if layout_name == "Multi-partite":
+    if layout_name in [ "Multi-partite", "Multi_partite", "Multipartite", "MP" ]:
         connectionstyle = "arc, angleA=0, angleB=180, armA=50, armB=50, rad=15"
     else:
         connectionstyle = "arc"
 
     ## set figure size
     n_instances = len(instances)
+    max_instance_size = 3 # customary
     print(f"#n_instances: {n_instances}")
     if n_instances > 0:
         max_instance_n_segs = max([ len(instance) for instance in instances ])
@@ -1037,7 +1168,9 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_inline: bo
             graph_height = 4
         fig_size = (graph_width, graph_height)
     print(f"#fig_size: {fig_size}")
-    plt.figure(figsize = fig_size)
+    print(f"#fig_dpi: {fig_dpi}")
+    #plt.figure(figsize=fig_size, dpi=fig_dpi) # fails to produce right connections in saved file
+    plt.figure(figsize=fig_size)
 
     ## adjust label_size
     resize_coeff = 0.8
@@ -1062,63 +1195,44 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_inline: bo
 
     ## set colormap
     my_cmap = colormaps['coolwarm']
-    ## The following requires Seaborn and made obsolete
-    #my_cmap = sns.color_palette("coolwarm", 24, as_cmap = True) # Crucially, as_cmap
+    
+    ## Draw nodes
+    nx.draw_networkx_nodes (G, positions,
+        node_size = node_size,
+        node_color = node_colors,
+        cmap = my_cmap
+    )
 
-    ## finally draw
-    use_old = False
-    if use_old:
-        nx.draw_networkx (G, positions,
-            font_family = font_family,
-            font_color = 'darkblue', # label font color
-            verticalalignment = "top",
-            #verticalalignment = "bottom",
-            horizontalalignment = "left",
-            #horizontalalignment = "right",
-            min_source_margin = 12, min_target_margin = 12,
-            font_size = label_size, node_size = node_size,
-            node_color = node_colors, cmap = my_cmap,
-            edge_color = 'gray', width = 0.1, arrowsize = 6,
-            arrows = True, connectionstyle = connectionstyle,
-        )
-    else:
-        ## Draw nodes
-        nx.draw_networkx_nodes (G, positions,
-            node_size = node_size,
-            node_color = node_colors,
-            cmap = my_cmap
-        )
+    ## Draw edges with your existing arrow settings
+    nx.draw_networkx_edges(G, positions,
+        edge_color = 'gray',
+        width = 0.1,
+        arrowsize = 6,
+        arrows = True,
+        connectionstyle = connectionstyle,
+        min_source_margin = 10,  # These work here
+        min_target_margin = 10
+    )
 
-        ## Draw edges with your existing arrow settings
-        nx.draw_networkx_edges(G, positions,
-            edge_color = 'gray',
-            width = 0.1,
-            arrowsize = 6,
-            arrows = True,
-            connectionstyle = connectionstyle,
-            min_source_margin = 10,  # These work here
-            min_target_margin = 10
-        )
+    ## Create custom label positions with offset
+    label_offset_x = 0.002  # Adjust these values as needed
+    label_offset_y = 0.005
+    label_positions = {
+        node: (x + label_offset_x, y + label_offset_y)
+        for node, (x, y) in positions.items()
+    }
 
-        ## Create custom label positions with offset
-        label_offset_x = 0.002  # Adjust these values as needed
-        label_offset_y = 0.005
-        label_positions = {
-            node: (x + label_offset_x, y + label_offset_y)
-            for node, (x, y) in positions.items()
-        }
-
-        ## Draw labels separately with full control
-        nx.draw_networkx_labels(G, label_positions,
-            font_family = font_family,
-            font_color = 'darkblue',
-            font_size = label_size,
-            verticalalignment = "top",  # or "top", "center"
-            horizontalalignment = "left"   # or "right", "center"
-        )
+    ## Draw labels separately with full control
+    nx.draw_networkx_labels(G, label_positions,
+        font_family = font_family,
+        font_color = 'darkblue',
+        font_size = label_size,
+        verticalalignment = "top",  # or "top", "center"
+        horizontalalignment = "left"   # or "right", "center"
+    )
 
     ## set labels used in title
-    instance_labels = [ as_label (x, sep = ", ") for x in instances ]
+    instance_labels = [ as_label (x, sep = ",") for x in instances ]
     label_count = len (instance_labels)
     if label_sample_n is not None and label_count > label_sample_n:
         new_instance_labels = instance_labels[:label_sample_n - 1]
@@ -1132,12 +1246,22 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_inline: bo
     if layout_name in ['Multi-partite']:
         layout_name = f"{layout_name} [key: {MPG_key}]"
     if use_robust_zscore:
-        title_val = f"{pl_type} (layout: {layout_name}; robust z-scores [p_metric: {p_metric}]: {zscore_lb} – {zscore_ub}) built from\n{instance_labels} ({label_count} in all)"
+        title_val = f"{pl_type} (layout: {layout_name}; robust z-scores [p_metric: {p_metric}]: {zscore_lb} – {zscore_ub} [removed {pruned_node_count} nodes]) built from\n{instance_labels} ({label_count} in all)"
     else:
-        title_val = f"{pl_type} (layout: {layout_name}; normal z-scores [p_metric: {p_metric}]: {zscore_lb} – {zscore_ub}) built from\n{instance_labels} ({label_count} in all)"
+        title_val = f"{pl_type} (layout: {layout_name}; normal z-scores [p_metric: {p_metric}]: {zscore_lb} – {zscore_ub} [removed {pruned_node_count} nodes]) built from\n{instance_labels} ({label_count} in all)"
     plt.title(title_val)
     ##
-    plt.show()
+    #plt.tight_layout()
+    #plt.set_dpi(fig_dpi) # fails
+    if save_instead_of_draw:
+        file_name = f"{pl_type}.png"
+        #plt.savefig(file_name, dpi = fig_dpi, bbox_inches = 'tight')
+        #plt.savefig(file_name, dpi = fig_dpi)
+        ## dip = value above turned out to be offensive!
+        plt.savefig(file_name)
+        print(f"#saved figure as <{file_name}> in the current directory")
+    else:
+        plt.show()
 
 
 ## Classes
@@ -1427,7 +1551,7 @@ class PatternLattice():
         return link_sources, link_targets
 
     ##
-    def draw_lattice (self, layout: str = None, MPG_key: str = None, draw_inline: bool = False, auto_figsizing: bool = False, fig_size: tuple = None, generality: int = 0, p_metric: str = 'rank', make_links_safely: bool = False, use_robust_zscore: bool = True, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, mark_instances: bool = False, node_size: int = None, label_size: int = None, label_sample_n: int = None, scale_factor: float = 3, graphics_backend: str = 'qt', font_name: str = None, test: bool = False, check: bool = False) -> None:
+    def draw_lattice (self, layout: str = None, MPG_key: str = None, save_instead_of_draw: bool = True, draw_inline: bool = False, auto_figsizing: bool = False, fig_size: tuple = None, fig_dpi: int = 620, generality: int = 0, p_metric: str = 'rank', make_links_safely: bool = False, use_robust_zscore: bool = True, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, mark_instances: bool = False, node_size: int = 11, label_size: int = 9, label_sample_n: int = None, scale_factor: float = 3, graphics_backend: str = 'qt', font_name: str = None, check: bool = False) -> None:
         """
         draws a lattice digrams from a given PatternLattice L by extracting L.links
         """
@@ -1438,11 +1562,9 @@ class PatternLattice():
         ##
         sample_pattern = self.nodes[0]
         gap_mark       = sample_pattern.gap_mark
-        #ranked_links   = make_links_ranked (links, safely = make_links_safely, check = check)
         ranked_links  = make_links_grouped_by ('rank', links, use_max = False, safely = make_links_safely, check = check)
-        gap_sized_links  = make_links_grouped_by ('gap_size', links, use_max = True, safely = make_links_safely, check = check)
         if check:
-            for rank, links in grouped_links.items():
+            for rank, links in ranked_links.items():
                 print(f"#links at rank {rank}:\n{links}")
 
         ## handle z-scores
@@ -1463,6 +1585,6 @@ class PatternLattice():
                 print(f"node {i:4d} {node} has z-score {v:.4f}")
 
         ## draw PatternLattice
-        draw_graph (ranked_links.items(), layout = layout, MPG_key = MPG_key, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, scale_factor = scale_factor, label_sample_n = label_sample_n, graphics_backend = graphics_backend, font_name = font_name, p_metric = p_metric, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, check = check)
+        draw_graph (ranked_links.items(), layout = layout, MPG_key = MPG_key, save_instead_of_draw = save_instead_of_draw, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, node_size = node_size, label_size = label_size, generality = generality, scale_factor = scale_factor, label_sample_n = label_sample_n, graphics_backend = graphics_backend, font_name = font_name, p_metric = p_metric, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, mark_instances = mark_instances, check = check)
 
 ### end of file

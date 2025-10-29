@@ -334,14 +334,11 @@ class Pattern:
         self.tracer        = tracer
         self.boundary_mark = boundary_mark
         ## form
-        #self.form          = [ x[0] for x in self.paired ] # revived on 2025/01/05
-        if accept_truncation:
-            self.form      = tuple([ remove_parentheticals(x[0]) for x in self.paired ])
-        else:
-            self.form      = tuple([ x[0] for x in self.paired ])
         self.form_alt      = tuple([ x[0] for x in self.paired ])
+        self.form          = tuple([ x[0] for x in self.paired ]) # revived on 2025/01/05
+        if accept_truncation:
+            self.form      = tuple([ remove_parentheticals (x) for x in self.form ])
         ## content
-        #self.content       = [ x[1] for x in self.paired ] # revived on 2025/01/05
         self.content       = tuple([ x[1] for x in self.paired ]) # works but makes subsumes_or_not fail
 
         ## size and others

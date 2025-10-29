@@ -44,6 +44,7 @@ modification history
 2025/10/14 retyped Pattern.form and Pattern.content as tuples, making as_tuple() dispensable; implemented gap_size-based z-score calculation;
 2025/10/24 added alternative use of input_field_seps ",;": if sep2_is_suppressive is True, segmentation by "," is suppressed, thereby implementing segmentation on a larger scale;
 2025/10/25 implemented truncation in input: "a(b),c" is treated as "a,c" while node "a(b),c" appears at node;
+2025/10/29 moved z-score filtering from gen_G to draw_graph (using subgraph() of NetworkX); implemented save_instead_of_draw and made it default behavior [changeable by -D option];
 
 """
 
@@ -68,39 +69,41 @@ parser  = argparse.ArgumentParser(description = "")
 parser.add_argument('file', type=open, default=None)
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 parser.add_argument('-w', '--detailed', action='store_true', default=False)
-parser.add_argument('--recursion_limit_factor', type=float, default=1.0)
 parser.add_argument('-M', '--use_mp', action='store_false', default=True)
+parser.add_argument('-D', '--save_instead_of_draw', action='store_false', default=True)
+parser.add_argument('-F', '--fig_size', type=parse_tuple_for_arg, default=(9,9))
+parser.add_argument('-A', '--auto_figsizing', action='store_true', default=False)
+parser.add_argument('-d', '--fig_dpi', type=int, default=360)
+parser.add_argument('-L', '--layout', type= str, default= 'Multi_partite')
+parser.add_argument('-I', '--draw_individual_lattices', action='store_true', default=False)
+parser.add_argument('-S', '--build_lattice_stepwise', action='store_true', default=False)
+parser.add_argument('-J', '--use_multibyte_chars', action='store_true', default=False)
 parser.add_argument('-c', '--input_comment_escapes', type=list, default=['#', '%'])
-parser.add_argument('-d', '--input_field_seps', type=str, default=',;')
+parser.add_argument('-s', '--input_field_seps', type=str, default=',;')
 parser.add_argument('-P', '--sep2_is_suppressive', action='store_true', default=False)
 parser.add_argument('-C', '--uncapitalize', action='store_true', default=False)
 parser.add_argument('-H', '--split_hyphenation', action='store_false', default=True)
 parser.add_argument('-g', '--gap_mark', type=str, default='_')
 parser.add_argument('-t', '--tracer', type=str, default='~')
-parser.add_argument('-m', '--max_size', type=int, default=None)
-parser.add_argument('-s', '--sample_n', type=int, default=None)
-parser.add_argument('-D', '--add_displaced_versions', action='store_true', default=False)
 parser.add_argument('-Q', '--accept_truncation', action='store_false', default=True)
-parser.add_argument('-R', '--unreflexive', action='store_false', default=True)
+parser.add_argument('-X', '--add_displaced_versions', action='store_true', default=False)
+parser.add_argument('-n', '--sample_n', type=int, default=None)
+parser.add_argument('-m', '--max_size', type=int, default=None)
 parser.add_argument('-G', '--generality', type=int, default=0)
 parser.add_argument('-p', '--productivity_metric', type=str, default='rank')
 parser.add_argument('-l', '--zscore_lowerbound', type=float, default=None)
 parser.add_argument('-u', '--zscore_upperbound', type=float, default=None)
 parser.add_argument('-Z', '--use_robust_zscore', action='store_false', default=True)
-parser.add_argument('-T', '--zscores_from_targets', action='store_true', default=False)
-parser.add_argument('-A', '--auto_figsizing', action='store_true', default=False)
 parser.add_argument('-k', '--MPG_key', type=str, default='gap_size')
-parser.add_argument('-E', '--scaling_factor', type= float, default=5)
-parser.add_argument('-F', '--fig_size', type=parse_tuple_for_arg, default=(10,9))
-parser.add_argument('-I', '--draw_individual_lattices', action='store_true', default=False)
-parser.add_argument('-L', '--layout', type= str, default= 'Multi_partite')
-parser.add_argument('-J', '--use_multibyte_chars', action='store_true', default=False)
-parser.add_argument('-S', '--build_lattice_stepwise', action='store_true', default=False)
+parser.add_argument('-T', '--zscores_from_targets', action='store_true', default=False)
+parser.add_argument('-x', '--scaling_factor', type=float, default=5)
 parser.add_argument('-i', '--mark_instances', action='store_true', default=False)
 parser.add_argument('-N', '--print_link_targets', action='store_true', default=False)
 parser.add_argument('-o', '--print_forms', action='store_true', default=False)
 parser.add_argument('-Y', '--phrasal', action='store_true', default=False)
-parser.add_argument('--sample_id', type= int, default=1)
+parser.add_argument('-R', '--unreflexive', action='store_false', default=True)
+parser.add_argument('--recursion_limit_factor', type=float, default=1.0)
+parser.add_argument('--sample_id', type=int, default=1)
 
 ##
 args = parser.parse_args()
@@ -110,6 +113,7 @@ verbose                = args.verbose
 detailed               = args.detailed
 recursion_limit_factor = args.recursion_limit_factor
 use_mp                 = args.use_mp # controls use of multiprocess
+save_instead_of_draw   = args.save_instead_of_draw
 input_comment_escapes  = args.input_comment_escapes
 input_field_seps       = args.input_field_seps
 sep2_is_suppressive    = args.sep2_is_suppressive # controls the behavior of second sep
@@ -119,7 +123,6 @@ split_hyphenation      = args.split_hyphenation
 gap_mark               = args.gap_mark
 tracer                 = args.tracer
 max_size               = args.max_size
-#sample_id              = args.sample_id
 sample_n               = args.sample_n
 reflexive              = args.unreflexive
 generality             = args.generality
@@ -127,10 +130,11 @@ p_metric               = args.productivity_metric
 add_displaced_versions = args.add_displaced_versions
 build_lattice_stepwise = args.build_lattice_stepwise
 print_link_targets     = args.print_link_targets
+auto_figsizing         = args.auto_figsizing
+fig_size               = args.fig_size
 layout                 = args.layout
 MPG_key                = args.MPG_key
-fig_size               = args.fig_size
-auto_figsizing         = args.auto_figsizing
+fig_dpi                = args.fig_dpi
 zscore_lowerbound      = args.zscore_lowerbound
 zscore_upperbound      = args.zscore_upperbound
 use_robust_zscore      = args.use_robust_zscore
@@ -141,16 +145,19 @@ use_multibyte_chars    = args.use_multibyte_chars
 scale_factor           = args.scaling_factor
 print_forms            = args.print_forms
 phrasal                = args.phrasal
+sample_id              = args.sample_id
+
 
 ## script parameters
 draw_inspection      = False
-draw_inline          = False
+draw_inline          = False # intended to be used in Jupyter Notebook
 
 ## show paramters
 print(f"##Parameters")
 print(f"#use_multiprocess: {use_mp}")
 print(f"#detailed: {detailed}")
 print(f"#verbose: {verbose}")
+print(f"#save_instead_of_draw: {save_instead_of_draw}")
 print(f"#input_comment_escapes: {input_comment_escapes}")
 print(f"#input_field_seps: {input_field_seps}")
 print(f"#sep2_is_suppressive: {sep2_is_suppressive}")
@@ -161,20 +168,21 @@ print(f"#gap_mark: {gap_mark}")
 print(f"#instantiation is reflexive: {reflexive}")
 print(f"#building lattice with generality: {generality}")
 print(f"#p_metric [productivity metric]: {p_metric}")
-print(f"#zscores_from_targets: {zscores_from_targets}")
 print(f"#use_robust_zscore: {use_robust_zscore}")
+print(f"#zscores_from_targets: {zscores_from_targets}")
 print(f"#zscore_lowerbound: {zscore_lowerbound}")
 print(f"#zscore_upperbound: {zscore_upperbound}")
 print(f"#draw_inline: {draw_inline}")
 print(f"#auto_figsizing: {auto_figsizing}")
 print(f"#fig_size: {fig_size}")
+print(f"#fig_dpi: {fig_dpi}")
 print(f"#draw_individually: {draw_individually}")
 print(f"#mark_instances: {mark_instances}")
 
 ## increase recursion limit
 if recursion_limit_factor != 1.0:
     import sys
-    sys.setrecursionlimit(round(recursion_limit_increase_factor * 1000))
+    sys.setrecursionlimit(round(recursion_limit_factor * 1000))
 
 ## implications
 if verbose:
@@ -208,7 +216,6 @@ except ImportError:
     from pattern_lattice import *
 
 ### Functions
-##
 
 ##
 def parse_input (file, comment_escapes: list, field_seps: str, split_hyphenation: bool = split_hyphenation, uncapitalize: bool = uncapitalize, check: bool = False) -> list:
@@ -423,7 +430,7 @@ if detailed:
 
 ## print forms and then quit without drawing lattices
 if print_forms:
-    joint = input_field_sep
+    joint = input_field_seps
     for i, patlat in enumerate(L):
         for j, pat in enumerate(patlat):
             print(f"p{i:02d}.form{j:03d}: {joint.join(pat.get_form())}")
@@ -434,7 +441,7 @@ if draw_individually:
     print(f"##Drawing g{generality}PLs individually")
     for i, patlat in enumerate(L):
         print(f"#Drawing a diagram from g{generality}PL {i+1}")
-        patlat.draw_lattice (layout = layout, MPG_key = MPG_key, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, p_metric = p_metric, make_links_safely = make_links_safely, zscores_from_targets = zscores_from_targets, mark_instances = mark_instances, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
+        patlat.draw_lattice (layout = layout, MPG_key = MPG_key, save_instead_of_draw = save_instead_of_draw, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, generality = generality, p_metric = p_metric, make_links_safely = make_links_safely, zscores_from_targets = zscores_from_targets, mark_instances = mark_instances, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
     exit()
 
 ##
@@ -490,7 +497,7 @@ elif build_lattice_stepwise:
             print(f"#node {node} has z-score {zscore: .3f}")
         ##
         print(f"##Results")
-        M.draw_lattice (layout, MPG_key, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+        M.draw_lattice (layout, MPG_key, save_instead_of_draw = save_instead_of_draw, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 ## Draw after integration
 else:
     gen_links_internally = False
@@ -529,7 +536,7 @@ else:
 
     ## draw diagram of M
     print(f"##Drawing a diagram from the merged PL")
-    M.draw_lattice (layout, MPG_key, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+    M.draw_lattice (layout, MPG_key, save_instead_of_draw = save_instead_of_draw, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 
 ## conclude
 print(f"##built from {len(S)} sources: {[ as_label(x, sep = ',') for x in S ]}")
