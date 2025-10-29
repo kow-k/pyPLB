@@ -1047,7 +1047,7 @@ def set_node_positions (G, layout: str, MPG_key: str, scale_factor: float):
     return layout_name, positions
 
 ##
-def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", save_instead_of_draw: bool = True, draw_inline: bool = False, auto_figsizing: bool = False, fig_size: tuple = (9,9), fig_dpi: int = 360, node_size: int = None, label_size: int = None, label_sample_n: int = None, zscores: dict = None, p_metric: str = 'rank', use_robust_zscore: bool = True, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generality: int = 0, use_directed_graph: bool = True, reverse_direction: bool = False, font_name: str = None, graphics_backend: str = "qt", check: bool = False) -> None:
+def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", save_instead_of_draw: bool = True, draw_inline: bool = False, auto_figsizing: bool = False, fig_size: tuple = (10,9), fig_dpi: int = 360, node_size: int = None, label_size: int = None, label_sample_n: int = None, zscores: dict = None, p_metric: str = 'rank', use_robust_zscore: bool = True, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generality: int = 0, use_directed_graph: bool = True, reverse_direction: bool = False, font_name: str = None, graphics_backend: str = "qt", check: bool = False) -> None:
     """
     draw a graph from a given network data.
     """
@@ -1191,7 +1191,7 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", save_instead_of
 
     ## revserse the arrows
     if use_directed_graph and reverse_direction:
-        G = G.reverse(copy = False) # offensive?
+        G = G.reverse(copy=True) # offensive?
 
     ## set colormap
     my_cmap = colormaps['coolwarm']
@@ -1207,9 +1207,9 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", save_instead_of
     nx.draw_networkx_edges(G, positions,
         edge_color = 'gray',
         width = 0.1,
-        arrowsize = 6,
+        arrowsize = 5,
         arrows = True,
-        connectionstyle = connectionstyle,
+        connectionstyle = connectionstyle, # define above
         min_source_margin = 10,  # These work here
         min_target_margin = 10
     )
@@ -1246,9 +1246,9 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", save_instead_of
     if layout_name in ['Multi-partite']:
         layout_name = f"{layout_name} [key: {MPG_key}]"
     if use_robust_zscore:
-        title_val = f"{pl_type} (layout: {layout_name}; robust z-scores [p_metric: {p_metric}]: {zscore_lb} – {zscore_ub} [removed {pruned_node_count} nodes]) built from\n{instance_labels} ({label_count} in all)"
+        title_val = f"{pl_type} (layout: {layout_name}; robust z-scores [p_metric: {p_metric}]: {zscore_lb} – {zscore_ub} [removed {pruned_node_count} nodes])\nbuilt from {instance_labels} ({label_count} in all)"
     else:
-        title_val = f"{pl_type} (layout: {layout_name}; normal z-scores [p_metric: {p_metric}]: {zscore_lb} – {zscore_ub} [removed {pruned_node_count} nodes]) built from\n{instance_labels} ({label_count} in all)"
+        title_val = f"{pl_type} (layout: {layout_name}; normal z-scores [p_metric: {p_metric}]: {zscore_lb} – {zscore_ub} [removed {pruned_node_count} nodes])\nbuilt from {instance_labels} ({label_count} in all)"
     plt.title(title_val)
     ##
     #plt.tight_layout()
