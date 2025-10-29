@@ -87,21 +87,22 @@ python -m pyPLB [OPTIONS] <input_file>
 
 #### Processing
 - `-M, --use_mp` - Use multiprocess for speed up (default: enabled)
+- `--recursion_limit_factor` - Increase recursion_limit by factor (default: 1.0)
 
 #### Input Processing
-- `-s, --sample_n [int]` - Number of instances to sample randomly
+- `-n, --sample_n [int]` - Number of instances to sample randomly
 - `-m, --max_size [int]` - Maximum number of segments per instance
-- `-d, --input_field_sep [str]` - Field separator (default: `,;`: `;` for major, `,` for minor)
+- `-s, --input_field_sep [str]` - Field separator (default: `,;`: `;` for major, `,` for minor)
 - `-c, --input_comment_escapes [list]` - Comment escape characters (default: `#`, `%`)
 
 #### Pattern Processing
-- `-C, --uncapitalize` - Convert all tokens to lowercase
+- `-Q, --accept_truncation` - Accept truncation of '(y)' in 'x(y)z' in input (default: enabled)
 - `-P, --sep2_is_suppressive` - Make ';' as main sep and suppress ',' (default: disabled)
+- `-C, --uncapitalize` - Convert all tokens to lowercase
 - `-H, --split_hyphenation` - Split hyphenated tokens (default: enabled)
-- `-X, --remove_punctuations` - Remove punctuation marks (default: enabled)
 - `-g, --gap_mark [str]` - Gap symbol (default: `_`)
 
-#### Generalization
+#### Generalization levels
 - `-G, --generality [0|1|2|3]` - Generalization level (default: 0)
   - `0`: Standard pattern lattice
   - `1`: Add edge gaps only
@@ -129,12 +130,14 @@ python -m pyPLB [OPTIONS] <input_file>
 - `-K, --MPG_key [rank|gap_size]` - Key for multi-partite graph grouping (default: `gap_size`)
 - `-A, --auto_figsizing` - Enable automatic figure size adjustment
 - `-F, --fig_size [width,height]` - Figure size in inches (default: `10,9`)
-- `-E, --scaling_factor [float]` - Scaling factor for layouts (default: 5)
+- `-d, --fig_dpit [int]` - Figure dpi value (default: `620`)
 - `-J, --use_multibyte_chars` - Enable multibyte font support (for Japanese, etc.)
+- `-x, --scaling_factor [float]` - Scaling factor for layouts (default: 5)
 
 #### Output Control
 - `-v, --verbose` - Enable verbose output
 - `-w, --detailed` - Enable detailed debug output
+- `-D, --save_instead_of_draw` - Disable automatic file saving and draw into window
 - `-I, --draw_individual_lattices` - Draw individual lattices before merging
 - `-S, --build_lattice_stepwise` - Build and display lattice incrementally
 - `-i, --mark_instances` - Highlight instance nodes in the graph
@@ -186,9 +189,14 @@ python -m pyPLB -L MP -k rank data.csv
 ```
 
 #### Processing Options
+
+
 ```bash
 # Process with custom delimiter and no capitalization
-python -m pyPLB -d ";" -C data.csv
+python -m pyPLB -s ";" -C data.csv
+
+# Process with disabling segmenation with ","
+python -m pyPLB -P data.csv
 
 # Keep hyphenated tokens together, remove punctuation
 python -m pyPLB -H -P data.csv
@@ -217,7 +225,7 @@ the big boy
 a big girl
 ```
 
-Run with: `python -m pyPLB -d " " input.txt`
+Run with: `python -m pyPLB -s " " input.txt`
 
 ## Interactive Usage with Jupyter Notebooks
 
