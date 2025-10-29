@@ -80,7 +80,7 @@ pip install -r requirements.txt
 
 Run pyPLB from the command line:
 ```bash
-python -m pyPLB [OPTIONS] <input_file>
+python -m gPLB [OPTIONS] <input_file>
 ```
 
 **Input file format**: CSV file with one pattern per line, segments separated by commas (or custom delimiter)
@@ -151,43 +151,43 @@ python -m pyPLB [OPTIONS] <input_file>
 #### Basic Usage
 ```bash
 # Standard pattern lattice from CSV file
-python -m pyPLB data.csv
+python -m gPLB data.csv
 
 # Generalized pattern lattice (level 2)
-python -m pyPLB -G 2 data.csv
+python -m gPLB -G 2 data.csv
 
 # Sample 50 instances with verbose output
-python -m pyPLB -s 50 -v data.csv
+python -m gPLB -s 50 -v data.csv
 ```
 
 #### Input Filtering
 ```bash
 # Run in "phrasal" mode (segments by ";" only, ignoring segments by ",")
-python -m pyPLB -G 2 -P data.csv
+python -m gPLB -G 2 -P data.csv
 ```
 
 #### Advanced Filtering
 ```bash
 # Filter nodes by z-score (keep nodes with z-score > -0.5)
-python -m pyPLB -G 2 -l -0.5 data.csv
+python -m gPLB -G 2 -l -0.5 data.csv
 
 # Use robust z-scores with upper and lower bounds
-python -m pyPLB -G 2 -Z -l -0.5 -u 2.0 data.csv
+python -m gPLB -G 2 -Z -l -0.5 -u 2.0 data.csv
 
 # Filter by gap_size metric instead of rank
-python -m pyPLB -G 2 -p gap_size -l 0.0 data.csv
+python -m gPLB -G 2 -p gap_size -l 0.0 data.csv
 ```
 
 #### Visualization Customization
 ```bash
 # Use Kamada-Kawai layout with auto-sizing
-python -m pyPLB -G 2 -L KK -A data.csv
+python -m gPLB -G 2 -L KK -A data.csv
 
 # Custom figure size with Graphviz layout
-python -m pyPLB -L G -F 15,12 data.csv
+python -m gPLB -L G -F 15,12 data.csv
 
 # Multi-partite layout grouped by rank
-python -m pyPLB -L MP -k rank data.csv
+python -m gPLB -L MP -k rank data.csv
 ```
 
 #### Processing Options
@@ -195,16 +195,16 @@ python -m pyPLB -L MP -k rank data.csv
 
 ```bash
 # Process with custom delimiter and no capitalization
-python -m pyPLB -s ";" -C data.csv
+python -m gPLB -s ";" -C data.csv
 
 # Process with disabling segmenation with ","
-python -m pyPLB -P data.csv
+python -m gPLB -P data.csv
 
 # Keep hyphenated tokens together, remove punctuation
 python -m pyPLB -H -P data.csv
 
 # Process only short patterns (max 5 segments)
-python -m pyPLB -m 5 data.csv
+python -m gPLB -m 5 data.csv
 ```
 
 ### Input File Format
@@ -227,13 +227,13 @@ the big boy
 a big girl
 ```
 
-Run with: `python -m pyPLB -s " " input.txt`
+Run with: `python -m gPLB -s " " input.txt`
 
 ## Interactive Usage with Jupyter Notebooks
 
-### pyPLB-runner.ipynb
+### gPLB-runner.ipynb
 
-[pyPLB-runner.ipynb](pyPLB-runner.ipynb) provides an interactive environment for:
+[gPLB-runner.ipynb](gPLB-runner.ipynb) provides an interactive environment for:
 - Experimenting with different parameters
 - Fine-tuning visualizations
 - Customizing graph layouts and styling
@@ -241,9 +241,9 @@ Run with: `python -m pyPLB -s " " input.txt`
 
 **Recommended for**: Complex visualizations requiring manual adjustments
 
-### pyPLB-runner-on-bare-items.ipynb
+### gPLB-runner-on-bare-items.ipynb
 
-[pyPLB-runner-on-bare-items.ipynb](pyPLB-runner-on-bare-items.ipynb) accepts unsegmented text:
+[gPLB-runner-on-bare-items.ipynb](gPLB-runner-on-bare-items.ipynb) accepts unsegmented text:
 - Processes raw words or sentences
 - Supports regex-based item selection
 - Incremental lattice building (better memory efficiency)
@@ -286,7 +286,7 @@ Run with: `python -m pyPLB -s " " input.txt`
 
 ### Package Structure
 ```
-pyPLB/
+gPLB/
 ├── __init__.py          # Package initialization
 ├── __main__.py          # CLI entry point
 ├── pattern.py           # Pattern class and operations
@@ -319,7 +319,7 @@ Pattern Lattices provide a formal framework for representing and analyzing lingu
 ### Common Issues
 
 **ImportError: attempted relative import with no known parent package**
-- Solution: Run as module: `python -m pyPLB` instead of `python __main__.py`
+- Solution: Run as module: `python -m gPLB` instead of `python __main__.py`
 
 **Memory Error with large datasets**
 - Solution 1: Use z-score pruning (`-zl`, `-zu`)
@@ -609,16 +609,16 @@ For a pattern of length `n`:
 For Level 2-3 with large datasets:
 ```bash
 # Always use z-score pruning
-python -m pyPLB -G 3 -zl -0.5 -zu 2.0 data.csv
+python -m gPLB -G 3 -l -0.5 -u 2.0 data.csv
 
 # Limit pattern length
-python -m pyPLB -G 3 -m 4 -zl 0.0 data.csv
+python -m gPLB -G 3 -m 4 -l 0.0 data.csv
 
 # Sample your data
-python -m pyPLB -G 3 -s 50 -zl 0.0 data.csv
+python -m gPLB -G 3 -n 50 -l 0.0 data.csv
 
 # Use stepwise building for incremental display
-python -m pyPLB -G 3 -S -zl 0.0 data.csv
+python -m gPLB -G 3 -S -l 0.0 data.csv
 ```
 
 ---
@@ -630,7 +630,7 @@ python -m pyPLB -G 3 -S -zl 0.0 data.csv
 - **Level 2**: + Internal gaps (word order flexibility)
 - **Level 3**: + Everything (most comprehensive, use with caution!)
 
-**Rule of thumb**: Start with Level 0 or 1, then increase if you need more detail. Always use z-score pruning (`-zl`) with Level 2-3!
+**Rule of thumb**: Start with Level 0 or 1, then increase if you need more detail. Always use z-score pruning (`-l`) with Level 2-3!
 
 ## Contributing
 
