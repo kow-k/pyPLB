@@ -6,6 +6,8 @@ A Python implementation of generalized Pattern Lattice Builder (gPLB) for constr
 
 pyPLB builds pattern lattices - hierarchical networks that represent relationships between patterns and their generalizations. It supports both standard and **generalized** pattern lattices, offering more comprehensive analysis than traditional implementations.
 
+Now, the default behavior of the script is not drawing a lattice in a window but saving a .png file (e.g., `g1PL.png`) in the current directory. You can change this using "-D" option, i.e., "draw instead of save" option.
+
 ### What is a Generalized Pattern Lattice?
 
 A **standard** Pattern Lattice (at generality level 0) from input `[a, b, c]` creates an is-a network over 8 nodes:
