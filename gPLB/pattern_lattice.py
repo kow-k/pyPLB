@@ -666,7 +666,7 @@ def gen_G (N, zscores, use_directed_graph: bool, test: bool = True, check: bool 
             ## The code above does not work properly
             node1_alt = node1_p.form_alt
             node2_alt = node2_p.form_alt
-            
+
             ## get z-scores for node1 and node2
             try:
                 node1_zscore = zscores[node1]
@@ -680,7 +680,7 @@ def gen_G (N, zscores, use_directed_graph: bool, test: bool = True, check: bool 
             ## Create node attributes
             node1_attrs = NodeAttrs (node1_alt, node1_size, node1_gap_size, node1_rank, node1_zscore, node1_moment)
             node2_attrs = NodeAttrs (node2_alt, node2_size, node2_gap_size, node2_rank, node2_zscore, node2_moment)
-            
+
             ## register node for instances
             if node1_gap_size == 0 and node1_alt not in instances:
                     instances.append (node1_alt)
@@ -1047,7 +1047,7 @@ def set_node_positions (G, layout: str, MPG_key: str, scale_factor: float):
     return layout_name, positions
 
 ##
-def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", save_instead_of_draw: bool = True, draw_inline: bool = False, auto_figsizing: bool = False, fig_size: tuple = (10,9), fig_dpi: int = 360, node_size: int = None, label_size: int = None, label_sample_n: int = None, zscores: dict = None, p_metric: str = 'rank', use_robust_zscore: bool = True, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generality: int = 0, use_directed_graph: bool = True, reverse_direction: bool = False, font_name: str = None, graphics_backend: str = "qt", check: bool = False) -> None:
+def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_instead_of_save: bool = False, draw_inline: bool = False, auto_figsizing: bool = False, fig_size: tuple = (10,9), fig_dpi: int = 360, node_size: int = None, label_size: int = None, label_sample_n: int = None, zscores: dict = None, p_metric: str = 'rank', use_robust_zscore: bool = True, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generality: int = 0, use_directed_graph: bool = True, reverse_direction: bool = False, font_name: str = None, graphics_backend: str = "qt", check: bool = False) -> None:
     """
     draw a graph from a given network data.
     """
@@ -1082,7 +1082,7 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", save_instead_of
     #G, instances, pruned_node_count = gen_G (N, zscores = zscores, zscore_lb = zscore_lb, zscore_ub = zscore_ub, use_robust_zscore = use_robust_zscore, use_directed_graph = use_directed_graph, check = check)
     G, instances = gen_G (N, zscores = zscores, use_directed_graph = use_directed_graph, check = check)
         ## create a subgraph if needed
-    
+
     ## subgraph creation by z-score filtering
     ## This needs to be applied color assignment
     n_original_nodes = len(G.nodes())
@@ -1098,7 +1098,7 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", save_instead_of
         filtered_nodes3 = [ n for n, attr in G.nodes(data = True) if (attr.get('zscore') <= zscore_ub) ]
         G = G.subgraph (filtered_nodes3).copy()
         #G = G.subgraph (filtered_nodes3) # fails to work
-    
+
     ## define pruned_node_count
     n_nodes = len(G.nodes())
     pruned_node_count = n_original_nodes - n_nodes
@@ -1195,7 +1195,7 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", save_instead_of
 
     ## set colormap
     my_cmap = colormaps['coolwarm']
-    
+
     ## Draw nodes
     nx.draw_networkx_nodes (G, positions,
         node_size = node_size,
@@ -1253,16 +1253,15 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", save_instead_of
     ##
     #plt.tight_layout()
     #plt.set_dpi(fig_dpi) # fails
-    if save_instead_of_draw:
+    if draw_instead_of_save:
+        plt.show()
+    else:
         file_name = f"{pl_type}.png"
         #plt.savefig(file_name, dpi = fig_dpi, bbox_inches = 'tight')
         #plt.savefig(file_name, dpi = fig_dpi)
         ## dip = value above turned out to be offensive!
         plt.savefig(file_name)
         print(f"#saved figure as <{file_name}> in the current directory")
-    else:
-        plt.show()
-
 
 ## Classes
 class PatternLattice():
@@ -1551,7 +1550,7 @@ class PatternLattice():
         return link_sources, link_targets
 
     ##
-    def draw_lattice (self, layout: str = None, MPG_key: str = None, save_instead_of_draw: bool = True, draw_inline: bool = False, auto_figsizing: bool = False, fig_size: tuple = None, fig_dpi: int = 620, generality: int = 0, p_metric: str = 'rank', make_links_safely: bool = False, use_robust_zscore: bool = True, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, mark_instances: bool = False, node_size: int = 11, label_size: int = 9, label_sample_n: int = None, scale_factor: float = 3, graphics_backend: str = 'qt', font_name: str = None, check: bool = False) -> None:
+    def draw_lattice (self, layout: str = None, MPG_key: str = None, draw_instead_of_save: bool = False, draw_inline: bool = False, auto_figsizing: bool = False, fig_size: tuple = None, fig_dpi: int = 620, generality: int = 0, p_metric: str = 'rank', make_links_safely: bool = False, use_robust_zscore: bool = True, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, mark_instances: bool = False, node_size: int = 11, label_size: int = 9, label_sample_n: int = None, scale_factor: float = 3, graphics_backend: str = 'qt', font_name: str = None, check: bool = False) -> None:
         """
         draws a lattice digrams from a given PatternLattice L by extracting L.links
         """
@@ -1585,6 +1584,6 @@ class PatternLattice():
                 print(f"node {i:4d} {node} has z-score {v:.4f}")
 
         ## draw PatternLattice
-        draw_graph (ranked_links.items(), layout = layout, MPG_key = MPG_key, save_instead_of_draw = save_instead_of_draw, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, node_size = node_size, label_size = label_size, generality = generality, scale_factor = scale_factor, label_sample_n = label_sample_n, graphics_backend = graphics_backend, font_name = font_name, p_metric = p_metric, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, mark_instances = mark_instances, check = check)
+        draw_graph (ranked_links.items(), layout = layout, MPG_key = MPG_key, draw_instead_of_save = draw_instead_of_save, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, node_size = node_size, label_size = label_size, generality = generality, scale_factor = scale_factor, label_sample_n = label_sample_n, graphics_backend = graphics_backend, font_name = font_name, p_metric = p_metric, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, mark_instances = mark_instances, check = check)
 
 ### end of file

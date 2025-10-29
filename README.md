@@ -139,7 +139,7 @@ python -m gPLB [OPTIONS] <input_file>
 #### Output Control
 - `-v, --verbose` - Enable verbose output
 - `-w, --detailed` - Enable detailed debug output
-- `-D, --save_instead_of_draw` - Disable automatic file saving and draw into window
+- `-D, --draw_instead_of_save` - Disable automatic file saving and draw into window
 - `-I, --draw_individual_lattices` - Draw individual lattices before merging
 - `-S, --build_lattice_stepwise` - Build and display lattice incrementally
 - `-i, --mark_instances` - Highlight instance nodes in the graph

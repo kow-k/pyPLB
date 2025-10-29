@@ -44,7 +44,7 @@ modification history
 2025/10/14 retyped Pattern.form and Pattern.content as tuples, making as_tuple() dispensable; implemented gap_size-based z-score calculation;
 2025/10/24 added alternative use of input_field_seps ",;": if sep2_is_suppressive is True, segmentation by "," is suppressed, thereby implementing segmentation on a larger scale;
 2025/10/25 implemented truncation in input: "a(b),c" is treated as "a,c" while node "a(b),c" appears at node;
-2025/10/29 moved z-score filtering from gen_G to draw_graph (using subgraph() of NetworkX); implemented save_instead_of_draw and made it default behavior [changeable by -D option];
+2025/10/29 moved z-score filtering from gen_G to draw_graph (using subgraph() of NetworkX); implemented draw_instead_of_save and made it = False default behavior [changeable by -D option];
 
 """
 
@@ -70,7 +70,7 @@ parser.add_argument('file', type=open, default=None)
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 parser.add_argument('-w', '--detailed', action='store_true', default=False)
 parser.add_argument('-M', '--use_mp', action='store_false', default=True)
-parser.add_argument('-D', '--save_instead_of_draw', action='store_false', default=True)
+parser.add_argument('-D', '--draw_instead_of_save', action='store_true', default=False)
 parser.add_argument('-F', '--fig_size', type=parse_tuple_for_arg, default=(9,9))
 parser.add_argument('-A', '--auto_figsizing', action='store_true', default=False)
 parser.add_argument('-d', '--fig_dpi', type=int, default=360)
@@ -113,7 +113,7 @@ verbose                = args.verbose
 detailed               = args.detailed
 recursion_limit_factor = args.recursion_limit_factor
 use_mp                 = args.use_mp # controls use of multiprocess
-save_instead_of_draw   = args.save_instead_of_draw
+draw_instead_of_save   = args.draw_instead_of_save
 input_comment_escapes  = args.input_comment_escapes
 input_field_seps       = args.input_field_seps
 sep2_is_suppressive    = args.sep2_is_suppressive # controls the behavior of second sep
@@ -157,7 +157,7 @@ print(f"##Parameters")
 print(f"#use_multiprocess: {use_mp}")
 print(f"#detailed: {detailed}")
 print(f"#verbose: {verbose}")
-print(f"#save_instead_of_draw: {save_instead_of_draw}")
+print(f"#draw_instead_of_save: {draw_instead_of_save}")
 print(f"#input_comment_escapes: {input_comment_escapes}")
 print(f"#input_field_seps: {input_field_seps}")
 print(f"#sep2_is_suppressive: {sep2_is_suppressive}")
@@ -441,7 +441,7 @@ if draw_individually:
     print(f"##Drawing g{generality}PLs individually")
     for i, patlat in enumerate(L):
         print(f"#Drawing a diagram from g{generality}PL {i+1}")
-        patlat.draw_lattice (layout = layout, MPG_key = MPG_key, save_instead_of_draw = save_instead_of_draw, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, generality = generality, p_metric = p_metric, make_links_safely = make_links_safely, zscores_from_targets = zscores_from_targets, mark_instances = mark_instances, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
+        patlat.draw_lattice (layout = layout, MPG_key = MPG_key, draw_instead_of_save = draw_instead_of_save, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, generality = generality, p_metric = p_metric, make_links_safely = make_links_safely, zscores_from_targets = zscores_from_targets, mark_instances = mark_instances, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
     exit()
 
 ##
@@ -497,7 +497,7 @@ elif build_lattice_stepwise:
             print(f"#node {node} has z-score {zscore: .3f}")
         ##
         print(f"##Results")
-        M.draw_lattice (layout, MPG_key, save_instead_of_draw = save_instead_of_draw, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+        M.draw_lattice (layout, MPG_key, draw_instead_of_save = draw_instead_of_save, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 ## Draw after integration
 else:
     gen_links_internally = False
@@ -536,7 +536,7 @@ else:
 
     ## draw diagram of M
     print(f"##Drawing a diagram from the merged PL")
-    M.draw_lattice (layout, MPG_key, save_instead_of_draw = save_instead_of_draw, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+    M.draw_lattice (layout, MPG_key, draw_instead_of_save = draw_instead_of_save, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 
 ## conclude
 print(f"##built from {len(S)} sources: {[ as_label(x, sep = ',') for x in S ]}")
