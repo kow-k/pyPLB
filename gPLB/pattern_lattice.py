@@ -1351,7 +1351,7 @@ class PatternLattice():
         check                = params['check']
 
         ## merger nodes of two pattern lattices given
-        main_nodes   = [ p for p in self.nodes if len(p) > 0 ]
+        main_nodes  = [ p for p in self.nodes if len(p) > 0 ]
         other_nodes = [ p for p in other.nodes if len(p) > 0 ]
 
         ## variables
@@ -1373,7 +1373,7 @@ class PatternLattice():
                 other_set = set(other_nodes)
                 main_nodes = list(main_set | other_set)
             except TypeError:
-                main_nodes = make_simplest_merger(main_nodes, other_nodes)
+                main_nodes = make_simplest_merger (main_nodes, other_nodes)
         else:
             main_nodes = make_simplest_merger (main_nodes, other_nodes)
         if check:
