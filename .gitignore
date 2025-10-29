@@ -9,9 +9,11 @@ pyPLB-rev/
 !sources/
 !gPLB/
 gPLB/__pycache__/
+
 ## files
 *.html
 *.zip
+*.png
 *.txt
 !package-dependencies.txt
 
