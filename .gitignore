@@ -26,7 +26,7 @@ gPLB/*.py
 !gPLB/pattern.py
 !gPLB/utils.py
 
-## ignore .md files except README.md
+## ignore .md files except README.md and others
 *.md
 !README.md
 !saf_gPLB_usage.md
