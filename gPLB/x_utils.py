@@ -109,6 +109,29 @@ def make_simplest_merger (A: list, B: list) -> list:
     ##
     return C
 
+##
+def make_simplest_merger_old (A: list, B: list) -> list:
+    """
+    takes a list or a pair of lists and returns a unification of them without reduplication
+    """
+
+    C = [ ]
+    for a in A:
+        try:
+            if len(a) > 0 and a not in C:
+                C.append(a)
+        except TypeError:
+            pass
+    for b in B:
+        try:
+            if len(b) > 0 and not b in C:
+                C.append (b)
+        except TypeError:
+            pass
+    ##
+    return C
+
+
 ## aliases
 make_simplest_list  = make_simplest_merger
 

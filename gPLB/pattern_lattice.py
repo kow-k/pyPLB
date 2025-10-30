@@ -1003,7 +1003,7 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_instead_of
     plt.figure(figsize=fig_size)
 
     ## adjust label_size
-    resize_coeff = 0.5
+    resize_coeff = 0.67
     if auto_figsizing:
         label_size = 8 - round(resize_coeff * math.log(1 + n_instances), 1)
     print(f"# label_size: {label_size}")
