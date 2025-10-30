@@ -87,7 +87,55 @@ def register_pairs (r: list, l: list, check: bool = False) -> list:
     return sub_pairs
 
 ##
-def classify_relations_mp2 (R, L, gap_mark: str, check: bool = False):
+def classify_relations_mp2_optimized (R, L, gap_mark: str, batch_size: int = 10000, check: bool = False):
+    """
+    Memory-optimized multiprocess version using batched processing
+    to avoid loading all pairs into memory at once.
+    """
+    from itertools import product, islice
+    import os
+    import multiprocess as mp
+
+    # Sort once
+    R2 = sorted(R, key=lambda x: len(x), reverse=False)
+    L2 = sorted(L, key=lambda x: len(x), reverse=False)
+
+    # Use generator instead of list
+    pairs_generator = product (R2, L2)
+
+    links = []
+
+    # Process in batches to avoid memory overload
+    with mp.Pool(max(round(os.cpu_count()/2 + 1), 1)) as pool:
+        while True:
+            # Get next batch
+            batch = list(islice(pairs_generator, batch_size))
+            if not batch:
+                break
+
+            # Process batch
+            sub_pairs = pool.starmap(register_pairs, batch)
+
+            # Extract links from batch
+            batch_links = [
+                PatternLink(pair)
+                for result in sub_pairs if result is not None and len(result) > 0
+                    for pair in result if len(pair) == 2
+            ]
+            links.extend(batch_links)
+
+            # Clean up batch to free memory
+            del batch
+            del sub_pairs
+            del batch_links
+
+    return links
+
+## alias
+classify_relations_mp2 =  classify_relations_mp2_optimized
+
+##
+def classify_relations_mp2_old (R, L, gap_mark: str, check: bool = False):
     """
     Alternative multiprocess version using register_pairs instead of test_pairs_for_ISA.
     """
@@ -102,7 +150,7 @@ def classify_relations_mp2 (R, L, gap_mark: str, check: bool = False):
 
     #pairs = product (R2, L2) # cannot be reused
     pairs = list(product (R2, L2)) # can be reused; crucially, list(product(..))
-    with mp.Pool(max(os.cpu_count(), 1)) as pool:
+    with mp.Pool(max(round(os.cpu_count()/2 + 1), 1)) as pool:
         sub_pairs = pool.starmap (register_pairs, pairs) # seems to work
     ## Flatten nested structure and create PatternLinks
     ## sub_pairs is [[pair1], [pair2], [], None, [pair3], ...]
@@ -126,21 +174,21 @@ def test_pairs_for_ISA (r: list, l: list, check: bool = False) -> bool:
     ##
     if abs (l_size - r_size) > 1:
         if check:
-            print(f"#is-a:F0; {l.form} ~ {r.form}")
+            print(f"# is-a:F0; {l.form} ~ {r.form}")
         return False
     ##
     elif l_size == r_size + 1:
         if l_form[0] == gap_mark and l_form[1:] == r_form:
             if check:
-                print(f"#is-a:T1a; {l.form} <- {r.form}")
+                print(f"# is-a:T1a; {l.form} <- {r.form}")
             return True
         elif  l_form[-1] == gap_mark and l_form[:-1] == r_form:
             if check:
-                print(f"#is-a:T1b; {l.form} <- {r.form}")
+                print(f"# is-a:T1b; {l.form} <- {r.form}")
             return True
         else:
             if check:
-                print(f"#is-a:F1; {l.form} <- {r.form}")
+                print(f"# is-a:F1; {l.form} <- {r.form}")
             return False
     ##
     elif l_size == r_size:
@@ -151,24 +199,24 @@ def test_pairs_for_ISA (r: list, l: list, check: bool = False) -> bool:
         if r.count_gaps() == 0 and l.count_gaps() == 1:
             if r.includes(l):
                 if check:
-                    print(f"#is-a:T0:instance' {l.form} <- {r.form}")
+                    print(f"# is-a:T0:instance' {l.form} <- {r.form}")
                 return True
             else:
                 if check:
-                    print(f"#is-a:F3; {l.form} ~ {r.form}")
+                    print(f"# is-a:F3; {l.form} ~ {r.form}")
                 return False
         elif check_for_instantiation (r, l, check = False):
             if check:
-                print(f"#is-a:T2; {l.form} <- {r.form}")
+                print(f"# is-a:T2; {l.form} <- {r.form}")
             return True
         else:
             if check:
-                print(f"#is-a:F3; {l.form} ~ {r.form}")
+                print(f"# is-a:F3; {l.form} ~ {r.form}")
             return False
     ##
     else:
         if check:
-            print(f"#is-a:F4; {l.form} ~ {r.form}")
+            print(f"# is-a:F4; {l.form} ~ {r.form}")
         return False
 
 ##
@@ -228,7 +276,7 @@ def classify_relations_nmp (R, L, check: bool = False):
             ##
             if abs(l_size - r_size) > 1:
                 if check:
-                    print(f"#is-a:F0; {l.form} ~~ {r.form}")
+                    print(f"# is-a:F0; {l.form} ~~ {r.form}")
                 continue
             ##
             elif l_size == r_size + 1:
@@ -248,12 +296,12 @@ def classify_relations_nmp (R, L, check: bool = False):
             elif l_size == r_size:
                 if r.form == l.form:
                     if check:
-                        print(f"#is-a:F2; {l.form} ~~ {r.form}")
+                        print(f"# is-a:F2; {l.form} ~~ {r.form}")
                     continue
                 if r.count_gaps() == 0 and l.count_gaps() == 1:
                     if r.includes(l):
                         if check:
-                            print(f"#is-a:T0:instance' {l.form} -> {r.form}")
+                            print(f"# is-a:T0:instance' {l.form} -> {r.form}")
                         register_link (PatternLink ((l, r)), sub_links, seen)
                     else:
                         if check:
@@ -267,12 +315,12 @@ def classify_relations_nmp (R, L, check: bool = False):
                     register_link (PatternLink ((l, r)), sub_links, seen)
                 else:
                     if check:
-                        print(f"#is-a:F3; {l.form} ~~ {r.form}")
+                        print(f"# is-a:F3; {l.form} ~~ {r.form}")
                     continue
             ##
             else:
                 if check:
-                    print(f"#is-a:F4; {l.form} ~~ {r.form}")
+                    print(f"# is-a:F4; {l.form} ~~ {r.form}")
                 continue
     ##
     return sub_links
@@ -320,7 +368,7 @@ def make_links_ranked (L: list, safely: bool, use_max: bool = False, check: bool
     if safely:
         for link in L:
             if check:
-                print(f"#type(link): {type(link)}")
+                print(f"# type(link): {type(link)}")
             try:
                 rank = link.get_link_rank (use_max = use_max)
                 try:
@@ -329,7 +377,7 @@ def make_links_ranked (L: list, safely: bool, use_max: bool = False, check: bool
                 except KeyError:
                     ranked_links[rank] = [link]
             except AttributeError:
-                print (f"#failed to add link: {link}")
+                print (f"# failed to add link: {link}")
     else:
         for link in L:
             rank = link.get_link_rank (use_max = False)
@@ -356,7 +404,7 @@ def make_links_grouped_by (metric: str, L: list, use_max: bool, safely: bool = F
     if safely:
         for link in L:
             if check:
-                print(f"#type(link): {type(link)}")
+                print(f"# type(link): {type(link)}")
             try:
                 if   metric == 'rank':
                     metric_val = link.get_link_rank (use_max = use_max)
@@ -365,11 +413,11 @@ def make_links_grouped_by (metric: str, L: list, use_max: bool, safely: bool = F
                 if not link in grouped_links[metric_val]:
                     grouped_links[metric_val].append(link)
             except AttributeError:
-                print (f"#failed to add link: {link}")
+                print (f"# failed to add link: {link}")
     else:
         for link in L:
             if check:
-                    print(f"#type(link): {type(link)}")
+                    print(f"# type(link): {type(link)}")
             if   metric == 'rank':
                 metric_val = link.get_link_rank (use_max = use_max)
             elif metric == 'gap_size':
@@ -396,7 +444,7 @@ def merge_pattern_lattices (Ls: list, generality: int, gen_links_internally: boo
 
     # The following process was isolated for memory conservation
     if gen_links_internally:
-        print(f"##updating links...")
+        print(f"## Updating links...")
         ## N.B. 1) Don't do: M = M.update(...); 2) update_links() is rank-based
         M.update_links (reflexive = reflexive, use_mp = use_mp, check = check)
     ##
@@ -408,17 +456,17 @@ def get_rank_dists (link_dict: dict, ranked_links: dict, check: bool = False) ->
     "calculate essential statistics of the rank distribution given"
     ##
     if check:
-        print(f"#ranked_links: {ranked_links}")
+        print(f"# ranked_links: {ranked_links}")
     ##
     rank_dists = {}
     for rank in ranked_links:
         stats = {}
         members = ranked_links[rank]
         if check:
-            print(f"#members: {members}")
+            print(f"# members: {members}")
         stats['n_members'] = len(members)
         if check:
-            print(f"#n_members: {n_members}")
+            print(f"# n_members: {n_members}")
         dist = [ link_dict[m] for m in members ]
         if check:
             print(f"dist: {dist}")
@@ -517,7 +565,7 @@ def gen_zscores_from_targets_by (metric: str, M: object, gap_mark: str, tracer: 
 
     Link_targets = M.link_targets
     if check:
-        print(f"##Link_targets")
+        print(f"## Link_targets")
 
     ## The following all return list
     grouped_links = group_links_by (metric, Link_targets, gap_mark = gap_mark, tracer = tracer)
@@ -545,17 +593,17 @@ def gen_zscores_from_targets_by (metric: str, M: object, gap_mark: str, tracer: 
             zscore = calc_zscore (value, averages_by[metric_val], stdevs_by[metric_val], medians_by[metric_val], MADs_by[metric_val], robust = False)
         ##
         target_zscores[link_target] = zscore
-        print(f"#target {i:3d}: {link_target} has {value} in-link(s) at {metric} {metric_val} [z-score: {target_zscores[link_target]:.3f}]")
+        print(f"# target {i:3d}: {link_target} has {value} in-link(s) at {metric} {metric_val} [z-score: {target_zscores[link_target]:.3f}]")
 
     ## attach target_zscores to M
     if use_robust_zscore: # robust z-scores
         M.target_robust_zscores.update(target_zscores)
         if check:
-            print(f"M.target_robust_zscores: {M.target_robust_zscores}")
+            print(f"# M.target_robust_zscores: {M.target_robust_zscores}")
     else: # normal z-scores
         M.target_zscores.update(target_zscores)
         if check:
-            print(f"M.target_robust_zscores: {M.target_robust_zscores}")
+            print(f"# M.target_robust_zscores: {M.target_robust_zscores}")
 
 ##
 def gen_zscores_from_sources_by (metric: str, M: object, gap_mark: str, tracer: str, use_robust_zscore: bool = True, check: bool = False) -> None:
@@ -565,7 +613,7 @@ def gen_zscores_from_sources_by (metric: str, M: object, gap_mark: str, tracer: 
 
     Link_sources = M.link_sources
     if check:
-        print(f"##Link_sources")
+        print(f"## Link_sources")
 
     ## The following all return list
     grouped_links = group_links_by (metric, Link_sources, gap_mark = gap_mark, tracer = tracer)
@@ -593,17 +641,17 @@ def gen_zscores_from_sources_by (metric: str, M: object, gap_mark: str, tracer: 
             zscore = calc_zscore (value, averages_by[metric_val], stdevs_by[metric_val], medians_by[metric_val], MADs_by[metric_val], robust = False)
         ##
         source_zscores[link_source] = zscore
-        print(f"#source {i:3d}: {link_source} has {value} out-link(s) at {metric} {metric_val} [z-score: {source_zscores[link_source]:.3f}]")
+        print(f"# source {i:3d}: {link_source} has {value} out-link(s) at {metric} {metric_val} [z-score: {source_zscores[link_source]:.3f}]")
 
     ## attach source_zscores to M
     if use_robust_zscore:
         M.source_robust_zscores.update(source_zscores)
         if check:
-            print(f"M.source_robust_zscores: {M.source_robust_zscores}")
+            print(f"# M.source_robust_zscores: {M.source_robust_zscores}")
     else: # normal z-score
         M.source_zscores.update(source_zscores)
         if check:
-            print(f"M.source_zscores: {M.source_zscores}")
+            print(f"# M.source_zscores: {M.source_zscores}")
 
 ##
 def gen_G (N, zscores, use_directed_graph: bool, test: bool = True, check: bool = False):
@@ -628,7 +676,7 @@ def gen_G (N, zscores, use_directed_graph: bool, test: bool = True, check: bool 
         assert key >= 0
         for link in links:
             if check:
-                print(f"#adding link at group {key}: {link}")
+                print(f"# adding link at group {key}: {link}")
 
             ## get variables
             gap_mark      = link.gap_mark
@@ -693,247 +741,27 @@ def gen_G (N, zscores, use_directed_graph: bool, test: bool = True, check: bool 
                 add_node_with_attrs (node1, node1_attrs, G)
             else:
                 if check:
-                    print(f"#ignored existing node {node1}")
+                    print(f"# ignored existing node {node1}")
             ## node2
             if not node2 in G.nodes():
                 add_node_with_attrs (node2, node2_attrs, G)
             else:
                 if check:
-                    print(f"#ignored existing node {node2}")
+                    print(f"# ignored existing node {node2}")
 
             ### add edges
             if node1 in G.nodes() and node2 in G.nodes():
                 G.add_edge (node1, node2)
             if check:
                 if node1 not in G.nodes():
-                    print(f"#skipped edge: node1 {node1} not found")
+                    print(f"# skipped edge: node1 {node1} not found")
                 if node2 not in G.nodes():
-                    print(f"#skipped edge: node2 {node2} not found")
+                    print(f"# skipped edge: node2 {node2} not found")
     ##
     #assert len(instances) > 0 # harmful
     ##
     return G, instances
 
-##
-def gen_G_old (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_directed_graph: bool, test: bool = True, check: bool = False):
-    """
-    generate a NetworkX graph G from a given nodes N
-    """
-
-    ## modules to use
-    import networkx as nx
-    import math
-
-    ## define a graph object
-    if use_directed_graph:
-        G = nx.DiGraph()
-    else:
-        G = nx.Graph() # does not accept connectionstyle specification
-
-    ## main
-    instances = [ ] # register instances
-    pruned_node_count = 0
-
-    for key, links in sorted (N, reverse = False): # be careful on list up direction
-        assert key >= 0
-        for link in links:
-            if check:
-                print(f"#adding link at group {key}: {link}")
-
-            ## get variables
-            gap_mark      = link.gap_mark
-
-            ## get patterns for node1 and node2
-            node1_p = link.left
-            node2_p = link.right
-
-            ## set ranks for node1 and node2
-            #node1_rank = node1_p.rank # harmful
-            #node2_rank = node2_p.rank # harmful
-            node1_rank = node1_p.get_rank()
-            node2_rank = node2_p.get_rank()
-
-            ## get sizes for node1 and node2
-            node1_size = node1_p.get_size()
-            node2_size = node2_p.get_size()
-
-            ## set gap sizes for node1 and node2
-            #node1_gap_size = node1_p.gap_size # harmful
-            #node2_gap_size = node2_p.gap_size # harmful
-            node1_gap_size = node1_p.get_gap_size()
-            node2_gap_size = node2_p.get_gap_size()
-
-            ## set moment
-            node1_moment = math.log(node1_size + 2)/math.log(node1_rank + 2)
-            node2_moment = math.log(node2_size + 2)/math.log(node2_rank + 2)
-
-            ## node names
-            ## node1, node2 are node names and need to be tuples
-            node1, node2  = link.form_paired # assumes a pair of tuples
-
-            ## handle truncated node names
-            #node1_alt, node2_alt  = link.form_alt_paired
-            ## The code above does not work properly
-            node1_alt = node1_p.form_alt
-            node2_alt = node2_p.form_alt
-            node1_alt_gap_size = count_items (node1_alt, gap_mark)
-            node2_alt_gap_size = count_items (node2_alt, gap_mark)
-
-            ## get z-scores for node1 and node2
-            try:
-                node1_zscore = zscores[node1]
-            except KeyError:
-                node1_zscore = 0
-            try:
-                node2_zscore = zscores[node2]
-            except KeyError:
-                node2_zscore = 0
-
-            ## Create node attributes
-            node1_attrs = NodeAttrs (node1_alt, node1_size, node1_gap_size, node1_rank, node1_moment, node1_zscore)
-            node2_attrs = NodeAttrs (node2_alt, node2_size, node2_gap_size, node2_rank, node2_moment, node2_zscore)
-            if check:
-                if node1 != node1_alt:
-                    print(f"#node1_alt: {node1_alt}")
-                if node2 != node2_alt:
-                    print(f"#node2_alt: {node2_alt}")
-
-            ## register node for instances
-            if node1_gap_size == 0 and node1_alt not in instances:
-                    instances.append (node1_alt)
-            if node2_gap_size == 0 and node2_alt not in instances:
-                instances.append (node2_alt)
-
-            ## add nodes and edges to G
-            ## case 1: either lowerbound nor upperbound is applied
-            if zscore_ub is None and zscore_lb is None:
-                ## node1
-                if not node1 in G.nodes():
-                    add_node_with_attrs (node1, node1_attrs, G)
-                else:
-                    if check:
-                        print(f"#ignored existing node {node1}")
-                ## node2
-                if not node2 in G.nodes():
-                    add_node_with_attrs (node2, node2_attrs, G)
-                else:
-                    if check:
-                        print(f"#ignored existing node {node2}")
-
-            ## when lowerbound and upperbound z-score pruning is applied
-            ## case 2: both lowerbound and upperbound
-            elif zscore_lb is not None and zscore_ub is not None:
-                ## node1
-                if node1_zscore >= zscore_lb and node1_zscore <= zscore_ub:
-                    if not node1 in G.nodes():
-                        add_node_with_attrs (node1, node1_attrs, G)
-                    else:
-                        if check:
-                            print(f"#ignored existing node {node1}")
-                else:
-                    ## add instance exceptionally
-                    if node1_gap_size == 0 and not node1 in G.nodes():
-                        add_node_with_attrs (node1, node1_attrs, G)
-                    else:
-                        print(f"#pruned node {node1}")
-                        pruned_node_count += 1
-                ## node2
-                if node2_zscore >= zscore_lb and node2_zscore <= zscore_ub:
-                    if not node2 in G.nodes():
-                        add_node_with_attrs (node2, node2_attrs, G)
-                    else:
-                        if check:
-                            print(f"#ignored exisiting node {node2}")
-                else:
-                    ## add instance exceptionally
-                    if node2_gap_size == 0 and not node2 in G.nodes():
-                        add_node_with_attrs (node2, node2_attrs, G)
-                    else:
-                        print(f"#pruned node {node2}")
-                        pruned_node_count += 1
-
-            ## case 3: lowerbound only
-            elif zscore_lb is not None and zscore_ub is None: # z-score pruning applied
-                ## node1
-                if node1_zscore >= zscore_lb:
-                    if not node1 in G.nodes():
-                        add_node_with_attrs (node1, node1_attrs, G)
-                    else:
-                        if check:
-                            print(f"#ignored exisiting node {node1}")
-                else:
-                    ## add instance exceptionally
-                    if node1_gap_size == 0 and not node1 in G.nodes():
-                        add_node_with_attrs (node1, node1_attrs, G)
-                    else:
-                        print(f"#pruned node {node1}")
-                        pruned_node_count += 1
-                ## node2
-                if node2_zscore >= zscore_lb:
-                    if not node2 in G.nodes():
-                        add_node_with_attrs (node2, node2_attrs, G)
-                    else:
-                        if check:
-                            print(f"#ignored existing node {node2}")
-                else:
-                    ## add instance exceptionally
-                    if node2_gap_size == 0 and not node2 in G.nodes():
-                        add_node_with_attrs (node2, node2_attrs, G)
-                    else:
-                        print(f"#pruned node {node2}")
-                        pruned_node_count += 1
-
-            ## case 4: upperbound only
-            elif zscore_lb is None and zscore_ub is not None:
-                ## node1
-                if node1_zscore <= zscore_ub:
-                    if not node1 in G.nodes():
-                        add_node_with_attrs (node1, node1_attrs, G)
-                    else:
-                        if check:
-                            print(f"ignored existing node {node1}")
-                else:
-                    print(f"pruned node {node1}")
-                    pruned_node_count += 1
-                ## node2
-                if node2_zscore <= zscore_ub:
-                    if not node2 in G.nodes():
-                        add_node_with_attrs (node2, node2_attrs, G)
-                    else:
-                        if check:
-                            print(f"ignored existing node {node2}")
-                else:
-                    ## add instance exceptionally
-                    if node2_gap_size == 0 and not node2 in G.nodes():
-                        add_node_with_attrs (node2, node2_attrs, G)
-                    else:
-                        print(f"pruned node {node2}")
-                        pruned_node_count += 1
-
-            ## non-existing case
-            else:
-                raise ValueError("An undefined situation occurred")
-
-            ### add edges
-            ## regular form
-            if node1 in G.nodes() and node2 in G.nodes():
-                G.add_edge (node1, node2)
-            ## alt form: unnecessary?
-            #if node1_alt in G.nodes() and node2_alt in G.nodes():
-            #    G.add_edge (node1_alt, node2_alt)
-            if check:
-                if node1 not in G.nodes():
-                    print(f"#skipped edge: node1 {node1} was not found")
-                if node2 not in G.nodes():
-                    print(f"#skipped edge: node2 {node2} was not found")
-    ##
-    #assert len(instances) > 0 # harmful
-
-    ## post-process for z-score pruning
-    print(f"#pruned/ignored {pruned_node_count} nodes")
-
-    ##
-    return G, instances, pruned_node_count
 
 ##
 def normalize_zscore (x: float, use_robust_zscore: bool, min_val: float = -5.0, max_val: float = 5.0) -> float:
@@ -1079,7 +907,6 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_instead_of
     from matplotlib import colormaps
 
     ## generate G
-    #G, instances, pruned_node_count = gen_G (N, zscores = zscores, zscore_lb = zscore_lb, zscore_ub = zscore_ub, use_robust_zscore = use_robust_zscore, use_directed_graph = use_directed_graph, check = check)
     G, instances = gen_G (N, zscores = zscores, use_directed_graph = use_directed_graph, check = check)
         ## create a subgraph if needed
 
@@ -1121,9 +948,10 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_instead_of
     ## relabeling nodes: this needs to come after color setting and before layout setting
     literals = [ x for x in nx.get_node_attributes(G, "literal") ]
     #print(f"literals: {literals}")
-    new_labels = { x: as_label(y, sep = " ") for x, y in zip(G, literals) }
-    print(f"new_labels: {new_labels}")
-    G = nx.relabel_nodes (G, new_labels, copy=True) # copy=False turned out offensive at connectionstyling
+    new_labels = { x: as_label(y, sep = " ") for x, y in zip(G.nodes(), literals) }
+    if check:
+        print(f"# new_labels: {new_labels}")
+    G = nx.relabel_nodes (G, new_labels, copy = False)
 
     ## set layout and node positions
     layout_name, positions = set_node_positions (G, layout, MPG_key = MPG_key, scale_factor = scale_factor)
@@ -1137,51 +965,53 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_instead_of
     ## set figure size
     n_instances = len(instances)
     max_instance_size = 3 # customary
-    print(f"#n_instances: {n_instances}")
+    print(f"# n_instances: {n_instances}")
     if n_instances > 0:
         max_instance_n_segs = max([ len(instance) for instance in instances ])
-        print(f"#max_instance_n_segs: {max_instance_n_segs}")
+        print(f"# max_instance_n_segs: {max_instance_n_segs}")
         max_instance_size = max([ sum(map(len, list(instance))) for instance in instances ])
         print(f"#max_instance_size: {max_instance_size}")
     else:
-        print(f"#found no genuine instance")
+        print(f"# found no genuine instance")
 
     ## adjust figsize
     if auto_figsizing:
         width_step = max_instance_size * .5
         height_step = 1.00
         if generality in [3]:
-            width_step  = round(width_step * 1.0, 1)
-            height_step = round(height_step * 2.0, 1)
+            width_step  = round(width_step * 3.0, 1)
+            height_step = round(height_step * 5.0, 1)
         elif generality in [1, 2]:
-            width_step  = round(width_step * 1.0, 1)
-            height_step = round(height_step * 2.0, 1)
+            width_step  = round(width_step * 3.0, 1)
+            height_step = round(height_step * 5.0, 1)
         else:
-            width_step  = round(width_step * 1.0, 1)
-            height_step = round(height_step * 1.5, 1)
-        graph_width   = 4 + round(width_step * math.log(1 + MPG_group_size), 1)
-        graph_height  = 3 + round(height_step * math.log(1 + MPG_key_count_max), 1)
+            width_step  = round(width_step * 2.0, 1)
+            height_step = round(height_step * 3.0, 1)
+        #graph_width   = 4 + round(math.log(1 + width_step * MPG_group_size), 1)
+        #graph_height  = 3 + round(math.log(3 + height_step * MPG_key_count_max), 1)
+        graph_width   = 3 + round(width_step * math.log(2 + MPG_group_size), 1)
+        graph_height  = 3 + round(height_step * math.log(3 + MPG_key_count_max), 1)
         #graph_height  = 7 + round(height_step * MPG_key_count_max, 1)
         if graph_width < 4:
             graph_width = 4
         if graph_height < 4:
             graph_height = 4
         fig_size = (graph_width, graph_height)
-    print(f"#fig_size: {fig_size}")
-    print(f"#fig_dpi: {fig_dpi}")
+    print(f"# fig_size: {fig_size}")
+    print(f"# fig_dpi: {fig_dpi}")
     #plt.figure(figsize=fig_size, dpi=fig_dpi) # fails to produce right connections in saved file
     plt.figure(figsize=fig_size)
 
     ## adjust label_size
-    resize_coeff = 0.8
+    resize_coeff = 0.5
     if auto_figsizing:
         label_size = 8 - round(resize_coeff * math.log(1 + n_instances), 1)
-    print(f"#label_size: {label_size}")
+    print(f"# label_size: {label_size}")
 
     ## adjust node_size
     if auto_figsizing:
         node_size = 8 - round(resize_coeff * math.log(1 + n_instances), 1)
-    print(f"#node_size: {node_size}")
+    print(f"# node_size: {node_size}")
 
     ## set font name
     if font_name is None:
@@ -1191,12 +1021,10 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_instead_of
 
     ## revserse the arrows
     if use_directed_graph and reverse_direction:
-        G = G.reverse(copy=True) # offensive?
-
-    ## set colormap
-    my_cmap = colormaps['coolwarm']
+        G = G.reverse(copy = True) # offensive?
 
     ## Draw nodes
+    my_cmap = colormaps['coolwarm']
     nx.draw_networkx_nodes (G, positions,
         node_size = node_size,
         node_color = node_colors,
@@ -1206,12 +1034,12 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_instead_of
     ## Draw edges with your existing arrow settings
     nx.draw_networkx_edges(G, positions,
         edge_color = 'gray',
-        width = 0.1,
+        width = 0.05,
         arrowsize = 5,
         arrows = True,
         connectionstyle = connectionstyle, # define above
-        min_source_margin = 10,  # These work here
-        min_target_margin = 10
+        min_source_margin = 11,  # These work here
+        min_target_margin = 11
     )
 
     ## Create custom label positions with offset
@@ -1230,6 +1058,8 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_instead_of
         verticalalignment = "top",  # or "top", "center"
         horizontalalignment = "left"   # or "right", "center"
     )
+
+    ### title
 
     ## set labels used in title
     instance_labels = [ as_label (x, sep = ",") for x in instances ]
@@ -1264,7 +1094,7 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_instead_of
         #plt.savefig(output_file_name, dpi = fig_dpi)
         ## dip = value above turned out to be offensive!
         plt.savefig(output_file_name)
-        print(f"#saved to <{output_file_name}> in the current directory")
+        print(f"## saved to <{output_file_name}> in the current directory")
 
 ## Classes
 class PatternLattice():
@@ -1286,6 +1116,7 @@ class PatternLattice():
         self.p_metric         = p_metric
         self.nodes            = pattern.build_lattice_nodes (generality = generality, check = check)
         self.gap_mark         = self.nodes[0].gap_mark
+        self.tracer           = self.nodes[0].tracer
         ## gen_links, and instantiation_check assume the following
         #self.ranked_nodes     = self.get_nodes_grouped_by_rank (check = check)
         self.ranked_nodes     = self.get_nodes_grouped_by ('rank', check = check)
@@ -1342,7 +1173,59 @@ class PatternLattice():
         return out
 
     ##
-    def merge_with (self, other, **params):
+    def merge_with_streaming (self, other, gen_links_internally: bool = False,
+                        use_mp: bool = True, generality: int = 0,
+                        reflexive: bool = True, reductive: bool = True,
+                        chunk_size: int = 1000, check: bool = False):
+        """
+        Memory-efficient merger that processes nodes in chunks.
+        """
+        gap_mark = self.gap_mark
+        tracer   = self.tracer
+
+        # Get nodes but don't duplicate them all in memory
+        main_nodes = list(self.nodes)  # Keep as list
+        other_nodes = list(other.nodes)
+
+        # Deduplicate in chunks
+        seen_hashes = set(hash(tuple(p.form)) for p in main_nodes)
+
+        # Add other nodes in chunks
+        for i in range(0, len(other_nodes), chunk_size):
+            chunk = other_nodes[i:i + chunk_size]
+            for node in chunk:
+                node_hash = hash(tuple(node.form))
+                if node_hash not in seen_hashes:
+                    main_nodes.append(node)
+                    seen_hashes.add(node_hash)
+
+            # Progress indicator
+            if check:
+                print(f"Processed {min(i + chunk_size, len(other_nodes))}/{len(other_nodes)} nodes")
+
+        # Create merged lattice
+        dummy_pattern = Pattern([], gap_mark=gap_mark, tracer=tracer, check=check)
+        merged = PatternLattice(dummy_pattern, generality=generality,
+                               p_metric='rank', reductive=reductive, check=check)
+
+        merged.origin = dummy_pattern
+        merged.nodes = main_nodes
+        merged.ranked_nodes = merged.get_nodes_grouped_by_rank(check=check)
+        merged.links = []
+        merged.link_source = []
+        merged.link_targets = []
+
+        # Generate links only if requested
+        if gen_links_internally:
+            merged = merged.update_links(reflexive=reflexive, use_mp=use_mp, check=check)
+
+        return merged
+
+    ## alias
+    merge_with = merge_with_streaming
+
+    ##
+    def merge_with_old (self, other, **params):
         """
         take two PatternLattices and merge them into one.
         """
@@ -1369,6 +1252,7 @@ class PatternLattice():
         if reductive:
             pool_nodes  = simplify_list (main_nodes)
             other_nodes = simplify_list (other_nodes)
+
         ##
         if reductive:
             try:
@@ -1379,15 +1263,16 @@ class PatternLattice():
                 main_nodes = make_simplest_merger (main_nodes, other_nodes)
         else:
             main_nodes = make_simplest_merger (main_nodes, other_nodes)
+        ##
         if check:
             for i, node in enumerate(main_nodes):
                 print(f"#main_node {i}: {node.separated_print()}")
 
         ## define a new pattern lattice and elaborates it
-        dummy_pattern = Pattern([], gap_mark = gap_mark, tracer = tracer, check = check)
-        merged = PatternLattice (dummy_pattern, generality = generality, p_metric = p_metric, reductive = reductive, check = check)
+        dummy_p = Pattern([], gap_mark = gap_mark, tracer = tracer, check = check)
+        merged = PatternLattice (dummy_p, generality = generality, p_metric = p_metric, reductive = reductive, check = check)
         ##
-        merged.origin        = dummy_pattern
+        merged.origin        = dummy_p
         merged.nodes         = main_nodes
         ## The following was a seriously elusive bug
         #merged.ranked_nodes  = group_nodes_by_rank (merged.nodes, gap_mark = gap_mark)

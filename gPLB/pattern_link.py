@@ -12,13 +12,10 @@ except ImportError:
 
 ### Classes
 class PatternLink:
-    "definition of PatternLink class"
+    """
+    definition of PatternLink class
+    """
     def __init__ (self, pair, link_type: str = ""):
-
-        """
-        generator of PatternLink object
-        """
-
         assert len (pair) == 2
         left_p, right_p = pair[0], pair[1]
         self.left            = left_p
@@ -48,18 +45,6 @@ class PatternLink:
             if self._hash_cache != other._hash_cache:
                 return False
         # Full comparison
-        if len(self) != len(other):
-            return False
-        if self.left != other.left:
-            return False
-        else:
-            if self.right != other.right:
-                return False
-            else:
-                return True
-
-    ## Unimplementation of this method seems the last cause for slow processing
-    def __eq_old__ (self, other):
         if len(self) != len(other):
             return False
         if self.left != other.left:

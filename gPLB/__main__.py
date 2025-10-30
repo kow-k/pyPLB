@@ -2,7 +2,7 @@
 # -*- encoding: utf-8 -*-
 #
 """
-pyPLB
+gPLB
 
 A Python implementation of generalized Pattern Lattice Builder (gPLB)
 
@@ -11,8 +11,6 @@ developed by Kow Kuroda
 "Generalized" means that a pattern lattice build from [a, b, c] includes either [_, a, b, c], [a, b, c, _] and [_, a, b, c, _] (Level 1 generalization) or ['_', 'a', '_', 'b', 'c'], ['a', '_', 'b', 'c', '_'], ['_', 'a', '_', 'b', 'c', '_'], ['_', 'a', 'b', '_', 'c'], ['a', 'b', '_', 'c', '_'], ['_', 'a', 'b', '_', 'c', '_'], ['_', 'a', '_', 'b', '_', 'c'], ['a', '_', 'b', '_', 'c', '_'], ['_', 'a', '_', 'b', '_', 'c', '_'] (Level 2 generalization). Level 1 generalization is concerned with gaps at edges only, whereas Level 2 generalization with all possible insertion points. This makes pyPLB different from RubyPLB (rubyplb) developed by Yoichoro Hasebe and Kow Kuroda, available at <https://github.com/yohasebe/rubyplb>.
 
 created on 2024/09/24
-modified on
-2024/09/25, 28, 29, 30; 10/01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 12, 15, 16, 17, 18, 19, 20, 21, 23, 24, 30, 31; 11/01, 06, 07, 08, 09, 10, 11;
 
 modification history
 2024/10/11 fixed a bug in instantiates(), added make_R_reflexive
@@ -45,6 +43,7 @@ modification history
 2025/10/24 added alternative use of input_field_seps ",;": if sep2_is_suppressive is True, segmentation by "," is suppressed, thereby implementing segmentation on a larger scale;
 2025/10/25 implemented truncation in input: "a(b),c" is treated as "a,c" while node "a(b),c" appears at node;
 2025/10/29 moved z-score filtering from gen_G to draw_graph (using subgraph() of NetworkX); implemented draw_instead_of_save and made it = False default behavior [changeable by -D option];
+2025/10/30 added handling input name to output figure name;
 
 """
 
@@ -54,6 +53,15 @@ import re
 import functools
 import pprint as pp
 import random
+
+## memory monitoring
+import psutil
+import os
+def print_memory_usage (label=""):
+    """Print current memory usage"""
+    process = psutil.Process(os.getpid())
+    mem_mb = process.memory_info().rss / 1024 / 1024
+    print(f"\n## Memory usage {label}: {mem_mb:.1f} MB")
 
 ## settings
 import argparse
@@ -90,6 +98,8 @@ parser.add_argument('-X', '--add_displaced_versions', action='store_true', defau
 parser.add_argument('-n', '--sample_n', type=int, default=None)
 parser.add_argument('-m', '--max_size', type=int, default=None)
 parser.add_argument('-G', '--generality', type=int, default=0)
+parser.add_argument('--max_patterns', type=int, default=None, help='Maximum patterns per segment')
+parser.add_argument('--batch_size', type=int, default=5000, help='Batch size for link generation')
 parser.add_argument('-p', '--productivity_metric', type=str, default='rank')
 parser.add_argument('-l', '--zscore_lowerbound', type=float, default=None)
 parser.add_argument('-u', '--zscore_upperbound', type=float, default=None)
@@ -126,6 +136,8 @@ max_size               = args.max_size
 sample_n               = args.sample_n
 reflexive              = args.unreflexive
 generality             = args.generality
+max_patterns           = args.max_patterns
+batch_size             = args.batch_size
 p_metric               = args.productivity_metric
 add_displaced_versions = args.add_displaced_versions
 build_lattice_stepwise = args.build_lattice_stepwise
@@ -153,31 +165,31 @@ draw_inspection      = False
 draw_inline          = False # intended to be used in Jupyter Notebook
 
 ## show paramters
-print(f"##Parameters")
-print(f"#use_multiprocess: {use_mp}")
-print(f"#detailed: {detailed}")
-print(f"#verbose: {verbose}")
-print(f"#draw_instead_of_save: {draw_instead_of_save}")
-print(f"#input_comment_escapes: {input_comment_escapes}")
-print(f"#input_field_seps: {input_field_seps}")
-print(f"#sep2_is_suppressive: {sep2_is_suppressive}")
-print(f"#accept_truncation: {accept_truncation}")
-print(f"#uncapitalize: {uncapitalize}")
-print(f"#split_hyphenation: {split_hyphenation}")
-print(f"#gap_mark: {gap_mark}")
-print(f"#instantiation is reflexive: {reflexive}")
-print(f"#building lattice with generality: {generality}")
-print(f"#p_metric [productivity metric]: {p_metric}")
-print(f"#use_robust_zscore: {use_robust_zscore}")
-print(f"#zscores_from_targets: {zscores_from_targets}")
-print(f"#zscore_lowerbound: {zscore_lowerbound}")
-print(f"#zscore_upperbound: {zscore_upperbound}")
-print(f"#draw_inline: {draw_inline}")
-print(f"#auto_figsizing: {auto_figsizing}")
-print(f"#fig_size: {fig_size}")
-print(f"#fig_dpi: {fig_dpi}")
-print(f"#draw_individually: {draw_individually}")
-print(f"#mark_instances: {mark_instances}")
+print(f"## Parameters")
+print(f"# use_multiprocess: {use_mp}")
+print(f"# detailed: {detailed}")
+print(f"# verbose: {verbose}")
+print(f"# draw_instead_of_save: {draw_instead_of_save}")
+print(f"# input_comment_escapes: {input_comment_escapes}")
+print(f"# input_field_seps: {input_field_seps}")
+print(f"# sep2_is_suppressive: {sep2_is_suppressive}")
+print(f"# accept_truncation: {accept_truncation}")
+print(f"# uncapitalize: {uncapitalize}")
+print(f"# split_hyphenation: {split_hyphenation}")
+print(f"# gap_mark: {gap_mark}")
+print(f"# instantiation is reflexive: {reflexive}")
+print(f"# building lattice with generality: {generality}")
+print(f"# p_metric [productivity metric]: {p_metric}")
+print(f"# use_robust_zscore: {use_robust_zscore}")
+print(f"# zscores_from_targets: {zscores_from_targets}")
+print(f"# zscore_lowerbound: {zscore_lowerbound}")
+print(f"# zscore_upperbound: {zscore_upperbound}")
+print(f"# draw_inline: {draw_inline}")
+print(f"# auto_figsizing: {auto_figsizing}")
+print(f"# fig_size: {fig_size}")
+print(f"# fig_dpi: {fig_dpi}")
+print(f"# draw_individually: {draw_individually}")
+print(f"# mark_instances: {mark_instances}")
 
 ## increase recursion limit
 if recursion_limit_factor != 1.0:
@@ -227,21 +239,12 @@ def parse_input (file, comment_escapes: list, field_seps: str, split_hyphenation
     with file as f:
         lines =  [ line.strip() for line in f.readlines() if len(line) > 0 ]
     if check:
-        print(f"#input: {lines}")
+        print(f"# input: {lines}")
 
     ## remove inline comments
-    #filtered_lines = [ ]
-    #for line in lines:
-    #    filtered_line = []
-    #    for char in line:
-    #        if char not in comment_escapes:
-    #            filtered_line.append(char)
-    #        else:
-    #            break
-    #    filtered_lines.append("".join(filtered_line))
     filtered_lines = [ strip_comment(line, comment_escapes) for line in lines ]
     if check:
-        print(f"#filtered_lines: {filtered_lines}")
+        print(f"# filtered_lines: {filtered_lines}")
 
     ## generate segmentations
     segmented_lines = [ segment_with_levels (line, seps = field_seps, sep2_is_suppressive = sep2_is_suppressive, split_hyphenation = split_hyphenation, uncapitalize = uncapitalize, check = check) for line in filtered_lines if len(line) > 0 ]
@@ -288,9 +291,12 @@ else:
         elif sample_id == 5:
             Words = Words7
         else:
-            raise f"sample_id {sample_id} is not defined"
+            raise f"# sample_id {sample_id} is not defined"
         sample_S = [ [ seg for seg in re.split(r"", t) if len(seg) > 0 ] for t in Words ]
         S0.append (sample_S)
+
+## memory monitoring point 1
+print_memory_usage ("after reading input")
 
 ## filter
 if not max_size is None:
@@ -305,12 +311,12 @@ if sample_n is not None and len(S0) > sample_n:
 else:
     S = S0
 if verbose:
-    print(f"#S: {S}")
+    print(f"# S: {S}")
 
 ## select source
-print(f"##Source lists:")
+print(f"## Source lists:")
 for i, s in enumerate(S):
-    print (f"#source {i}: {s}")
+    print (f"# source {i}: {s}")
 
 ## generating patterns
 Patterns = [ ]
@@ -339,63 +345,69 @@ for s in S:
             T.extend (create_displaced_versions (s, tracer = tracer, gap_mark = gap_mark))
     ##
     for s in T:
-        print(f"#processing: {s}")
+        print(f"# processing: {s}")
         try:
             p = Pattern(s, gap_mark = gap_mark, accept_truncation = accept_truncation)
         except TypeError:
             p = Pattern(s, gap_mark = gap_mark, tracer = tracer, accept_truncation = accept_truncation)
         if detailed:
-            print(f"#p: {p}")
+            print(f"# p: {p}")
         Patterns.append(p)
 ##
 Patterns = sorted (Patterns, key = lambda x: len(x), reverse = False)
 ##
 for i, pat in enumerate(Patterns):
     if verbose:
-        print(f"#gapped patterns from pattern {i}: {pat}")
+        print(f"# gapped patterns from pattern {i}: {pat}")
     for i, g_pat in enumerate(pat.create_gapped_versions (check = False)):
         if verbose:
             print(f"# gapped {i+1}: {g_pat}")
 #exit()
 
+## memory monitoring point 2
+print_memory_usage ("after generating patterns")
+
 ##
-print(f"##Generating g{generality}PLs ...")
+print(f"## Generating g{generality}PLs ...")
 L = [ ]
 for i, p in enumerate(Patterns):
-    print(f"#generating g{generality}PL {i+1} from {p}")
+    print(f"# generating g{generality}PL {i+1} from {p}")
     ## main
     patlat = PatternLattice (p, generality = generality, reflexive = reflexive, make_links_safely = make_links_safely, check = False)
     if detailed:
         pp.pprint(patlat)
     ##
     if verbose:
-        print(f"#patlat.origin: {patlat.origin}")
+        print(f"# patlat.origin: {patlat.origin}")
         if detailed:
             pp.pprint (patlat.origin)
     ##
     if verbose:
-        print(f"#patlat.nodes; count: {len(patlat.nodes)}")
+        print(f"# patlat.nodes; count: {len(patlat.nodes)}")
         if detailed:
             pp.pprint (patlat.nodes)
     ##
     if verbose:
-        print(f"#patlat.ranked_nodes; count: {len(patlat.ranked_nodes)}")
+        print(f"# patlat.ranked_nodes; count: {len(patlat.ranked_nodes)}")
         if detailed:
             pp.pprint (patlat.ranked_nodes)
     ##
     if verbose:
-        print(f"#patlat.links; count: {len(patlat.links)}")
+        print(f"# patlat.links; count: {len(patlat.links)}")
         if detailed:
             pp.pprint (patlat.links)
     ##
     L.append (patlat)
 #exit()
 
+## memory monitoring point 3
+print_memory_usage ("after building lattices")
+
 ##
 if detailed:
     for i, patlat in enumerate(L):
         for j, pattern in enumerate(patlat):
-            print(f"#p{i}.{j}: {pattern}")
+            print(f"# p{i}.{j}: {pattern}")
 #exit()
 
 ## print forms and then quit without drawing lattices
@@ -403,7 +415,7 @@ if print_forms:
     joint = input_field_seps
     for i, patlat in enumerate(L):
         for j, pat in enumerate(patlat):
-            print(f"p{i:02d}.form{j:03d}: {joint.join(pat.get_form())}")
+            print(f"# p{i:02d}.form{j:03d}: {joint.join(pat.get_form())}")
     exit()
 
 ## Drawing
@@ -437,35 +449,35 @@ else:
     matplotlib.rcParams['font.family'] = "Sans-serif"
 
 ## check font settings
-print(f"multibyte_font_name: {multibyte_font_name}")
-print(f"matplotlib.rcParams['font.family']: {matplotlib.rcParams['font.family']}")
+print(f"## multibyte_font_name: {multibyte_font_name}")
+print(f"## matplotlib.rcParams['font.family']: {matplotlib.rcParams['font.family']}")
 
 ## draw lattices and then quit without drawing the merged lattice
 if draw_individually:
-    print(f"##Drawing g{generality}PLs individually")
+    print(f"## Drawing g{generality}PLs individually")
     for i, patlat in enumerate(L):
-        print(f"#Drawing a diagram from g{generality}PL {i+1}")
+        print(f"# Drawing a diagram from g{generality}PL {i+1}")
         patlat.draw_lattice (layout = layout, MPG_key = MPG_key, draw_instead_of_save = draw_instead_of_save, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, generality = generality, p_metric = p_metric, make_links_safely = make_links_safely, zscores_from_targets = zscores_from_targets, mark_instances = mark_instances, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
     exit()
 
 ##
-print(f"##Merging {len(L)} g{generality}PLs ...")
+print(f"## Merging {len(L)} g{generality}PLs ...")
 simplified     = False
 label_sample_n = 5
 if simplified:
     #print(f"#binary merger")
     La, Lb = L[0], L[1]
     if verbose:
-        print(f"#La: {La}")
-        print(f"#Lb: {Lb}")
+        print(f"# La: {La}")
+        print(f"# Lb: {Lb}")
     M = La.merge_with (Lb, use_mp = use_mp, show_steps = True, check = False)
 
 ## Individual draw
 elif build_lattice_stepwise:
     gen_links_internally = True
-    print(f"##Mergig g{generality}PLs ...")
+    print(f"## Mergig g{generality}PLs ...")
     for i, patlat in enumerate (L):
-        print(f"#Processing g{generality}PL {i+1}")
+        print(f"# Processing g{generality}PL {i+1}")
         if i == 0:
             M = patlat
         else: ## merger
@@ -474,18 +486,18 @@ elif build_lattice_stepwise:
             patplat = None
 
         ## check nodes in M
-        print(f"merged g{generality}PL with {len(M.nodes)} nodes")
+        print(f"# merged g{generality}PL with {len(M.nodes)} nodes")
         for i, p in enumerate(M.nodes):
-            print(f"#node {i:3d}: {p.separate_print()}")
+            print(f"# node {i:3d}: {p.separate_print()}")
 
         ## genenrate links in delay
         if len(M.links) == 0 and not gen_links_internally:
             ## Don't do: M = M.update(...)
             M.update_links (reflexive = reflexive, check = False) ## Crucially
-        print(f"#generated {len(M.links)} links")
+        print(f"# generated {len(M.links)} links")
 
         ## checking links in M
-        print(f"##Links")
+        print(f"## Links")
         for i, link in enumerate(M.links):
             link.pprint (indicator = i, paired = True, link_type = "instantiates", check = False)
 
@@ -493,14 +505,14 @@ elif build_lattice_stepwise:
         gen_zscores_from_targets_by (p_metric, M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
         if print_link_targets:
             for node, zscore in M.source_zscores.items():
-                print(f"#node {node} has z-score {zscore: .3f}")
+                print(f"# node {node} has z-score {zscore: .3f}")
 
         ## generate z-scores from link sources
         gen_zscores_from_sources_by (p_metric, M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
         for node, zscore in M.source_zscores.items():
-            print(f"#node {node} has z-score {zscore: .3f}")
+            print(f"# node {node} has z-score {zscore: .3f}")
         ##
-        print(f"##Results")
+        print(f"## Results")
         M.draw_lattice (layout, MPG_key, draw_instead_of_save = draw_instead_of_save, draw_inline = draw_inline, input_name = input_file_name_stem, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 
 ## Draw after integration
@@ -510,42 +522,42 @@ else:
 
     # The following process was isolated for memory conservation
     if len(M.links) == 0 and not gen_links_internally:
-        print(f"##Generating links independently")
+        print(f"## Generating links independently")
         ## N.B. 1) Don't do: M = M.update(...); 2) update_links() is rank-based
         M.update_links (reflexive = reflexive, use_mp = use_mp, check = False)
 
     ##
-    print(f"##Results")
+    print(f"## Results")
 
     ## check nodes in M
-    print(f"#Merger has {len(M.nodes)} nodes")
+    print(f"# Merger has {len(M.nodes)} nodes")
     for i, p in enumerate(M.nodes):
-        print(f"#node {i}: {p}")
+        print(f"# node {i}: {p}")
 
     ## check links in M
-    print(f"#Merger has {len(M.links)} links")
+    print(f"# Merger has {len(M.links)} links")
     for i, link in enumerate(M.links):
         link.pprint (indicator = i, paired = True, link_type = "instantiates", check = False)
 
     ## get z-scores from link targets
-    print(f"##Calculating z-scores ...")
+    print(f"## Calculating z-scores ...")
     gen_zscores_from_targets_by (p_metric, M, gap_mark = gap_mark, tracer = tracer, use_robust_zscore = use_robust_zscore, check = False)
     if print_link_targets:
         for node, zscore in M.target_zscores.items():
-            print(f"#node {node} has z-score {zscore: .3f} [n: {M.link_targets[node]:2d}]")
+            print(f"# node {node} has z-score {zscore: .3f} [n: {M.link_targets[node]:2d}]")
 
     ## get z-scores from link sources
     gen_zscores_from_sources_by (p_metric, M, gap_mark = gap_mark, tracer = tracer, use_robust_zscore = use_robust_zscore, check = False)
     for node, zscore in M.source_zscores.items():
-        print(f"#node {node} has z-score {zscore: .3f} (n: {M.link_sources[node]:2d})")
+        print(f"# node {node} has z-score {zscore: .3f} (n: {M.link_sources[node]:2d})")
 
     ## draw diagram of M
-    print(f"##Drawing a diagram from the merged PL")
+    print(f"## Drawing a diagram from the merged PL")
     M.draw_lattice (layout, MPG_key, draw_instead_of_save = draw_instead_of_save, draw_inline = draw_inline, input_name = input_file_name_stem, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 
 ## conclude
-print(f"##input_file_name: {input_file_name}")
-print(f"##built from {len(S)} sources: {[ as_label(x, sep = ',') for x in S ]}")
+print(f"## input_file_name: {input_file_name}")
+print(f"## built from {len(S)} sources: {[ as_label(x, sep = ',') for x in S ]}")
 
 
 ### end of file

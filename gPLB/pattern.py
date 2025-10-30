@@ -891,4 +891,54 @@ class Pattern:
         else:
             return False
 
+    ##
+    def gen_generalized_patterns_incremental(self, generality: int, gap_mark: str,
+                                         tracer: str, add_displaced_versions: bool,
+                                         max_patterns: int = 100000):
+        """
+        Generate patterns incrementally with early termination if too many patterns.
+        This prevents memory exhaustion for high generality levels.
+        """
+        patterns = [self]
+
+        if generality >= 1:
+            # Add edge gaps
+            edge_variations = add_gaps_around(self.form, gap_mark=gap_mark)
+            patterns.extend([
+                Pattern(form, gap_mark=gap_mark, tracer=tracer)
+                for form in edge_variations
+            ])
+
+            if len(patterns) > max_patterns:
+                print(f"WARNING: Pattern limit reached at G1. Returning {len(patterns)} patterns.")
+                return patterns
+
+        if generality >= 2:
+            # Add internal gaps
+            internal_variations = insert_gaps(self.form, gap_mark=gap_mark)
+            patterns.extend([
+                Pattern(form, gap_mark=gap_mark, tracer=tracer)
+                for form in internal_variations
+            ])
+
+            if len(patterns) > max_patterns:
+                print(f"WARNING: Pattern limit reached at G2. Returning {len(patterns)} patterns.")
+                return patterns
+
+        if generality >= 3 and add_displaced_versions:
+            # Add displaced versions
+            displaced_variations = create_displaced_versions(
+                self.form, tracer=tracer, gap_mark=gap_mark
+            )
+            patterns.extend([
+                Pattern(form, gap_mark=gap_mark, tracer=tracer)
+                for form in displaced_variations
+            ])
+
+            if len(patterns) > max_patterns:
+                print(f"WARNING: Pattern limit reached at G3. Returning {len(patterns)} patterns.")
+                return patterns
+
+        return patterns
+
 ### end of file
