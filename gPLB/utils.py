@@ -246,27 +246,6 @@ def make_simplest_merger (A: list, B: list) -> list:
 
         return result
 
-##
-def make_simplest_merger_old (A: list, B: list) -> list:
-    """
-    takes a list or a pair of lists and returns a unification of them without reduplication
-    """
-
-    C = [ ]
-    for a in A:
-        try:
-            if len(a) > 0 and a not in C:
-                C.append(a)
-        except TypeError:
-            pass
-    for b in B:
-        try:
-            if len(b) > 0 and not b in C:
-                C.append (b)
-        except TypeError:
-            pass
-    ##
-    return C
 
 ## aliases
 make_simplest_list  = make_simplest_merger
@@ -344,5 +323,19 @@ def mp_test_for_inclusion (item, L: (list, tuple))-> bool:
 ## alias
 mp_in_test = mp_test_for_inclusion
 
+##
+def check_memory_usage (threshold_gb: float = 8.0):
+    """
+    Check current memory usage and warn if approaching limit.
+    Returns True if memory is OK, False if approaching limit.
+    """
+    import psutil
+    process = psutil.Process()
+    memory_gb = process.memory_info().rss / 1024**3
+
+    if memory_gb > threshold_gb:
+        print(f"WARNING: Memory usage at {memory_gb:.2f}GB (threshold: {threshold_gb}GB)")
+        return False
+    return True
 
 ### end of file
