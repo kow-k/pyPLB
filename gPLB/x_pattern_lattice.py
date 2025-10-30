@@ -395,7 +395,7 @@ def gen_zscores_from_sources_by_prev (metric: str, M: object, gap_mark: str, tra
         ##
         source_zscores[link_source] = zscore
         if check:
-            print(f"#source {i:3d}: {link_source} has {value} out-going link(s) [{source_zscores[link_source]: .4f} at rank {rank}]")
+            print(f"# source {i:3d}: {link_source} has {value} out-going link(s) [{source_zscores[link_source]: .4f} at rank {rank}]")
 
     ## attach source_zscores to M
     M.source_zscores.update(source_zscores)
@@ -426,7 +426,7 @@ def gen_zscores_from_sources_prev (M, gap_mark: str, tracer: str, use_robust_zsc
         ##
         source_zscores[link_source] = zscore
         if check:
-            print(f"#source {i:3d}: {link_source} has {value} out-going link(s) [{source_zscores[link_source]: .4f} at rank {rank}]")
+            print(f"# source {i:3d}: {link_source} has {value} out-going link(s) [{source_zscores[link_source]: .4f} at rank {rank}]")
 
     ## attach source_zscores to M
     M.source_zscores.update(source_zscores)
@@ -464,6 +464,221 @@ def gen_zscores_from_targets_prev (M, gap_mark: str, tracer: str, use_robust_zsc
     ##
     #return M
 
+##
+def gen_G_old (N, zscores, zscore_lb, zscore_ub, use_robust_zscore: bool, use_directed_graph: bool, test: bool = True, check: bool = False):
+    """
+    generate a NetworkX graph G from a given nodes N
+    """
+
+    ## modules to use
+    import networkx as nx
+    import math
+
+    ## define a graph object
+    if use_directed_graph:
+        G = nx.DiGraph()
+    else:
+        G = nx.Graph() # does not accept connectionstyle specification
+
+    ## main
+    instances = [ ] # register instances
+    pruned_node_count = 0
+
+    for key, links in sorted (N, reverse = False): # be careful on list up direction
+        assert key >= 0
+        for link in links:
+            if check:
+                print(f"# adding link at group {key}: {link}")
+
+            ## get variables
+            gap_mark      = link.gap_mark
+
+            ## get patterns for node1 and node2
+            node1_p = link.left
+            node2_p = link.right
+
+            ## set ranks for node1 and node2
+            #node1_rank = node1_p.rank # harmful
+            #node2_rank = node2_p.rank # harmful
+            node1_rank = node1_p.get_rank()
+            node2_rank = node2_p.get_rank()
+
+            ## get sizes for node1 and node2
+            node1_size = node1_p.get_size()
+            node2_size = node2_p.get_size()
+
+            ## set gap sizes for node1 and node2
+            #node1_gap_size = node1_p.gap_size # harmful
+            #node2_gap_size = node2_p.gap_size # harmful
+            node1_gap_size = node1_p.get_gap_size()
+            node2_gap_size = node2_p.get_gap_size()
+
+            ## set moment
+            node1_moment = math.log(node1_size + 2)/math.log(node1_rank + 2)
+            node2_moment = math.log(node2_size + 2)/math.log(node2_rank + 2)
+
+            ## node names
+            ## node1, node2 are node names and need to be tuples
+            node1, node2  = link.form_paired # assumes a pair of tuples
+
+            ## handle truncated node names
+            #node1_alt, node2_alt  = link.form_alt_paired
+            ## The code above does not work properly
+            node1_alt = node1_p.form_alt
+            node2_alt = node2_p.form_alt
+            node1_alt_gap_size = count_items (node1_alt, gap_mark)
+            node2_alt_gap_size = count_items (node2_alt, gap_mark)
+
+            ## get z-scores for node1 and node2
+            try:
+                node1_zscore = zscores[node1]
+            except KeyError:
+                node1_zscore = 0
+            try:
+                node2_zscore = zscores[node2]
+            except KeyError:
+                node2_zscore = 0
+
+            ## Create node attributes
+            node1_attrs = NodeAttrs (node1_alt, node1_size, node1_gap_size, node1_rank, node1_moment, node1_zscore)
+            node2_attrs = NodeAttrs (node2_alt, node2_size, node2_gap_size, node2_rank, node2_moment, node2_zscore)
+
+            ## register node for instances
+            if node1_gap_size == 0 and node1_alt not in instances:
+                    instances.append (node1_alt)
+            if node2_gap_size == 0 and node2_alt not in instances:
+                instances.append (node2_alt)
+
+            ## add nodes and edges to G
+            ## case 1: either lowerbound nor upperbound is applied
+            if zscore_ub is None and zscore_lb is None:
+                ## node1
+                if not node1 in G.nodes():
+                    add_node_with_attrs (node1, node1_attrs, G)
+                else:
+                    if check:
+                        print(f"# ignored existing node {node1}")
+                ## node2
+                if not node2 in G.nodes():
+                    add_node_with_attrs (node2, node2_attrs, G)
+                else:
+                    if check:
+                        print(f"# ignored existing node {node2}")
+
+            ## when lowerbound and upperbound z-score pruning is applied
+            ## case 2: both lowerbound and upperbound
+            elif zscore_lb is not None and zscore_ub is not None:
+                ## node1
+                if node1_zscore >= zscore_lb and node1_zscore <= zscore_ub:
+                    if not node1 in G.nodes():
+                        add_node_with_attrs (node1, node1_attrs, G)
+                    else:
+                        if check:
+                            print(f"# ignored existing node {node1}")
+                else:
+                    ## add instance exceptionally
+                    if node1_gap_size == 0 and not node1 in G.nodes():
+                        add_node_with_attrs (node1, node1_attrs, G)
+                    else:
+                        print(f"# pruned node {node1}")
+                        pruned_node_count += 1
+                ## node2
+                if node2_zscore >= zscore_lb and node2_zscore <= zscore_ub:
+                    if not node2 in G.nodes():
+                        add_node_with_attrs (node2, node2_attrs, G)
+                    else:
+                        if check:
+                            print(f"# ignored exisiting node {node2}")
+                else:
+                    ## add instance exceptionally
+                    if node2_gap_size == 0 and not node2 in G.nodes():
+                        add_node_with_attrs (node2, node2_attrs, G)
+                    else:
+                        print(f"#pruned node {node2}")
+                        pruned_node_count += 1
+
+            ## case 3: lowerbound only
+            elif zscore_lb is not None and zscore_ub is None: # z-score pruning applied
+                ## node1
+                if node1_zscore >= zscore_lb:
+                    if not node1 in G.nodes():
+                        add_node_with_attrs (node1, node1_attrs, G)
+                    else:
+                        if check:
+                            print(f"#ignored exisiting node {node1}")
+                else:
+                    ## add instance exceptionally
+                    if node1_gap_size == 0 and not node1 in G.nodes():
+                        add_node_with_attrs (node1, node1_attrs, G)
+                    else:
+                        print(f"#pruned node {node1}")
+                        pruned_node_count += 1
+                ## node2
+                if node2_zscore >= zscore_lb:
+                    if not node2 in G.nodes():
+                        add_node_with_attrs (node2, node2_attrs, G)
+                    else:
+                        if check:
+                            print(f"#ignored existing node {node2}")
+                else:
+                    ## add instance exceptionally
+                    if node2_gap_size == 0 and not node2 in G.nodes():
+                        add_node_with_attrs (node2, node2_attrs, G)
+                    else:
+                        print(f"#pruned node {node2}")
+                        pruned_node_count += 1
+
+            ## case 4: upperbound only
+            elif zscore_lb is None and zscore_ub is not None:
+                ## node1
+                if node1_zscore <= zscore_ub:
+                    if not node1 in G.nodes():
+                        add_node_with_attrs (node1, node1_attrs, G)
+                    else:
+                        if check:
+                            print(f"ignored existing node {node1}")
+                else:
+                    print(f"pruned node {node1}")
+                    pruned_node_count += 1
+                ## node2
+                if node2_zscore <= zscore_ub:
+                    if not node2 in G.nodes():
+                        add_node_with_attrs (node2, node2_attrs, G)
+                    else:
+                        if check:
+                            print(f"ignored existing node {node2}")
+                else:
+                    ## add instance exceptionally
+                    if node2_gap_size == 0 and not node2 in G.nodes():
+                        add_node_with_attrs (node2, node2_attrs, G)
+                    else:
+                        print(f"pruned node {node2}")
+                        pruned_node_count += 1
+
+            ## non-existing case
+            else:
+                raise ValueError("An undefined situation occurred")
+
+            ### add edges
+            ## regular form
+            if node1 in G.nodes() and node2 in G.nodes():
+                G.add_edge (node1, node2)
+            ## alt form: unnecessary?
+            #if node1_alt in G.nodes() and node2_alt in G.nodes():
+            #    G.add_edge (node1_alt, node2_alt)
+            if check:
+                if node1 not in G.nodes():
+                    print(f"#skipped edge: node1 {node1} was not found")
+                if node2 not in G.nodes():
+                    print(f"#skipped edge: node2 {node2} was not found")
+    ##
+    #assert len(instances) > 0 # harmful
+
+    ## post-process for z-score pruning
+    print(f"#pruned/ignored {pruned_node_count} nodes")
+
+    ##
+    return G, instances, pruned_node_count
 
 
 ##
