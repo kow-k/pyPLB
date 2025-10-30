@@ -1,4 +1,5 @@
 ## Personal directories and files
+
 ## directories
 dots/
 figs/
@@ -7,7 +8,6 @@ outputs/
 profiled/
 pyPLB-rev/
 !sources/
-!gPLB/
 gPLB/__pycache__/
 
 ## files
@@ -25,6 +25,13 @@ gPLB/*.py
 !gPLB/pattern_link.py
 !gPLB/pattern.py
 !gPLB/utils.py
+pyPLB/*.py
+!pyPLB/__init__.py
+!pyPLB/__main__.py
+!pyPLB/pattern_lattice.py
+!pyPLB/pattern_link.py
+!pyPLB/pattern.py
+!pyPLB/utils.py
 
 ## ignore .md files except README.md and others
 *.md
