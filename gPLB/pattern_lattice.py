@@ -1047,7 +1047,7 @@ def set_node_positions (G, layout: str, MPG_key: str, scale_factor: float):
     return layout_name, positions
 
 ##
-def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_instead_of_save: bool = False, draw_inline: bool = False, auto_figsizing: bool = False, fig_size: tuple = (10,9), fig_dpi: int = 360, node_size: int = None, label_size: int = None, label_sample_n: int = None, zscores: dict = None, p_metric: str = 'rank', use_robust_zscore: bool = True, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generality: int = 0, use_directed_graph: bool = True, reverse_direction: bool = False, font_name: str = None, graphics_backend: str = "qt", check: bool = False) -> None:
+def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_instead_of_save: bool = False, draw_inline: bool = False, input_name: str = None, auto_figsizing: bool = False, fig_size: tuple = (10,9), fig_dpi: int = 360, node_size: int = None, label_size: int = None, label_sample_n: int = None, zscores: dict = None, p_metric: str = 'rank', use_robust_zscore: bool = True, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generality: int = 0, use_directed_graph: bool = True, reverse_direction: bool = False, font_name: str = None, graphics_backend: str = "qt", check: bool = False) -> None:
     """
     draw a graph from a given network data.
     """
@@ -1148,14 +1148,14 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_instead_of
 
     ## adjust figsize
     if auto_figsizing:
-        width_step = max_instance_size * .4
+        width_step = max_instance_size * .5
         height_step = 1.00
         if generality in [3]:
             width_step  = round(width_step * 1.0, 1)
             height_step = round(height_step * 2.0, 1)
         elif generality in [1, 2]:
             width_step  = round(width_step * 1.0, 1)
-            height_step = round(height_step * 1.5, 1)
+            height_step = round(height_step * 2.0, 1)
         else:
             width_step  = round(width_step * 1.0, 1)
             height_step = round(height_step * 1.5, 1)
@@ -1251,17 +1251,20 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_instead_of
         title_val = f"{pl_type} (layout: {layout_name}; normal z-scores [p_metric: {p_metric}]: {zscore_lb} – {zscore_ub} [removed {pruned_node_count} nodes])\nbuilt from {instance_labels} ({label_count} in all)"
     plt.title(title_val)
     ##
-    #plt.tight_layout()
+    plt.tight_layout()
     #plt.set_dpi(fig_dpi) # fails
     if draw_instead_of_save:
         plt.show()
     else:
-        file_name = f"{pl_type}.png"
-        #plt.savefig(file_name, dpi = fig_dpi, bbox_inches = 'tight')
-        #plt.savefig(file_name, dpi = fig_dpi)
+        if input_name:
+            output_file_name = f"{pl_type}-{input_name}.png"
+        else:
+            output_file_name = f"{pl_type}.png"
+        #plt.savefig(output_file_name, dpi = fig_dpi, bbox_inches = 'tight')
+        #plt.savefig(output_file_name, dpi = fig_dpi)
         ## dip = value above turned out to be offensive!
-        plt.savefig(file_name)
-        print(f"#saved figure as <{file_name}> in the current directory")
+        plt.savefig(output_file_name)
+        print(f"#saved to <{output_file_name}> in the current directory")
 
 ## Classes
 class PatternLattice():
@@ -1550,7 +1553,7 @@ class PatternLattice():
         return link_sources, link_targets
 
     ##
-    def draw_lattice (self, layout: str = None, MPG_key: str = None, draw_instead_of_save: bool = False, draw_inline: bool = False, auto_figsizing: bool = False, fig_size: tuple = None, fig_dpi: int = 620, generality: int = 0, p_metric: str = 'rank', make_links_safely: bool = False, use_robust_zscore: bool = True, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, mark_instances: bool = False, node_size: int = 11, label_size: int = 9, label_sample_n: int = None, scale_factor: float = 3, graphics_backend: str = 'qt', font_name: str = None, check: bool = False) -> None:
+    def draw_lattice (self, layout: str = None, MPG_key: str = None, draw_instead_of_save: bool = False, draw_inline: bool = False, input_name: str = None, auto_figsizing: bool = False, fig_size: tuple = None, fig_dpi: int = 620, generality: int = 0, p_metric: str = 'rank', make_links_safely: bool = False, use_robust_zscore: bool = True, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, mark_instances: bool = False, node_size: int = 11, label_size: int = 9, label_sample_n: int = None, scale_factor: float = 3, graphics_backend: str = 'qt', font_name: str = None, check: bool = False) -> None:
         """
         draws a lattice digrams from a given PatternLattice L by extracting L.links
         """
@@ -1584,6 +1587,6 @@ class PatternLattice():
                 print(f"node {i:4d} {node} has z-score {v:.4f}")
 
         ## draw PatternLattice
-        draw_graph (ranked_links.items(), layout = layout, MPG_key = MPG_key, draw_instead_of_save = draw_instead_of_save, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, node_size = node_size, label_size = label_size, generality = generality, scale_factor = scale_factor, label_sample_n = label_sample_n, graphics_backend = graphics_backend, font_name = font_name, p_metric = p_metric, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, mark_instances = mark_instances, check = check)
+        draw_graph (ranked_links.items(), layout = layout, MPG_key = MPG_key, draw_instead_of_save = draw_instead_of_save, draw_inline = draw_inline, input_name = input_name, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, node_size = node_size, label_size = label_size, generality = generality, scale_factor = scale_factor, label_sample_n = label_sample_n, graphics_backend = graphics_backend, font_name = font_name, p_metric = p_metric, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, mark_instances = mark_instances, check = check)
 
 ### end of file

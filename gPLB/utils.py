@@ -36,24 +36,29 @@ def strip_comment (line: str, comment_escapes: list, check: bool = False) -> str
         return line
 
 ##
-def segment_with_levels (line: str, seps: str, sep2_is_suppressive: bool, split_hyphenation: bool = False, uncapitalize: bool = False, normalize: bool = True) -> list:
+def segment_with_levels (line: str, seps: str, sep2_is_suppressive: bool, split_hyphenation: bool = False, uncapitalize: bool = False, normalize: bool = True, check: bool = False) -> list:
 
     """
     returns a level-aware segmentation from given a list of lines.
     """
 
+    print(f"#line in segment: {line}")
     sep_list = list(seps)
     assert len(sep_list) > 0
-    
+
     ## normalize
     if normalize:
         from unicodedata import normalize as normalizer
         flag = 'NFC'
         line = normalizer(flag, line)
-    
+
     ## remove spaces
-    line = line.replace(' ','')
-    
+    #line = line.replace(' ','')
+    try:
+        assert len(line) > 0
+    except AssertionError:
+        print(f"error at: {line}")
+
     ##
     if sep2_is_suppressive:
         sep1, sep2, *_ = sep_list

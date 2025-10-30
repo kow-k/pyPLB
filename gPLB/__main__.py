@@ -225,66 +225,37 @@ def parse_input (file, comment_escapes: list, field_seps: str, split_hyphenation
 
     ## reading data
     with file as f:
-        lines =  [ line.strip() for line in f.readlines() if not line[0] in comment_escapes ]
+        lines =  [ line.strip() for line in f.readlines() if len(line) > 0 ]
     if check:
         print(f"#input: {lines}")
 
     ## remove inline comments
-    filtered_lines = [ ]
-    for line in lines:
-        filtered_line = []
-        for char in line:
-            if char not in comment_escapes:
-                filtered_line.append(char)
-            else:
-                break
-        filtered_lines.append("".join(filtered_line))
-    ##
+    #filtered_lines = [ ]
+    #for line in lines:
+    #    filtered_line = []
+    #    for char in line:
+    #        if char not in comment_escapes:
+    #            filtered_line.append(char)
+    #        else:
+    #            break
+    #    filtered_lines.append("".join(filtered_line))
+    filtered_lines = [ strip_comment(line, comment_escapes) for line in lines ]
     if check:
         print(f"#filtered_lines: {filtered_lines}")
 
     ## generate segmentations
-    segmented_lines = [ segment_with_levels (line, seps = field_seps, sep2_is_suppressive = sep2_is_suppressive, split_hyphenation = split_hyphenation, uncapitalize = uncapitalize) for line in filtered_lines ]
+    segmented_lines = [ segment_with_levels (line, seps = field_seps, sep2_is_suppressive = sep2_is_suppressive, split_hyphenation = split_hyphenation, uncapitalize = uncapitalize, check = check) for line in filtered_lines if len(line) > 0 ]
 
     ##
     return segmented_lines
 
-## set font for Japanese character display
-import matplotlib
-if use_multibyte_chars:
-    from matplotlib import font_manager as Font_manager
-    ## select font
-    multibyte_font_names = [    "IPAexGothic",  # 0 Multi-platform font
-                                "Hiragino sans" # 1 Mac only
-                            ]
-    multibyte_font_name  = multibyte_font_names[0]
-
-    ## tell where target fonts are
-    system_font_dir = "/System/Library/Fonts/"
-    user_font_dir = "/Library/Fonts/"
-
-    # use the version installed via TeXLive
-    user_font_dir2 = "/usr/local/texlive/2013/texmf-dist/fonts/truetype/public/ipaex/"
-    if multibyte_font_name == "IPAexGothic":
-        try:
-            Font_manager.fontManager.addfont(f"{user_font_dir}ipaexg.ttf")
-        except FileNotFoundError:
-            Font_manager.fontManager.addfont(f"{user_font_dir2}ipaexg.ttf")
-    elif multibyte_font_name == "Hiragino sans":
-        Font_manager.fontManager.addfont(f"{system_font_dir}ヒラギノ角ゴシック W0.ttc")
-    ## check result
-    matplotlib.rc('font', family = multibyte_font_name)
-else:
-    multibyte_font_name = None
-    matplotlib.rcParams['font.family'] = "Sans-serif"
-
-## check font settings
-print(f"multibyte_font_name: {multibyte_font_name}")
-print(f"matplotlib.rcParams['font.family']: {matplotlib.rcParams['font.family']}")
-
 ## process
 S0 = []
+input_file_name_stem = None
 if not file is None:
+    from pathlib import Path
+    input_file_name = Path(file.name)
+    input_file_name_stem = Path(file.name).stem
     input_parses = parse_input (file, comment_escapes = input_comment_escapes, field_seps = input_field_seps, split_hyphenation = split_hyphenation, uncapitalize = uncapitalize, check = False)
     S0.extend (input_parses)
 else:
@@ -340,7 +311,6 @@ if verbose:
 print(f"##Source lists:")
 for i, s in enumerate(S):
     print (f"#source {i}: {s}")
-
 
 ## generating patterns
 Patterns = [ ]
@@ -436,6 +406,40 @@ if print_forms:
             print(f"p{i:02d}.form{j:03d}: {joint.join(pat.get_form())}")
     exit()
 
+## Drawing
+## set font for Japanese character display
+import matplotlib
+if use_multibyte_chars:
+    from matplotlib import font_manager as Font_manager
+    ## select font
+    multibyte_font_names = [    "IPAexGothic",  # 0 Multi-platform font
+                                "Hiragino sans" # 1 Mac only
+                            ]
+    multibyte_font_name  = multibyte_font_names[0]
+
+    ## tell where target fonts are
+    system_font_dir = "/System/Library/Fonts/"
+    user_font_dir = "/Library/Fonts/"
+
+    # use the version installed via TeXLive
+    user_font_dir2 = "/usr/local/texlive/2013/texmf-dist/fonts/truetype/public/ipaex/"
+    if multibyte_font_name == "IPAexGothic":
+        try:
+            Font_manager.fontManager.addfont(f"{user_font_dir}ipaexg.ttf")
+        except FileNotFoundError:
+            Font_manager.fontManager.addfont(f"{user_font_dir2}ipaexg.ttf")
+    elif multibyte_font_name == "Hiragino sans":
+        Font_manager.fontManager.addfont(f"{system_font_dir}ヒラギノ角ゴシック W0.ttc")
+    ## check result
+    matplotlib.rc('font', family = multibyte_font_name)
+else:
+    multibyte_font_name = None
+    matplotlib.rcParams['font.family'] = "Sans-serif"
+
+## check font settings
+print(f"multibyte_font_name: {multibyte_font_name}")
+print(f"matplotlib.rcParams['font.family']: {matplotlib.rcParams['font.family']}")
+
 ## draw lattices and then quit without drawing the merged lattice
 if draw_individually:
     print(f"##Drawing g{generality}PLs individually")
@@ -497,7 +501,8 @@ elif build_lattice_stepwise:
             print(f"#node {node} has z-score {zscore: .3f}")
         ##
         print(f"##Results")
-        M.draw_lattice (layout, MPG_key, draw_instead_of_save = draw_instead_of_save, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+        M.draw_lattice (layout, MPG_key, draw_instead_of_save = draw_instead_of_save, draw_inline = draw_inline, input_name = input_file_name_stem, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+
 ## Draw after integration
 else:
     gen_links_internally = False
@@ -536,9 +541,10 @@ else:
 
     ## draw diagram of M
     print(f"##Drawing a diagram from the merged PL")
-    M.draw_lattice (layout, MPG_key, draw_instead_of_save = draw_instead_of_save, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+    M.draw_lattice (layout, MPG_key, draw_instead_of_save = draw_instead_of_save, draw_inline = draw_inline, input_name = input_file_name_stem, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
 
 ## conclude
+print(f"##input_file_name: {input_file_name}")
 print(f"##built from {len(S)} sources: {[ as_label(x, sep = ',') for x in S ]}")
 
 
