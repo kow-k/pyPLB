@@ -9,6 +9,7 @@ profiled/
 pyPLB-rev/
 !sources/
 gPLB/__pycache__/
+gPLB/x/
 
 ## files
 *.html
