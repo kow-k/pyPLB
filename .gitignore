@@ -29,7 +29,7 @@ gPLB/*.py
 ## ignore .md files except README.md and others
 *.md
 !README.md
-!saf_gPLB_usage.md
+!safe_gPLB_usage.md
 
 #
 .DS_Store
