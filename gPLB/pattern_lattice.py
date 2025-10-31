@@ -1052,8 +1052,8 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_lattice: b
     )
 
     ## Create custom label positions with offset
-    label_offset_x = 0.01  # Adjust these values as needed
-    label_offset_y = 0.01
+    label_offset_x = 0.001  # Adjust these values as needed
+    label_offset_y = 0.001
     label_positions = {
         node: (x + label_offset_x, y + label_offset_y)
         for node, (x, y) in positions.items()
@@ -1447,7 +1447,7 @@ class PatternLattice():
         return link_sources, link_targets
 
     ##
-    def draw_lattice (self, layout: str = None, MPG_key: str = None, draw_lattice: bool = False, draw_inline: bool = False, input_name: str = None, auto_figsizing: bool = False, fig_size: tuple = None, fig_dpi: int = 620, generality: int = 0, p_metric: str = 'rank', make_links_safely: bool = False, use_robust_zscore: bool = True, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, mark_instances: bool = False, node_size: int = 11, label_size: int = 9, label_sample_n: int = None, scale_factor: float = 3, graphics_backend: str = 'qt', font_name: str = None, check: bool = False) -> None:
+    def draw_lattice (self, layout: str = None, MPG_key: str = None, draw_lattice: bool = False, draw_inline: bool = False, auto_figsizing: bool = True, input_name: str = None, fig_size: tuple = None, fig_dpi: int = 620, generality: int = 0, p_metric: str = 'rank', make_links_safely: bool = False, use_robust_zscore: bool = True, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, mark_instances: bool = False, node_size: int = 11, label_size: int = 9, label_sample_n: int = None, scale_factor: float = 3, graphics_backend: str = 'qt', font_name: str = None, check: bool = False) -> None:
         """
         draws a lattice digrams from a given PatternLattice L by extracting L.links
         """
@@ -1481,6 +1481,6 @@ class PatternLattice():
                 print(f"node {i:4d} {node} has z-score {v:.4f}")
 
         ## draw PatternLattice
-        draw_graph (ranked_links.items(), layout = layout, MPG_key = MPG_key, draw_lattice = draw_lattice, draw_inline = draw_inline, input_name = input_name, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, node_size = node_size, label_size = label_size, generality = generality, scale_factor = scale_factor, label_sample_n = label_sample_n, graphics_backend = graphics_backend, font_name = font_name, p_metric = p_metric, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, mark_instances = mark_instances, check = check)
+        draw_graph (ranked_links.items(), layout = layout, MPG_key = MPG_key, draw_lattice = draw_lattice, draw_inline = draw_inline, auto_figsizing = auto_figsizing, input_name = input_name, fig_size = fig_size, fig_dpi = fig_dpi, node_size = node_size, label_size = label_size, generality = generality, scale_factor = scale_factor, label_sample_n = label_sample_n, graphics_backend = graphics_backend, font_name = font_name, p_metric = p_metric, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, mark_instances = mark_instances, check = check)
 
 ### end of file
