@@ -21,6 +21,7 @@ gPLB/x/
 !package-dependencies.txt
 
 ## python files
+*.py
 gPLB/*.py
 !gPLB/__init__.py
 !gPLB/__main__.py
