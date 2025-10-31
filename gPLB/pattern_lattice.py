@@ -875,7 +875,7 @@ def set_node_positions (G, layout: str, MPG_key: str, scale_factor: float):
     return layout_name, positions
 
 ##
-def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_instead_of_save: bool = False, draw_inline: bool = False, input_name: str = None, auto_figsizing: bool = False, fig_size: tuple = (10,9), fig_dpi: int = 360, node_size: int = None, label_size: int = None, label_sample_n: int = None, zscores: dict = None, p_metric: str = 'rank', use_robust_zscore: bool = True, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generality: int = 0, use_directed_graph: bool = True, reverse_direction: bool = False, font_name: str = None, graphics_backend: str = "qt", check: bool = False) -> None:
+def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_lattice: bool = False, draw_inline: bool = False, input_name: str = None, auto_figsizing: bool = True, fig_size: tuple = (10,9), fig_dpi: int = 360, node_size: int = None, label_size: int = None, label_sample_n: int = None, zscores: dict = None, p_metric: str = 'rank', use_robust_zscore: bool = True, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generality: int = 0, use_directed_graph: bool = True, reverse_direction: bool = False, font_name: str = None, graphics_backend: str = "qt", check: bool = False) -> None:
     """
     draw a graph from a given network data.
     """
@@ -940,7 +940,9 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_instead_of
         if check:
             print(f"#MPG_key_counts: {MPG_key_counts}")
         MPG_key_count_max = max(MPG_key_counts.values())
+        print(f"# MPG_key_count_max: {MPG_key_count_max}")
         MPG_group_size = len(MPG_key_counts.keys())
+        print(f"# MPG_group_size: {MPG_group_size}")
 
     ## color values
     node_colors = assign_node_colors (G, zscores, instances, use_robust_zscore = use_robust_zscore, mark_instances = mark_instances)
@@ -970,48 +972,55 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_instead_of
         max_instance_n_segs = max([ len(instance) for instance in instances ])
         print(f"# max_instance_n_segs: {max_instance_n_segs}")
         max_instance_size = max([ sum(map(len, list(instance))) for instance in instances ])
-        print(f"#max_instance_size: {max_instance_size}")
+        print(f"# max_instance_size: {max_instance_size}")
     else:
         print(f"# found no genuine instance")
 
     ## adjust figsize
     if auto_figsizing:
-        width_step = max_instance_size * .5
-        height_step = 1.00
-        if generality in [3]:
-            width_step  = round(width_step * 3.0, 1)
-            height_step = round(height_step * 5.0, 1)
-        elif generality in [1, 2]:
-            width_step  = round(width_step * 3.0, 1)
-            height_step = round(height_step * 5.0, 1)
+        
+        ## Alternative by ChatGPT
+        # Get complexity measures
+        n = G.number_of_nodes()
+        m = G.number_of_edges()
+        # Define dynamic scaling rules: constants depending on how dense your graphs are
+        base_size = 4
+        width_scale_factor = 0.2
+        height_scale_factor = 0.3 # originally 0.15
+        # Compute figure size based on number of nodes or edges
+        #graph_width  = round(base_size + scale_factor * math.log(m + n), 0)
+        #graph_width  = round(base_size + scale_factor * ((m * n) ** 0.5), 0)
+        graph_width  = round(base_size + width_scale_factor * ((m + n) ** 0.5), 0)
+        #graph_height = round(base_size + scale_factor * ((m * n) ** 0.5), 0)
+        graph_height = round(base_size + height_scale_factor * ((m + n) ** 0.7), 0)
+        ##
+        if layout_name in [ "Multi-partite", "Multi_partite", "Multipartite", "MP" ]:
+            fig_size = (graph_width, graph_height)
         else:
-            width_step  = round(width_step * 2.0, 1)
-            height_step = round(height_step * 3.0, 1)
-        #graph_width   = 4 + round(math.log(1 + width_step * MPG_group_size), 1)
-        #graph_height  = 3 + round(math.log(3 + height_step * MPG_key_count_max), 1)
-        graph_width   = 3 + round(width_step * math.log(2 + MPG_group_size), 1)
-        graph_height  = 3 + round(height_step * math.log(3 + MPG_key_count_max), 1)
-        #graph_height  = 7 + round(height_step * MPG_key_count_max, 1)
-        if graph_width < 4:
-            graph_width = 4
-        if graph_height < 4:
-            graph_height = 4
-        fig_size = (graph_width, graph_height)
+            fig_size = (graph_width, graph_width)
+    ##
     print(f"# fig_size: {fig_size}")
     print(f"# fig_dpi: {fig_dpi}")
-    #plt.figure(figsize=fig_size, dpi=fig_dpi) # fails to produce right connections in saved file
-    plt.figure(figsize=fig_size)
+    #plt.figure(figsize = fig_size, dpi = fig_dpi) # fails to produce right connections in saved file
+    plt.figure(figsize = fig_size)
 
-    ## adjust label_size
-    resize_coeff = 0.67
-    if auto_figsizing:
-        label_size = 8 - round(resize_coeff * math.log(1 + n_instances), 1)
-    print(f"# label_size: {label_size}")
-
+    ## resize node_size and label_size
+    resize_coeff = 0.5
     ## adjust node_size
     if auto_figsizing:
-        node_size = 8 - round(resize_coeff * math.log(1 + n_instances), 1)
+        node_size = 10 - round(resize_coeff * math.log(1 + MPG_key_count_max), 0)
+        #node_size = 10 - round(resize_coeff * math.log(1 + math.sqrt(MPG_key_count_max)), 0)
+        #node_size = 10 - round(resize_coeff * math.log(1 + n_instances), 0)
+        #node_size = 10 - round(resize_coeff * math.sqrt(1 + n_instances), 0)
     print(f"# node_size: {node_size}")
+
+    ## adjust label_size
+    if auto_figsizing:
+        label_size = 10 - round(resize_coeff * math.log(1 + MPG_key_count_max), 0)
+        #label_size = 10 - round(resize_coeff * math.log(1 + math.sqrt(MPG_key_count_max)), 0)
+        #label_size = 10 - round(resize_coeff * math.log(1 + n_instances), 0)
+        #label_size = 10 - round(resize_coeff * math.sqrt(1 + n_instances), 0)
+    print(f"# label_size: {label_size}")
 
     ## set font name
     if font_name is None:
@@ -1038,13 +1047,13 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_instead_of
         arrowsize = 5,
         arrows = True,
         connectionstyle = connectionstyle, # define above
-        min_source_margin = 11,  # These work here
-        min_target_margin = 11
+        min_source_margin = 1,  # These work here
+        min_target_margin = 1
     )
 
     ## Create custom label positions with offset
-    label_offset_x = 0.002  # Adjust these values as needed
-    label_offset_y = 0.005
+    label_offset_x = 0.01  # Adjust these values as needed
+    label_offset_y = 0.01
     label_positions = {
         node: (x + label_offset_x, y + label_offset_y)
         for node, (x, y) in positions.items()
@@ -1083,7 +1092,7 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_instead_of
     ##
     plt.tight_layout()
     #plt.set_dpi(fig_dpi) # fails
-    if draw_instead_of_save:
+    if draw_lattice:
         plt.show()
     else:
         if input_name:
@@ -1438,7 +1447,7 @@ class PatternLattice():
         return link_sources, link_targets
 
     ##
-    def draw_lattice (self, layout: str = None, MPG_key: str = None, draw_instead_of_save: bool = False, draw_inline: bool = False, input_name: str = None, auto_figsizing: bool = False, fig_size: tuple = None, fig_dpi: int = 620, generality: int = 0, p_metric: str = 'rank', make_links_safely: bool = False, use_robust_zscore: bool = True, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, mark_instances: bool = False, node_size: int = 11, label_size: int = 9, label_sample_n: int = None, scale_factor: float = 3, graphics_backend: str = 'qt', font_name: str = None, check: bool = False) -> None:
+    def draw_lattice (self, layout: str = None, MPG_key: str = None, draw_lattice: bool = False, draw_inline: bool = False, input_name: str = None, auto_figsizing: bool = False, fig_size: tuple = None, fig_dpi: int = 620, generality: int = 0, p_metric: str = 'rank', make_links_safely: bool = False, use_robust_zscore: bool = True, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, mark_instances: bool = False, node_size: int = 11, label_size: int = 9, label_sample_n: int = None, scale_factor: float = 3, graphics_backend: str = 'qt', font_name: str = None, check: bool = False) -> None:
         """
         draws a lattice digrams from a given PatternLattice L by extracting L.links
         """
@@ -1472,6 +1481,6 @@ class PatternLattice():
                 print(f"node {i:4d} {node} has z-score {v:.4f}")
 
         ## draw PatternLattice
-        draw_graph (ranked_links.items(), layout = layout, MPG_key = MPG_key, draw_instead_of_save = draw_instead_of_save, draw_inline = draw_inline, input_name = input_name, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, node_size = node_size, label_size = label_size, generality = generality, scale_factor = scale_factor, label_sample_n = label_sample_n, graphics_backend = graphics_backend, font_name = font_name, p_metric = p_metric, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, mark_instances = mark_instances, check = check)
+        draw_graph (ranked_links.items(), layout = layout, MPG_key = MPG_key, draw_lattice = draw_lattice, draw_inline = draw_inline, input_name = input_name, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, node_size = node_size, label_size = label_size, generality = generality, scale_factor = scale_factor, label_sample_n = label_sample_n, graphics_backend = graphics_backend, font_name = font_name, p_metric = p_metric, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, mark_instances = mark_instances, check = check)
 
 ### end of file
