@@ -164,7 +164,7 @@ parser.add_argument('-w', '--detailed', action='store_true', default=False)
 parser.add_argument('-M', '--use_mp', action='store_false', default=True)
 parser.add_argument('-N', '--print_forms_only', action='store_true', default=False)
 parser.add_argument('-O', '--print_lattice', action='store_true', default=False)
-parser.add_argument('-D', '--draw_lattice', action='store_true', default=False,
+parser.add_argument('-D', '--save_lattice', action='store_false', default=True,
                     help='Draw lattice after building (default: only save GML)')
 parser.add_argument('--output_gml', '-o', type=str, default=None,
                     help='GML output filename (default: auto-generate from input)')
@@ -213,7 +213,7 @@ detailed               = args.detailed
 recursion_limit_factor = args.recursion_limit_factor
 use_mp                 = args.use_mp # controls use of multiprocess
 print_lattice          = args.print_lattice
-draw_lattice           = args.draw_lattice
+save_lattice           = args.save_lattice
 output_gml_file        = args.output_gml
 no_gml_output          = args.no_gml
 input_comment_escapes  = args.input_comment_escapes
@@ -283,7 +283,7 @@ print(f"## Parameters")
 print(f"# use_multiprocess: {use_mp}")
 print(f"# detailed: {detailed}")
 print(f"# verbose: {verbose}")
-print(f"# draw_lattice: {draw_lattice}")
+print(f"# save_lattice: {save_lattice}")
 print(f"# draw_inline: {draw_inline}")
 print(f"# auto_figsizing: {auto_figsizing}")
 print(f"# fig_size: {fig_size}")
@@ -575,10 +575,10 @@ if draw_individually:
             print(patlat.print())
         
         ## draw
-        if draw_lattice:
+        if not save_lattice:
             print(f"# Drawing a diagram from g{generality}PL {i+1}")
             multibyte_font_name = setup_font ()
-            patlat.draw_lattice (layout = layout, MPG_key = MPG_key, draw_lattice = draw_lattice, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, generality = generality, p_metric = p_metric, make_links_safely = make_links_safely, zscores_from_targets = zscores_from_targets, mark_instances = mark_instances, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
+            patlat.draw_lattice (layout = layout, MPG_key = MPG_key, save_lattice = save_lattice, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, generality = generality, p_metric = p_metric, make_links_safely = make_links_safely, zscores_from_targets = zscores_from_targets, mark_instances = mark_instances, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
         else:
             print(f"## Skipped drawing (use -D/--draw-lattice to enable visualization)")
     ##
@@ -587,7 +587,7 @@ if draw_individually:
 ##
 print(f"## Merging {len(L)} g{generality}PLs ...")
 simplified     = False
-label_sample_n = 5
+label_sample_n = 10
 if simplified:
     #print(f"#binary merger")
     La, Lb = L[0], L[1]
@@ -644,9 +644,9 @@ elif build_lattice_stepwise:
             print(M.print())
         
         ## draw lattice
-        if draw_lattice:
+        if not save_lattice:
             multibyte_font_name = setup_font ()
-            M.draw_lattice (layout, MPG_key, draw_lattice = draw_lattice, draw_inline = draw_inline, input_name = input_file_name_stem, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+            M.draw_lattice (layout, MPG_key, save_lattice = save_lattice, draw_inline = draw_inline, input_name = input_file_name_stem, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
         else:
             print(f"# Skipped drawing (use -D/--draw-lattice to enable visualization)")
 
@@ -703,10 +703,10 @@ else:
         print(f"## Skipped GML output (use -o/--output_gml to specify file)")
 
     ## draw diagram of M optionally
-    if draw_lattice:
+    if not save_lattice:
         print(f"## Drawing a diagram from the merged PL")
         multibyte_font_name = setup_font ()
-        M.draw_lattice (layout, MPG_key, draw_lattice = draw_lattice, draw_inline = draw_inline, input_name = input_file_name_stem, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+        M.draw_lattice (layout, MPG_key, save_lattice = save_lattice, draw_inline = draw_inline, input_name = input_file_name_stem, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
     else:
         print(f"## Skipped drawing (use -D/--draw-lattice to enable visualization)")
 

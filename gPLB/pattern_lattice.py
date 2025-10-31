@@ -875,7 +875,7 @@ def set_node_positions (G, layout: str, MPG_key: str, scale_factor: float):
     return layout_name, positions
 
 ##
-def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_lattice: bool = False, draw_inline: bool = False, input_name: str = None, auto_figsizing: bool = True, fig_size: tuple = (10,9), fig_dpi: int = 360, node_size: int = None, label_size: int = None, label_sample_n: int = None, zscores: dict = None, p_metric: str = 'rank', use_robust_zscore: bool = True, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generality: int = 0, use_directed_graph: bool = True, reverse_direction: bool = False, font_name: str = None, graphics_backend: str = "qt", check: bool = False) -> None:
+def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", save_lattice: bool = True, draw_inline: bool = False, input_name: str = None, auto_figsizing: bool = True, fig_size: tuple = (10,9), fig_dpi: int = 360, node_size: int = None, label_size: int = None, label_sample_n: int = 12, zscores: dict = None, p_metric: str = 'rank', use_robust_zscore: bool = True, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generality: int = 0, use_directed_graph: bool = True, reverse_direction: bool = False, font_name: str = None, graphics_backend: str = "qt", check: bool = False) -> None:
     """
     draw a graph from a given network data.
     """
@@ -885,6 +885,8 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_lattice: b
         for group_key, links in N:
             print(f"#group {group_key}:\n{links}")
 
+    ##
+    print(f"# label_sample_n: {label_sample_n}")
     ##
     import math
     import networkx as nx
@@ -1081,7 +1083,7 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_lattice: b
     print(f"#instance_labels {label_count}: {instance_labels}")
 
     ### set title
-    pl_type = f"g{generality}PL"
+    pl_type = f"g{generality}pl"
     if layout_name in ['Multi-partite']:
         layout_name = f"{layout_name} [key: {MPG_key}]"
     if use_robust_zscore:
@@ -1092,7 +1094,7 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_lattice: b
     ##
     plt.tight_layout()
     #plt.set_dpi(fig_dpi) # fails
-    if draw_lattice:
+    if not save_lattice:
         plt.show()
     else:
         if input_name:
@@ -1447,7 +1449,7 @@ class PatternLattice():
         return link_sources, link_targets
 
     ##
-    def draw_lattice (self, layout: str = None, MPG_key: str = None, draw_lattice: bool = False, draw_inline: bool = False, auto_figsizing: bool = True, input_name: str = None, fig_size: tuple = None, fig_dpi: int = 620, generality: int = 0, p_metric: str = 'rank', make_links_safely: bool = False, use_robust_zscore: bool = True, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, mark_instances: bool = False, node_size: int = 11, label_size: int = 9, label_sample_n: int = 12, scale_factor: float = 3, graphics_backend: str = 'qt', font_name: str = None, check: bool = False) -> None:
+    def draw_lattice (self, layout: str = None, MPG_key: str = None, save_lattice: bool = True, draw_inline: bool = False, auto_figsizing: bool = True, input_name: str = None, fig_size: tuple = None, fig_dpi: int = 620, generality: int = 0, p_metric: str = 'rank', make_links_safely: bool = False, use_robust_zscore: bool = True, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, mark_instances: bool = False, node_size: int = 10, label_size: int = 9, label_sample_n: int = None, scale_factor: float = 3, graphics_backend: str = 'qt', font_name: str = None, check: bool = False) -> None:
         """
         draws a lattice digrams from a given PatternLattice L by extracting L.links
         """
@@ -1481,6 +1483,6 @@ class PatternLattice():
                 print(f"node {i:4d} {node} has z-score {v:.4f}")
 
         ## draw PatternLattice
-        draw_graph (ranked_links.items(), layout = layout, MPG_key = MPG_key, draw_lattice = draw_lattice, draw_inline = draw_inline, auto_figsizing = auto_figsizing, input_name = input_name, fig_size = fig_size, fig_dpi = fig_dpi, node_size = node_size, label_size = label_size, generality = generality, scale_factor = scale_factor, label_sample_n = label_sample_n, graphics_backend = graphics_backend, font_name = font_name, p_metric = p_metric, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, mark_instances = mark_instances, check = check)
+        draw_graph (ranked_links.items(), layout = layout, MPG_key = MPG_key, save_lattice = save_lattice, draw_inline = draw_inline, auto_figsizing = auto_figsizing, input_name = input_name, fig_size = fig_size, fig_dpi = fig_dpi, node_size = node_size, label_size = label_size, generality = generality, scale_factor = scale_factor, label_sample_n = label_sample_n, graphics_backend = graphics_backend, font_name = font_name, p_metric = p_metric, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, mark_instances = mark_instances, check = check)
 
 ### end of file
