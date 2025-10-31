@@ -13,6 +13,7 @@ gPLB/__pycache__/
 gPLB/x/
 
 ## files
+*.gml
 *.html
 *.zip
 *.png
