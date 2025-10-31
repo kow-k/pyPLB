@@ -22,6 +22,9 @@ gPLB/x/
 
 ## python files
 *.py
+!draw_lattice.py
+!gml_support.py
+!inspect_gml.py
 gPLB/*.py
 !gPLB/__init__.py
 !gPLB/__main__.py
@@ -37,9 +40,14 @@ pyPLB/*.py
 !pyPLB/pattern.py
 !pyPLB/utils.py
 
+## shell
+*.sh
+!safe_gPLB.sh
+
 ## ignore .md files except README.md and others
 *.md
 !README.md
+!gml_workflow_guide.md
 !safe_gPLB_usage.md
 
 #
