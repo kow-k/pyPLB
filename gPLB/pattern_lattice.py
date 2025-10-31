@@ -992,7 +992,7 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_lattice: b
         #graph_width  = round(base_size + scale_factor * ((m * n) ** 0.5), 0)
         graph_width  = round(base_size + width_scale_factor * ((m + n) ** 0.5), 0)
         #graph_height = round(base_size + scale_factor * ((m * n) ** 0.5), 0)
-        graph_height = round(base_size + height_scale_factor * ((m + n) ** 0.7), 0)
+        graph_height = round(base_size + height_scale_factor * ((m + n) ** 0.67), 0)
         ##
         if layout_name in [ "Multi-partite", "Multi_partite", "Multipartite", "MP" ]:
             fig_size = (graph_width, graph_height)
@@ -1047,13 +1047,13 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", draw_lattice: b
         arrowsize = 5,
         arrows = True,
         connectionstyle = connectionstyle, # define above
-        min_source_margin = 1,  # These work here
-        min_target_margin = 1
+        min_source_margin = 3,  # These work here
+        min_target_margin = 3
     )
 
     ## Create custom label positions with offset
-    label_offset_x = 0.001  # Adjust these values as needed
-    label_offset_y = 0.001
+    label_offset_x = 0.003  # Adjust these values as needed
+    label_offset_y = 0.003
     label_positions = {
         node: (x + label_offset_x, y + label_offset_y)
         for node, (x, y) in positions.items()
@@ -1447,7 +1447,7 @@ class PatternLattice():
         return link_sources, link_targets
 
     ##
-    def draw_lattice (self, layout: str = None, MPG_key: str = None, draw_lattice: bool = False, draw_inline: bool = False, auto_figsizing: bool = True, input_name: str = None, fig_size: tuple = None, fig_dpi: int = 620, generality: int = 0, p_metric: str = 'rank', make_links_safely: bool = False, use_robust_zscore: bool = True, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, mark_instances: bool = False, node_size: int = 11, label_size: int = 9, label_sample_n: int = None, scale_factor: float = 3, graphics_backend: str = 'qt', font_name: str = None, check: bool = False) -> None:
+    def draw_lattice (self, layout: str = None, MPG_key: str = None, draw_lattice: bool = False, draw_inline: bool = False, auto_figsizing: bool = True, input_name: str = None, fig_size: tuple = None, fig_dpi: int = 620, generality: int = 0, p_metric: str = 'rank', make_links_safely: bool = False, use_robust_zscore: bool = True, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, mark_instances: bool = False, node_size: int = 11, label_size: int = 9, label_sample_n: int = 12, scale_factor: float = 3, graphics_backend: str = 'qt', font_name: str = None, check: bool = False) -> None:
         """
         draws a lattice digrams from a given PatternLattice L by extracting L.links
         """
