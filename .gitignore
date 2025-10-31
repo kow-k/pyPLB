@@ -22,7 +22,7 @@ gPLB/x/
 
 ## python files
 *.py
-!draw_lattice.py
+!draw_lattice_from_gml.py
 !gml_support.py
 !inspect_gml.py
 gPLB/*.py
