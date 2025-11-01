@@ -183,4 +183,5 @@ eval $CMD
 # Report completion
 echo ""
 echo "────────────────────────────────────────────────────"
-echo "✓ Complete!"
+echo "✓ Complete! Output saved as .gml file"
+echo "   (Use -D flag to also generate lattice diagram)"

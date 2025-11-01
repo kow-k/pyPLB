@@ -1,5 +1,13 @@
 # safe_gplb.sh Usage Guide
 
+## Output Format
+
+**By default, gPLB now produces `.gml` (Graph Modeling Language) files** instead of drawing lattices. This is more efficient and allows you to visualize the results with your preferred graph visualization tool.
+
+- **To get .gml output only** (default): Run without -D flag
+- **To also generate a lattice diagram**: Add the `-D` flag
+- **Figure customization** (--fig_size, --fig_dpi): Only applies when using `-D` flag
+
 ## Two Modes Available
 
 ### Mode 1: Adaptive (Automatic)
@@ -21,6 +29,9 @@ You specify the exact generality level you want to use.
 # Explicit adaptive mode
 ./safe_gplb.sh data.txt auto
 
+# Adaptive with diagram output
+./safe_gplb.sh data.txt auto -D
+
 # Adaptive with additional options
 ./safe_gplb.sh data.txt auto -v -D
 ```
@@ -30,6 +41,8 @@ You specify the exact generality level you want to use.
 - G2 for segments 9-10 words
 - G1 for segments 11-15 words
 - G0 for segments >15 words
+
+**Output:** Creates a `.gml` file (add `-D` flag to also generate a lattice diagram)
 
 ---
 
@@ -51,14 +64,16 @@ You specify the exact generality level you want to use.
 # Fixed G3 with verbose output
 ./safe_gplb.sh data.txt 3 -v
 
-# Fixed G2 with custom figure size
-./safe_gplb.sh data.txt 2 --fig_size 12,12 --fig_dpi 600
+# Fixed G2 with diagram output and custom figure size (requires -D for diagram)
+./safe_gplb.sh data.txt 2 -D --fig_size 12,12 --fig_dpi 600
 
-# Fixed G1 with multiple options
+# Fixed G1 with multiple options including diagram
 ./safe_gplb.sh data.txt 1 -v -D -I
 ```
 
 **What happens:** Script uses your specified G level but still applies smart sampling based on segment length to prevent memory issues.
+
+**Output:** Creates a `.gml` file (add `-D` flag to also generate a lattice diagram)
 
 ---
 
