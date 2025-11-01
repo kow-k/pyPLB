@@ -259,7 +259,7 @@ draw_inline          = False # intended to be used in Jupyter Notebook
 ## increase recursion limit
 if recursion_limit_factor != 1.0:
     import sys
-    sys.setrecursionlimit(round(recursion_limit_factor * 1000))
+    sys.setrecursionlimit(round(recursion_limit_factor * 1000), 0)
 
 ## verbosity
 if verbose:

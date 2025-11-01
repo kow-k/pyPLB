@@ -42,7 +42,8 @@ def segment_with_levels (line: str, seps: str, sep2_is_suppressive: bool, split_
     returns a level-aware segmentation from given a list of lines.
     """
 
-    print(f"#line in segment: {line}")
+    if check:
+        print(f"#line for segmentation: {line}")
     sep_list = list(seps)
     assert len(sep_list) > 0
 

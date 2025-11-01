@@ -438,7 +438,7 @@ def cautiously_merge (A, B, check = False):
 def merge_pattern_lattices (Ls: list, generality: int, gen_links_internally: bool = True, use_mp: bool = True, reflexive: bool = True, reductive: bool = True, check: bool = False):
     """takes a list of PatternLattices and returns its merger."""
 
-    print(f"merging {len(Ls)} PLs...")
+    print(f"## Merging {len(Ls)} PLs...")
     import functools
     M = functools.reduce (lambda La, Lb: La.merge_with (Lb, gen_links_internally = gen_links_internally, use_mp = use_mp, generality = generality, reflexive = reflexive, reductive = reductive, check = check), Ls)
 
@@ -864,6 +864,10 @@ def set_node_positions (G, layout: str, MPG_key: str, scale_factor: float):
         layout_name = "Planar"
         positions   = nx.planar_layout(G, scale = scale_factor, dim = 2)
     ##
+    elif layout in ['Breadth-First Search', 'Breadth_First_Search', 'BFS', 'BF'] :
+        layout_name = "Planar"
+        positions   = nx.planar_layout(G, scale = scale_factor, dim = 2)
+    ##
     else:
         print(f"Unknown layout: Multi-partite (default) is used")
         layout_name = "Multi-partite"
@@ -980,7 +984,7 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", save_lattice: b
 
     ## adjust figsize
     if auto_figsizing:
-        
+
         ## Alternative by ChatGPT
         # Get complexity measures
         n = G.number_of_nodes()
@@ -988,7 +992,7 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", save_lattice: b
         # Define dynamic scaling rules: constants depending on how dense your graphs are
         base_size = 4
         width_scale_factor = 0.2
-        height_scale_factor = 0.3 # originally 0.15
+        height_scale_factor = 0.25 # originally 0.15
         # Compute figure size based on number of nodes or edges
         #graph_width  = round(base_size + scale_factor * math.log(m + n), 0)
         #graph_width  = round(base_size + scale_factor * ((m * n) ** 0.5), 0)
@@ -1074,8 +1078,11 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", save_lattice: b
 
     ## set labels used in title
     instance_labels = [ as_label (x, sep = ",") for x in instances ]
-    n_instances = len (instance_labels)
-    if label_count > label_sample_n:
+    if instance_labels:
+        n_instances = len (instance_labels)
+    else:
+        n_instances = 0
+    if label_sample_n is not None and n_instances > label_sample_n:
         truncated_instance_labels = instance_labels[:label_sample_n - 1]
         truncated_instance_labels.append("…")
         truncated_instance_labels.append(instance_labels[-1])
