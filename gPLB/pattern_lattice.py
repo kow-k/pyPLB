@@ -1054,8 +1054,8 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", save_lattice: b
     )
 
     ## Create custom label positions with offset
-    label_offset_x = 0.003  # Adjust these values as needed
-    label_offset_y = 0.003
+    label_offset_x = 0.005  # Adjust these values as needed
+    label_offset_y = 0.005
     label_positions = {
         node: (x + label_offset_x, y + label_offset_y)
         for node, (x, y) in positions.items()
@@ -1074,22 +1074,22 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", save_lattice: b
 
     ## set labels used in title
     instance_labels = [ as_label (x, sep = ",") for x in instances ]
-    label_count = len (instance_labels)
-    if label_sample_n is not None and label_count > label_sample_n:
-        new_instance_labels = instance_labels[:label_sample_n - 1]
-        new_instance_labels.append("…")
-        new_instance_labels.append(instance_labels[-1])
-        instance_labels = new_instance_labels
-    print(f"#instance_labels {label_count}: {instance_labels}")
+    n_instances = len (instance_labels)
+    if label_count > label_sample_n:
+        truncated_instance_labels = instance_labels[:label_sample_n - 1]
+        truncated_instance_labels.append("…")
+        truncated_instance_labels.append(instance_labels[-1])
+        instance_labels = truncated_instance_labels
+    print(f"#instance_labels {n_instances}: {instance_labels}")
 
     ### set title
-    pl_type = f"g{generality}pl"
+    pl_type = f"g{generality}"
     if layout_name in ['Multi-partite']:
         layout_name = f"{layout_name} [key: {MPG_key}]"
     if use_robust_zscore:
-        title_val = f"{pl_type} (layout: {layout_name}; robust z-scores [p_metric: {p_metric}]: {zscore_lb} – {zscore_ub} [removed {pruned_node_count} nodes])\nbuilt from {instance_labels} ({label_count} in all)"
+        title_val = f"{pl_type}PL (layout: {layout_name}; robust z-scores [metric: {p_metric}]: {zscore_lb} – {zscore_ub} [{pruned_node_count} nodes removed])\nbuilt from {instance_labels} ({n_instances} in all)"
     else:
-        title_val = f"{pl_type} (layout: {layout_name}; normal z-scores [p_metric: {p_metric}]: {zscore_lb} – {zscore_ub} [removed {pruned_node_count} nodes])\nbuilt from {instance_labels} ({label_count} in all)"
+        title_val = f"{pl_type}PL (layout: {layout_name}; normal z-scores [metric: {p_metric}]: {zscore_lb} – {zscore_ub} [{pruned_node_count} nodes removed])\nbuilt from {instance_labels} ({n_instances} in all)"
     plt.title(title_val)
     ##
     plt.tight_layout()

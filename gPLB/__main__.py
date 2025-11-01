@@ -173,6 +173,7 @@ parser.add_argument('--no_gml', action='store_true', default=False,
 parser.add_argument('-F', '--fig_size', type=parse_tuple_for_arg, default=None)
 parser.add_argument('-d', '--fig_dpi', type=int, default=620)
 parser.add_argument('-L', '--layout', type= str, default= 'Multi_partite')
+parser.add_argument('-k', '--MPG_key', type=str, default='gap_size')
 parser.add_argument('-I', '--draw_individual_lattices', action='store_true', default=False)
 parser.add_argument('-S', '--build_lattice_stepwise', action='store_true', default=False)
 parser.add_argument('-J', '--use_multibyte_chars', action='store_true', default=False)
@@ -183,7 +184,7 @@ parser.add_argument('-C', '--uncapitalize', action='store_true', default=False)
 parser.add_argument('-H', '--split_hyphenation', action='store_false', default=True)
 parser.add_argument('-g', '--gap_mark', type=str, default='_')
 parser.add_argument('-t', '--tracer', type=str, default='~')
-parser.add_argument('-Q', '--accept_truncation', action='store_false', default=True)
+parser.add_argument('-T', '--accept_truncation', action='store_false', default=True)
 parser.add_argument('-X', '--add_displaced_versions', action='store_true', default=False)
 parser.add_argument('-n', '--sample_n', type=int, default=None)
 parser.add_argument('-m', '--max_size', type=int, default=None)
@@ -195,11 +196,10 @@ parser.add_argument('-p', '--productivity_metric', type=str, default='rank')
 parser.add_argument('-l', '--zscore_lowerbound', type=float, default=None)
 parser.add_argument('-u', '--zscore_upperbound', type=float, default=None)
 parser.add_argument('-Z', '--use_robust_zscore', action='store_false', default=True)
-parser.add_argument('-k', '--MPG_key', type=str, default='gap_size')
-parser.add_argument('-T', '--zscores_from_targets', action='store_true', default=False)
+parser.add_argument('-U', '--zscores_from_targets', action='store_true', default=False)
 parser.add_argument('-j', '--scaling_factor', type=float, default=5)
 parser.add_argument('-i', '--mark_instances', action='store_true', default=False)
-parser.add_argument('-U', '--print_link_targets', action='store_true', default=False)
+parser.add_argument('-W', '--print_link_targets', action='store_true', default=False)
 parser.add_argument('-Y', '--phrasal', action='store_true', default=False)
 parser.add_argument('--recursion_limit_factor', type=float, default=1.0)
 parser.add_argument('--sample_id', type=int, default=1)
@@ -397,9 +397,16 @@ if not file is None:
     from pathlib import Path
     input_file_name = Path(file.name)
     input_file_name_stem = Path(file.name).stem
+    ## options
+    options = []
+    if sep2_is_suppressive:
+        options.append("P")
+    if accept_truncation:
+        options.append("T")
+    option_str = f"-{''.join(options)}"
     ##
     if output_gml_file is None and not no_gml_output:
-        output_gml_file = f"g{generality}PL-{input_file_name_stem}.gml"
+        output_gml_file = f"g{generality}-{input_file_name_stem}{option_str}.gml"
 
     ## parse source
     input_parses = parse_input (file, comment_escapes = input_comment_escapes, field_seps = input_field_seps, split_hyphenation = split_hyphenation, uncapitalize = uncapitalize, check = False)
