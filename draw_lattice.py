@@ -157,6 +157,7 @@ def draw_lattice_from_gml(G,
                          use_curved_edges: bool = True,
                          label_offset: tuple = None,
                          scale_factor: float = 3,
+                         highlight_links_around: list = [],
                          label_sample_n: int = None,
                          graphics_backend: str = "qt",
                          verbose: bool = False):
@@ -356,10 +357,32 @@ def draw_lattice_from_gml(G,
                           node_color=node_colors,
                           cmap=my_cmap)
 
+    # Differentiate edge colors
+    if len(highlight_links_around):
+        print(f"# highlight_links_around: {highlight_links_around}")
+    edge_colors = []
+    edge_widths = []
+    for i, edge in enumerate(G.edges()):
+        e0, e1 = eval(edge[0]), eval(edge[1]) # Crucially, eval(..)
+        # Both nodes selected
+        if e0 in highlight_links_around and e1 in highlight_links_around:
+            print(f"found two hightlight targets: {e0} and {e1}")
+            edge_colors.append('red')
+            edge_widths.append(0.2)
+        # One node selected
+        elif e0 in highlight_links_around or e1 in highlight_links_around:
+            print(f"found one hightlight target: {e0} or {e1}")
+            edge_colors.append('orange')
+            edge_widths.append(0.2)
+        # No nodes selected
+        else:
+            edge_colors.append('gray')
+            edge_widths.append(0.05)
+
     # Draw edges matching original styling
     nx.draw_networkx_edges(G, pos,
-                          edge_color='gray',
-                          width=0.05,  # Original uses 0.05
+                          edge_color=edge_colors, #edge_color='gray',
+                          width=edge_widths, #width=0.05,  # Original uses 0.05
                           arrowsize=5,  # Original uses 5
                           arrows=True,
                           connectionstyle=connectionstyle,
@@ -531,15 +554,17 @@ Examples:
                        help='Disable automatic figure and node sizing')
     parser.add_argument('--scale_factor', type=float, default=3,
                        help='Scale factor for some layouts (default: 3)')
+    parser.add_argument('--highlight_links_around', '-H', type=str, default=None,
+                       help='Differentiate links connected specified nodes by color')
 
     # Z-score filtering
     parser.add_argument('--zscore_lb', '-l', type=float, default=None,
                        help='Z-score lower bound')
     parser.add_argument('--zscore_ub', '-u', type=float, default=None,
                        help='Z-score upper bound')
-    parser.add_argument('--zscore_attr', '-z', type=str, default='rank',
+    parser.add_argument('--zscore_attr', '-z', type=str, default='source_robust_zscore',
                        help='Z-score attribute to use (default: auto-detect). '
-                            'Options: source_zscore, target_zscore, source_robust_zscore, target_robust_zscore')
+                            'Options: source_robust_zscore, source_zscore, target_robust_zscore, target_zscore')
     parser.add_argument('--no_color', '-C', action='store_true',
                        help='Disable z-score coloring')
 
@@ -639,6 +664,11 @@ Examples:
             print(f"  Figure size: auto")
         print(f"  Output: {'[display]' if args.show else args.output or '[auto]'}")
 
+    ##
+    import gPLB.pattern as plb
+    highlight_targets = [ tuple(x.split(",")) for x in args.highlight_links_around.split(";") ]
+    print(f"# highlight_targets: {highlight_targets}")
+    ##
     draw_lattice_from_gml(
         G,
         input_name,
@@ -655,6 +685,7 @@ Examples:
         use_curved_edges=not args.no_curved_edges,
         label_offset=label_offset,
         scale_factor=args.scale_factor,
+        highlight_links_around=highlight_targets,
         label_sample_n=args.label_sample_n,
         verbose=args.verbose
     )
