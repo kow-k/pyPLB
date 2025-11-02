@@ -67,13 +67,13 @@ def print_memory_usage (label=""):
 ## networkx
 import networkx as nx
 
-def pattern_lattice_to_gml (lattice, output_file: str, 
+def pattern_lattice_to_gml (lattice, output_file: str,
                            include_zscores: bool = True,
                            check: bool = False):
     """Save PatternLattice as GML format"""
-    
+
     G = nx.DiGraph()
-    
+
     # Graph metadata
     G.graph['generality'] = lattice.generality
     G.graph['p_metric'] = lattice.p_metric
@@ -81,13 +81,13 @@ def pattern_lattice_to_gml (lattice, output_file: str,
     G.graph['tracer'] = lattice.tracer if hasattr(lattice, 'tracer') else '~'
     G.graph['n_nodes'] = len(lattice.nodes)
     G.graph['n_links'] = len(lattice.links)
-    
+
     # Prepare z-scores
     source_zscores = {}
     target_zscores = {}
     source_robust_zscores = {}
     target_robust_zscores = {}
-    
+
     if include_zscores:
         if hasattr(lattice, 'source_zscores'):
             source_zscores = {str(k): float(v) for k, v in lattice.source_zscores.items()}
@@ -97,11 +97,11 @@ def pattern_lattice_to_gml (lattice, output_file: str,
             source_robust_zscores = {str(k): float(v) for k, v in lattice.source_robust_zscores.items()}
         if hasattr(lattice, 'target_robust_zscores'):
             target_robust_zscores = {str(k): float(v) for k, v in lattice.target_robust_zscores.items()}
-    
+
     # Add nodes
     for pattern in lattice.nodes:
         node_id = str(tuple(pattern.form))
-        
+
         node_attrs = {
             'label': ' '.join(pattern.form),
             'form': ','.join(pattern.form),
@@ -109,7 +109,7 @@ def pattern_lattice_to_gml (lattice, output_file: str,
             'gap_size': pattern.get_gap_size(),
             'size': len(pattern.form)
         }
-        
+
         # Add z-scores
         if include_zscores:
             if node_id in source_zscores:
@@ -120,30 +120,30 @@ def pattern_lattice_to_gml (lattice, output_file: str,
                 node_attrs['source_robust_zscore'] = source_robust_zscores[node_id]
             if node_id in target_robust_zscores:
                 node_attrs['target_robust_zscore'] = target_robust_zscores[node_id]
-        
+
         G.add_node(node_id, **node_attrs)
-    
+
     # Add edges
     for link in lattice.links:
         source_id = str(tuple(link.left.form))
         target_id = str(tuple(link.right.form))
-        
+
         edge_attrs = {
             'link_type': link.link_type if link.link_type else 'instantiates',
             'link_rank': link.get_link_rank(),
             'link_gap_size': link.get_link_gap_size()
         }
-        
+
         G.add_edge(source_id, target_id, **edge_attrs)
-    
+
     # Save
     nx.write_gml(G, output_file)
-    
+
     if check:
         print(f"✓ Saved lattice to GML: {output_file}")
         print(f"  Nodes: {G.number_of_nodes()}")
         print(f"  Edges: {G.number_of_edges()}")
-    
+
     return output_file
 
 
@@ -192,7 +192,7 @@ parser.add_argument('-G', '--generality', type=int, default=0)
 parser.add_argument('--max_patterns', type=int, default=None, help='Maximum patterns per segment')
 parser.add_argument('--batch_size', type=int, default=5000, help='Batch size for link generation')
 parser.add_argument('-R', '--unreflexive', action='store_false', default=True)
-parser.add_argument('-p', '--productivity_metric', type=str, default='rank')
+parser.add_argument('-p', '--productivity_metric', type=str, default='gap_size')
 parser.add_argument('-l', '--zscore_lowerbound', type=float, default=None)
 parser.add_argument('-u', '--zscore_upperbound', type=float, default=None)
 parser.add_argument('-Z', '--use_robust_zscore', action='store_false', default=True)
@@ -381,11 +381,11 @@ def setup_font (
     else:
         multibyte_font_name = None
         matplotlib.rcParams['font.family'] = "Sans-serif"
-    
+
     ## check font settings
     print(f"## multibyte_font_name: {multibyte_font_name}")
     print(f"## matplotlib.rcParams['font.family']: {matplotlib.rcParams['font.family']}")
-    
+
     ## return
     return multibyte_font_name
 
@@ -568,7 +568,7 @@ if print_forms_only:
             print(f"# p{i:02d}.form{j:03d}: {joint.join(pat.get_form())}")
     ##
     exit()
-    
+
 ### Generating Pattern Lattices
 
 ## draw lattices and then quit without drawing the merged lattice
@@ -580,7 +580,7 @@ if draw_individually:
         if print_lattice:
             print(f"# Printing a{generality}PL:\n")
             print(patlat.print())
-        
+
         ## draw
         if not save_lattice:
             print(f"# Drawing a diagram from g{generality}PL {i+1}")
@@ -642,14 +642,14 @@ elif build_lattice_stepwise:
         gen_zscores_from_sources_by (p_metric, M, gap_mark = gap_mark, use_robust_zscore = use_robust_zscore, check = False)
         for node, zscore in M.source_zscores.items():
             print(f"# node {node} has z-score {zscore: .3f}")
-        
+
         ##
         print(f"## Output")
         ## print lattice
         if print_lattice:
             print(f"## Merged PL:")
             print(M.print())
-        
+
         ## draw lattice
         if not save_lattice:
             multibyte_font_name = setup_font ()
@@ -695,12 +695,12 @@ else:
 
     ##
     print(f"## Output")
-    
+
     ## print lattice optionally
     if print_lattice:
         print(f"## Merged PL")
         print(M.print())
-    
+
     ## save to file
     print(f"## Saving merged PL to GML")
     if output_gml_file and not no_gml_output:

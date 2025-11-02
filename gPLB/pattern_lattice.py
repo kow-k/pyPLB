@@ -879,7 +879,7 @@ def set_node_positions (G, layout: str, MPG_key: str, scale_factor: float):
     return layout_name, positions
 
 ##
-def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", save_lattice: bool = True, draw_inline: bool = False, input_name: str = None, auto_figsizing: bool = True, fig_size: tuple = (10,9), fig_dpi: int = 360, node_size: int = None, label_size: int = None, label_sample_n: int = 12, zscores: dict = None, p_metric: str = 'rank', use_robust_zscore: bool = True, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generality: int = 0, use_directed_graph: bool = True, reverse_direction: bool = False, font_name: str = None, graphics_backend: str = "qt", check: bool = False) -> None:
+def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", save_lattice: bool = True, draw_inline: bool = False, input_name: str = None, auto_figsizing: bool = True, fig_size: tuple = (10,9), fig_dpi: int = 360, node_size: int = None, label_size: int = None, label_sample_n: int = 12, zscores: dict = None, p_metric: str = 'gap_size', use_robust_zscore: bool = True, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generality: int = 0, use_directed_graph: bool = True, reverse_direction: bool = False, font_name: str = None, graphics_backend: str = "qt", check: bool = False) -> None:
     """
     draw a graph from a given network data.
     """
@@ -1121,7 +1121,7 @@ class PatternLattice():
     """
 
     ##
-    def __init__ (self, pattern, generality: int, p_metric: str = 'rank', reflexive: bool = True, reductive: bool = True, make_links_safely: bool = False, check: bool = False):
+    def __init__ (self, pattern, generality: int, p_metric: str = 'gap_size', reflexive: bool = True, reductive: bool = True, make_links_safely: bool = False, check: bool = False):
         """
         initialization of a PatternLattice, or PL
         """
@@ -1224,7 +1224,7 @@ class PatternLattice():
         # Create merged lattice
         dummy_pattern = Pattern([], gap_mark=gap_mark, tracer=tracer, check=check)
         merged = PatternLattice(dummy_pattern, generality=generality,
-                               p_metric='rank', reductive=reductive, check=check)
+                               p_metric='gap_size', reductive=reductive, check=check)
 
         merged.origin = dummy_pattern
         merged.nodes = main_nodes
@@ -1456,7 +1456,7 @@ class PatternLattice():
         return link_sources, link_targets
 
     ##
-    def draw_lattice (self, layout: str = None, MPG_key: str = None, save_lattice: bool = True, draw_inline: bool = False, auto_figsizing: bool = True, input_name: str = None, fig_size: tuple = None, fig_dpi: int = 620, generality: int = 0, p_metric: str = 'rank', make_links_safely: bool = False, use_robust_zscore: bool = True, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, mark_instances: bool = False, node_size: int = 10, label_size: int = 9, label_sample_n: int = None, scale_factor: float = 3, graphics_backend: str = 'qt', font_name: str = None, check: bool = False) -> None:
+    def draw_lattice (self, layout: str = None, MPG_key: str = None, save_lattice: bool = True, draw_inline: bool = False, auto_figsizing: bool = True, input_name: str = None, fig_size: tuple = None, fig_dpi: int = 620, generality: int = 0, p_metric: str = 'gap_size', make_links_safely: bool = False, use_robust_zscore: bool = True, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, mark_instances: bool = False, node_size: int = 12, label_size: int = 9, label_sample_n: int = None, scale_factor: float = 3, graphics_backend: str = 'qt', font_name: str = None, check: bool = False) -> None:
         """
         draws a lattice digrams from a given PatternLattice L by extracting L.links
         """
