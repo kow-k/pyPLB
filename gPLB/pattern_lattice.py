@@ -879,7 +879,7 @@ def set_node_positions (G, layout: str, MPG_key: str, scale_factor: float):
     return layout_name, positions
 
 ##
-def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", save_lattice: bool = True, draw_inline: bool = False, input_name: str = None, auto_figsizing: bool = True, fig_size: tuple = (10,9), fig_dpi: int = 360, node_size: int = None, label_size: int = None, label_sample_n: int = 12, zscores: dict = None, p_metric: str = 'rank', use_robust_zscore: bool = True, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, generality: int = 0, use_directed_graph: bool = True, reverse_direction: bool = False, font_name: str = None, graphics_backend: str = "qt", check: bool = False) -> None:
+def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", save_lattice: bool = True, draw_inline: bool = False, input_name: str = None, auto_figsizing: bool = True, fig_size: tuple = (10,9), fig_dpi: int = 360, node_size: int = None, label_size: int = None, label_sample_n: int = 12, generality: int = 0, zscores: dict = None, p_metric: str = 'rank', use_robust_zscore: bool = True, zscore_lb = None, zscore_ub = None, mark_instances: bool = False, scale_factor: float = 3, highlight_links_around: list = [], use_directed_graph: bool = True, reverse_direction: bool = False, font_name: str = None, graphics_backend: str = "qt", check: bool = False) -> None:
     """
     draw a graph from a given network data.
     """
@@ -987,7 +987,6 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", save_lattice: b
 
     ## adjust figsize
     if auto_figsizing:
-
         ## Alternative by ChatGPT
         # Get complexity measures
         n = G.number_of_nodes()
@@ -1050,10 +1049,33 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", save_lattice: b
         cmap = my_cmap
     )
 
+    # Differentiate edge color and width
+    #highlight_links_around = [ eval(x) for x in highlight_links_around ]
+    print(f"# highlight_links_around: {highlight_links_around}")
+    edge_colors = []
+    edge_widths = []
+    for i, edge in enumerate(G.edges()):
+        #e0, e1 = eval(edge[0]), eval(edge[1]) # Crucially, eval(..)
+        e0, e1 = edge[0], edge[1] # Crucially, eval(..) offensive in this script
+        # Both nodes selected
+        if e0 in highlight_links_around and e1 in highlight_links_around:
+            print(f"found two hightlight targets: {e0} and {e1}")
+            edge_colors.append('red')
+            edge_widths.append(0.2)
+        # One node selected
+        elif e0 in highlight_links_around or e1 in highlight_links_around:
+            print(f"found one hightlight target: {e0} or {e1}")
+            edge_colors.append('orange')
+            edge_widths.append(0.2)
+        # No nodes selected
+        else:
+            edge_colors.append('gray')
+            edge_widths.append(0.05)
+
     ## Draw edges with your existing arrow settings
     nx.draw_networkx_edges(G, positions,
-        edge_color = 'gray',
-        width = 0.05,
+        edge_color = edge_colors, #edge_color = 'gray',
+        width = edge_widths, #width = 0.01,
         arrowsize = 5,
         arrows = True,
         connectionstyle = connectionstyle, # define above
@@ -1460,7 +1482,7 @@ class PatternLattice():
         return link_sources, link_targets
 
     ##
-    def draw_lattice (self, layout: str = None, MPG_key: str = None, save_lattice: bool = True, draw_inline: bool = False, auto_figsizing: bool = True, input_name: str = None, fig_size: tuple = None, fig_dpi: int = 620, generality: int = 0, p_metric: str = 'rank', make_links_safely: bool = False, use_robust_zscore: bool = True, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, mark_instances: bool = False, node_size: int = 12, label_size: int = 9, label_sample_n: int = None, scale_factor: float = 3, graphics_backend: str = 'qt', font_name: str = None, check: bool = False) -> None:
+    def draw_lattice (self, layout: str = None, MPG_key: str = None, save_lattice: bool = True, draw_inline: bool = False, auto_figsizing: bool = True, highlight_links_around: list = [], input_name: str = None, fig_size: tuple = None, fig_dpi: int = 620, generality: int = 0, p_metric: str = 'rank', make_links_safely: bool = False, use_robust_zscore: bool = True, zscores_from_targets: bool = False, zscore_lb: float = None, zscore_ub: float = None, mark_instances: bool = False, node_size: int = 12, label_size: int = 9, label_sample_n: int = None, scale_factor: float = 3, graphics_backend: str = 'qt', font_name: str = None, check: bool = False) -> None:
         """
         draws a lattice digrams from a given PatternLattice L by extracting L.links
         """
@@ -1494,6 +1516,6 @@ class PatternLattice():
                 print(f"node {i:4d} {node} has z-score {v:.4f}")
 
         ## draw PatternLattice
-        draw_graph (ranked_links.items(), layout = layout, MPG_key = MPG_key, save_lattice = save_lattice, draw_inline = draw_inline, auto_figsizing = auto_figsizing, input_name = input_name, fig_size = fig_size, fig_dpi = fig_dpi, node_size = node_size, label_size = label_size, generality = generality, scale_factor = scale_factor, label_sample_n = label_sample_n, graphics_backend = graphics_backend, font_name = font_name, p_metric = p_metric, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, mark_instances = mark_instances, check = check)
+        draw_graph (ranked_links.items(), layout = layout, MPG_key = MPG_key, save_lattice = save_lattice, draw_inline = draw_inline, auto_figsizing = auto_figsizing, input_name = input_name, fig_size = fig_size, fig_dpi = fig_dpi, highlight_links_around = highlight_links_around, node_size = node_size, label_size = label_size, generality = generality, scale_factor = scale_factor, label_sample_n = label_sample_n, graphics_backend = graphics_backend, font_name = font_name, p_metric = p_metric, zscores = zscores, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lb, zscore_ub = zscore_ub, mark_instances = mark_instances, check = check)
 
 ### end of file

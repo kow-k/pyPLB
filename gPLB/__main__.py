@@ -45,6 +45,7 @@ modification history
 2025/10/29 moved z-score filtering from gen_G to draw_graph (using subgraph() of NetworkX); implemented draw_lattice and made it = False default behavior [changeable by -D option];
 2025/10/30 added handling input name to output figure name;
 2025/10/31 changed default behavior: gPLB now saves GML by default without drawing; use -D to enable drawing
+2025/11/02 added highlight_links_around to differentiate selected nodes by color
 
 """
 
@@ -181,10 +182,12 @@ parser.add_argument('-c', '--input_comment_escapes', type=list, default=['#', '%
 parser.add_argument('-s', '--input_field_seps', type=str, default=',;')
 parser.add_argument('-P', '--sep2_is_suppressive', action='store_true', default=False)
 parser.add_argument('-C', '--uncapitalize', action='store_true', default=False)
-parser.add_argument('-H', '--split_hyphenation', action='store_false', default=True)
+parser.add_argument('-q', '--split_hyphenation', action='store_false', default=True)
 parser.add_argument('-g', '--gap_mark', type=str, default='_')
 parser.add_argument('-t', '--tracer', type=str, default='~')
 parser.add_argument('-T', '--accept_truncation', action='store_false', default=True)
+parser.add_argument('-H', '--highlight_links_around', type=str, default=None,
+                       help='Differentiate links connected specified nodes by color')
 parser.add_argument('-X', '--add_displaced_versions', action='store_true', default=False)
 parser.add_argument('-n', '--sample_n', type=int, default=None)
 parser.add_argument('-m', '--max_size', type=int, default=None)
@@ -235,6 +238,7 @@ p_metric               = args.productivity_metric
 add_displaced_versions = args.add_displaced_versions
 build_lattice_stepwise = args.build_lattice_stepwise
 print_link_targets     = args.print_link_targets
+highlight_links_around = args.highlight_links_around
 fig_size               = args.fig_size
 layout                 = args.layout
 MPG_key                = args.MPG_key
@@ -283,11 +287,6 @@ print(f"## Parameters")
 print(f"# use_multiprocess: {use_mp}")
 print(f"# detailed: {detailed}")
 print(f"# verbose: {verbose}")
-print(f"# save_lattice: {save_lattice}")
-print(f"# draw_inline: {draw_inline}")
-print(f"# auto_figsizing: {auto_figsizing}")
-print(f"# fig_size: {fig_size}")
-print(f"# fig_dpi: {fig_dpi}")
 print(f"# draw_individually: {draw_individually}")
 print(f"# mark_instances: {mark_instances}")
 print(f"# input_comment_escapes: {input_comment_escapes}")
@@ -300,6 +299,12 @@ print(f"# gap_mark: {gap_mark}")
 print(f"# instantiation is reflexive: {reflexive}")
 print(f"# building lattice with generality: {generality}")
 print(f"# p_metric [productivity metric]: {p_metric}")
+print(f"# save_lattice: {save_lattice}")
+print(f"# draw_inline: {draw_inline}")
+print(f"# auto_figsizing: {auto_figsizing}")
+print(f"# highlight_links_around: {highlight_links_around}")
+print(f"# fig_size: {fig_size}")
+print(f"# fig_dpi: {fig_dpi}")
 print(f"# use_robust_zscore: {use_robust_zscore}")
 print(f"# zscores_from_targets: {zscores_from_targets}")
 print(f"# zscore_lowerbound: {zscore_lowerbound}")
@@ -392,6 +397,9 @@ def setup_font (
 ## process
 S0 = []
 input_file_name_stem = None
+highlight_targets = [ tuple(x.split(",")) for x in args.highlight_links_around.split(";") ]
+print(f"# highlight_targets: {highlight_targets}")
+
 if not file is None:
     ## define input and output file names
     from pathlib import Path
@@ -585,7 +593,7 @@ if draw_individually:
         if not save_lattice:
             print(f"# Drawing a diagram from g{generality}PL {i+1}")
             multibyte_font_name = setup_font ()
-            patlat.draw_lattice (layout = layout, MPG_key = MPG_key, save_lattice = save_lattice, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, generality = generality, p_metric = p_metric, make_links_safely = make_links_safely, zscores_from_targets = zscores_from_targets, mark_instances = mark_instances, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
+            patlat.draw_lattice (layout = layout, MPG_key = MPG_key, save_lattice = save_lattice, draw_inline = draw_inline, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, highlight_links_around = highlight_targets, generality = generality, p_metric = p_metric, make_links_safely = make_links_safely, zscores_from_targets = zscores_from_targets, mark_instances = mark_instances, scale_factor = scale_factor, font_name = multibyte_font_name, check = draw_inspection)
         else:
             print(f"## Skipped drawing (use -D/--draw-lattice to enable visualization)")
     ##
@@ -653,7 +661,7 @@ elif build_lattice_stepwise:
         ## draw lattice
         if not save_lattice:
             multibyte_font_name = setup_font ()
-            M.draw_lattice (layout, MPG_key, save_lattice = save_lattice, draw_inline = draw_inline, input_name = input_file_name_stem, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+            M.draw_lattice (layout, MPG_key, save_lattice = save_lattice, draw_inline = draw_inline, input_name = input_file_name_stem, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, highlight_links_around = highlight_targets, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, generality = generality, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
         else:
             print(f"# Skipped drawing (use -D/--draw-lattice to enable visualization)")
 
@@ -713,7 +721,7 @@ else:
     if not save_lattice:
         print(f"## Drawing a diagram from the merged PL")
         multibyte_font_name = setup_font ()
-        M.draw_lattice (layout, MPG_key, save_lattice = save_lattice, draw_inline = draw_inline, input_name = input_file_name_stem, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, generality = generality, label_sample_n = label_sample_n, p_metric = p_metric, make_links_safely = make_links_safely, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
+        M.draw_lattice (layout, MPG_key, save_lattice = save_lattice, draw_inline = draw_inline, input_name = input_file_name_stem, auto_figsizing = auto_figsizing, fig_size = fig_size, fig_dpi = fig_dpi, label_sample_n = label_sample_n, highlight_links_around = highlight_targets, p_metric = p_metric, make_links_safely = make_links_safely, generality = generality, use_robust_zscore = use_robust_zscore, zscore_lb = zscore_lowerbound, zscore_ub = zscore_upperbound, mark_instances = mark_instances, font_name = multibyte_font_name, zscores_from_targets = zscores_from_targets, scale_factor = scale_factor, check = draw_inspection)
     else:
         print(f"## Skipped drawing (use -D/--draw-lattice to enable visualization)")
 

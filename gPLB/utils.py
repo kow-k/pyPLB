@@ -2,9 +2,10 @@
 
 ##
 def process_hyphenation (W: list):
+    import re
     R = []
     for w in W:
-        seg = w.split("-")
+        seg = re.split("-+", w)
         if len (seg) > 0:
             r = []
             for i, x in enumerate (seg):
@@ -69,7 +70,8 @@ def segment_with_levels (line: str, seps: str, sep2_is_suppressive: bool, split_
             result = f"{line}{sep2}".replace(sep1, "").split(sep2)
     else:
         import re
-        print(f"#seps: {seps}")
+        if check:
+            print(f"#seps: {seps}")
         result = re.split(f"[{seps}]\s*", line)
 
     ## uncapitalize tokens over lines
@@ -84,7 +86,7 @@ def segment_with_levels (line: str, seps: str, sep2_is_suppressive: bool, split_
     return [ x for x in result if len(x) > 0 ]
 
 ##
-def segment_with_levels_on_lines (lines: list, seps: str, sep2_is_suppressive: bool, split_hyphenation: bool = False, uncapitalize: bool = False, normalize: bool = True) -> list:
+def segment_with_levels_on_lines (lines: list, seps: str, sep2_is_suppressive: bool, split_hyphenation: bool = False, uncapitalize: bool = False, normalize: bool = True, check: bool = False) -> list:
 
     """
     returns a level-aware segmentation from given a list of lines.
@@ -107,7 +109,8 @@ def segment_with_levels_on_lines (lines: list, seps: str, sep2_is_suppressive: b
         else:
             lines = [ f"{line}{sep2}".replace(sep1, "").split(sep2) for line in lines ]
     else:
-        print(f"#seps: {seps}")
+        if check:
+            print(f"#seps: {seps}")
         if normalize:
             lines = [ re.split(f"[{seps}]", normalizer(flag, line)) for line in lines ]
         else:
