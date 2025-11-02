@@ -916,6 +916,9 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", save_lattice: b
     G, instances = gen_G (N, zscores = zscores, use_directed_graph = use_directed_graph, check = check)
         ## create a subgraph if needed
 
+    ## get maximum of n_segments of instances
+    max_n_segs_of_instance = max([ len(instance) for instance in instances ])
+
     ## subgraph creation by z-score filtering
     ## This needs to be applied color assignment
     n_original_nodes = len(G.nodes())
@@ -991,7 +994,8 @@ def draw_graph (N: dict, layout: str, MPG_key: str = "gap_size", save_lattice: b
         m = G.number_of_edges()
         # Define dynamic scaling rules: constants depending on how dense your graphs are
         base_size = 4
-        width_scale_factor = 0.2
+        #width_scale_factor = 0.2
+        width_scale_factor = 0.1 * max_n_segs_of_instance
         height_scale_factor = 0.25 # originally 0.15
         # Compute figure size based on number of nodes or edges
         #graph_width  = round(base_size + scale_factor * math.log(m + n), 0)
